@@ -3,14 +3,25 @@ import SwiftData
 
 struct WorkoutTrackingView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query(sort: \WorkoutEntry.date, order: .reverse) private var workouts: [WorkoutEntry]
-    @State private var showingAddWorkout = false
+    @Query(sort: \WorkoutSession.date, order: .reverse) private var workoutSessions: [WorkoutSession]
+    @Query(sort: \WorkoutEntry.date, order: .reverse) private var legacyWorkouts: [WorkoutEntry]
+    @State private var showingActiveWorkout = false
 
-    private var groupedWorkouts: [(String, [WorkoutEntry])] {
+    private var allWorkoutsGrouped: [(String, [WorkoutDisplayItem])] {
+        var allItems: [WorkoutDisplayItem] = []
+
+        // Add new workout sessions
+        allItems.append(contentsOf: workoutSessions.map { .session($0) })
+
+        // Add legacy workouts
+        allItems.append(contentsOf: legacyWorkouts.map { .legacy($0) })
+
+        // Group by date
         let calendar = Calendar.current
-        let grouped = Dictionary(grouping: workouts) { workout in
-            calendar.startOfDay(for: workout.date)
+        let grouped = Dictionary(grouping: allItems) { item in
+            calendar.startOfDay(for: item.date)
         }
+
         return grouped.sorted { $0.key > $1.key }.map { (key, value) in
             (formatDate(key), value.sorted { $0.date > $1.date })
         }
@@ -18,44 +29,43 @@ struct WorkoutTrackingView: View {
 
     var body: some View {
         NavigationStack {
-            if workouts.isEmpty {
+            if workoutSessions.isEmpty && legacyWorkouts.isEmpty {
                 ContentUnavailableView(
                     "No workouts logged",
                     systemImage: "dumbbell.fill",
-                    description: Text("Tap + to log your first workout")
+                    description: Text("Tap + to start your first workout")
                 )
             } else {
                 List {
-                    ForEach(groupedWorkouts, id: \.0) { date, dayWorkouts in
+                    ForEach(allWorkoutsGrouped, id: \.0) { date, dayWorkouts in
                         Section(date) {
-                            ForEach(dayWorkouts) { workout in
-                                WorkoutRow(workout: workout)
-                            }
-                            .onDelete { offsets in
-                                deleteWorkouts(dayWorkouts, at: offsets)
+                            ForEach(dayWorkouts) { item in
+                                switch item {
+                                case .session(let session):
+                                    WorkoutSessionRow(session: session)
+                                case .legacy(let workout):
+                                    LegacyWorkoutRow(workout: workout)
+                                }
                             }
                         }
                     }
                 }
                 .listStyle(.plain)
             }
-
-            NavigationStack {
-            }
-            .navigationTitle("TRAIN")
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        showingAddWorkout = true
-                    } label: {
-                        Image(systemName: "plus")
-                            .fontWeight(.medium)
-                    }
+        }
+        .navigationTitle("TRAIN")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    showingActiveWorkout = true
+                } label: {
+                    Image(systemName: "plus")
+                        .fontWeight(.medium)
                 }
             }
-            .sheet(isPresented: $showingAddWorkout) {
-                AddWorkoutView()
-            }
+        }
+        .fullScreenCover(isPresented: $showingActiveWorkout) {
+            ActiveWorkoutView()
         }
     }
 
@@ -69,22 +79,106 @@ struct WorkoutTrackingView: View {
             return date.formatted(date: .abbreviated, time: .omitted)
         }
     }
+}
 
-    private func deleteWorkouts(_ workouts: [WorkoutEntry], at offsets: IndexSet) {
-        for index in offsets {
-            modelContext.delete(workouts[index])
+// MARK: - Workout Display Items
+
+enum WorkoutDisplayItem: Identifiable {
+    case session(WorkoutSession)
+    case legacy(WorkoutEntry)
+
+    var id: UUID {
+        switch self {
+        case .session(let session): return session.id
+        case .legacy(let workout): return workout.id
+        }
+    }
+
+    var date: Date {
+        switch self {
+        case .session(let session): return session.date
+        case .legacy(let workout): return workout.date
         }
     }
 }
 
-struct WorkoutRow: View {
+// MARK: - Row Views
+
+struct WorkoutSessionRow: View {
+    let session: WorkoutSession
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: MarbleSpacing.xxs) {
+            HStack {
+                Text(session.name)
+                    .font(.marbleBody)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.marblePrimary)
+
+                Spacer()
+
+                if let duration = session.duration {
+                    Text(formatDuration(duration))
+                        .font(.marbleCaption)
+                        .foregroundColor(.marbleSecondary)
+                }
+            }
+
+            if !session.exercises.isEmpty {
+                Text("\(session.exercises.count) exercises • \(totalSets) sets")
+                    .font(.marbleCaption)
+                    .foregroundColor(.marbleSecondary)
+
+                ForEach(session.exercises.sorted(by: { $0.order < $1.order }).prefix(3)) { performance in
+                    if let exercise = performance.exercise {
+                        Text("• \(exercise.displayName)")
+                            .font(.marbleDataValue)
+                            .foregroundColor(.marbleSecondary)
+                            .lineLimit(1)
+                    }
+                }
+
+                if session.exercises.count > 3 {
+                    Text("+ \(session.exercises.count - 3) more")
+                        .font(.marbleCaption)
+                        .foregroundColor(.marbleSecondary)
+                }
+            }
+        }
+        .padding(.vertical, MarbleSpacing.xxxs)
+    }
+
+    private var totalSets: Int {
+        session.exercises.reduce(0) { $0 + $1.sets.count }
+    }
+
+    private func formatDuration(_ duration: TimeInterval) -> String {
+        let minutes = Int(duration) / 60
+        let seconds = Int(duration) % 60
+        return String(format: "%dm %ds", minutes, seconds)
+    }
+}
+
+struct LegacyWorkoutRow: View {
     let workout: WorkoutEntry
 
     var body: some View {
         VStack(alignment: .leading, spacing: MarbleSpacing.xxs) {
-            Text(workout.exerciseName)
-                .font(.marbleBody)
-                .foregroundColor(.marblePrimary)
+            HStack {
+                Text(workout.exerciseName)
+                    .font(.marbleBody)
+                    .foregroundColor(.marblePrimary)
+
+                Spacer()
+
+                Text("LEGACY")
+                    .font(.marbleCaption)
+                    .foregroundColor(.marbleSecondary)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Color.marbleSecondary.opacity(0.1))
+                    .cornerRadius(4)
+            }
 
             if !workout.sets.isEmpty {
                 VStack(alignment: .leading, spacing: MarbleSpacing.xxxs) {
@@ -108,5 +202,5 @@ struct WorkoutRow: View {
 
 #Preview {
     WorkoutTrackingView()
-        .modelContainer(for: [WorkoutEntry.self, ExerciseSet.self])
+        .modelContainer(for: [WorkoutSession.self, WorkoutEntry.self, ExercisePerformance.self, Exercise.self, ExerciseSet.self])
 }

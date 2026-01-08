@@ -25,11 +25,18 @@ final class ExerciseSet {
     var id: UUID
     var reps: Int
     var weight: Double // in lbs or kg
-    var workout: WorkoutEntry?
+    var completed: Bool // Checkmark in Strong-style UI
+    var restTimer: Int? // Rest duration in seconds (e.g., 120 for 2:00)
 
-    init(reps: Int, weight: Double) {
+    // Relationships (supporting both old and new models)
+    var workout: WorkoutEntry? // Legacy relationship
+    var exercisePerformance: ExercisePerformance? // New relationship
+
+    init(reps: Int, weight: Double, completed: Bool = false, restTimer: Int? = nil) {
         self.id = UUID()
         self.reps = reps
         self.weight = weight
+        self.completed = completed
+        self.restTimer = restTimer
     }
 }
