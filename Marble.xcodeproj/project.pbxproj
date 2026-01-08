@@ -25,6 +25,7 @@
 		A100000E /* ProgressPhotosView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A200000E /* ProgressPhotosView.swift */; };
 		A100000F /* AddProgressPhotoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A200000F /* AddProgressPhotoView.swift */; };
 		A1000010 /* ServingOption.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000010 /* ServingOption.swift */; };
+		09C66311BA0243F6958229BA /* exercises.json in Resources */ = {isa = PBXBuildFile; fileRef = 3395771BDE4B401D86B308AC /* exercises.json */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -47,6 +48,7 @@
 		A200000F /* AddProgressPhotoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddProgressPhotoView.swift; sourceTree = "<group>"; };
 		A2000010 /* ServingOption.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServingOption.swift; sourceTree = "<group>"; };
 		A3000001 /* Marble.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Marble.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		3395771BDE4B401D86B308AC /* exercises.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = exercises.json; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -86,6 +88,7 @@
 				A5000004 /* Models */,
 				A5000005 /* Views */,
 				A5000006 /* Services */,
+				A5000007 /* Resources */,
 			);
 			path = Marble;
 			sourceTree = "<group>";
@@ -157,6 +160,14 @@
 			path = Photos;
 			sourceTree = "<group>";
 		};
+		A5000007 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				3395771BDE4B401D86B308AC /* exercises.json */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -215,7 +226,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-			);
+			
+				09C66311BA0243F6958229BA /* exercises.json in Resources */,);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
