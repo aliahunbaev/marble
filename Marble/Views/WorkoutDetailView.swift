@@ -1,0 +1,123 @@
+import SwiftUI
+import SwiftData
+
+struct WorkoutDetailView: View {
+    let workout: Workout
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                // Header
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(workout.name)
+                        .font(.system(size: 28, weight: .medium, design: .monospaced))
+
+                    HStack(spacing: 12) {
+                        Text(formattedDate)
+                            .font(.system(size: 14, design: .monospaced))
+                            .foregroundStyle(.secondary)
+
+                        Text(formattedDuration)
+                            .font(.system(size: 14, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 20)
+                .padding(.bottom, 28)
+
+                // Exercise logs
+                ForEach(Array(workout.exerciseLogs.enumerated()), id: \.element.id) { index, log in
+                    exerciseSection(log: log)
+
+                    if index < workout.exerciseLogs.count - 1 {
+                        Rectangle()
+                            .fill(Color(.separator))
+                            .frame(height: 1)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 20)
+                    }
+                }
+            }
+            .padding(.bottom, 40)
+        }
+        .background(Color(.systemBackground))
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func exerciseSection(log: ExerciseLog) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Exercise name
+            Text(log.exercise?.name ?? "Unknown")
+                .font(.system(size: 18, weight: .medium, design: .monospaced))
+                .padding(.horizontal, 20)
+                .padding(.bottom, 12)
+
+            // Column headers
+            HStack(spacing: 12) {
+                Text("SET")
+                    .frame(width: 36, alignment: .center)
+                Text("LBS")
+                    .frame(maxWidth: .infinity)
+                Text("REPS")
+                    .frame(maxWidth: .infinity)
+            }
+            .font(.system(size: 11, weight: .medium, design: .monospaced))
+            .tracking(0.5)
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 20)
+            .padding(.bottom, 8)
+
+            // Set rows
+            let completedSets = log.sets.filter { $0.isCompleted }
+            ForEach(Array(completedSets.enumerated()), id: \.offset) { index, set in
+                HStack(spacing: 12) {
+                    Text("\(index + 1)")
+                        .font(.system(size: 14, weight: .medium, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 36, alignment: .center)
+
+                    Text(formattedWeight(set.weight))
+                        .font(.system(size: 14, weight: .medium, design: .monospaced))
+                        .frame(maxWidth: .infinity)
+
+                    Text("\(set.reps)")
+                        .font(.system(size: 14, weight: .medium, design: .monospaced))
+                        .frame(maxWidth: .infinity)
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 6)
+            }
+        }
+    }
+
+    private func formattedWeight(_ weight: Double) -> String {
+        if weight == floor(weight) {
+            return "\(Int(weight))"
+        }
+        return String(format: "%.1f", weight)
+    }
+
+    private var formattedDate: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEEE, MMM d"
+        return formatter.string(from: workout.date)
+    }
+
+    private var formattedDuration: String {
+        let minutes = Int(workout.duration) / 60
+        if minutes < 60 {
+            return "\(minutes) min"
+        }
+        let hours = minutes / 60
+        let remainingMinutes = minutes % 60
+        return "\(hours)h \(remainingMinutes)m"
+    }
+}
+
+#Preview {
+    NavigationStack {
+        WorkoutDetailView(workout: Workout(name: "Push Day", date: .now, duration: 3600))
+    }
+    .modelContainer(for: [Workout.self, Exercise.self], inMemory: true)
+}
