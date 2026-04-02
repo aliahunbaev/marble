@@ -111,6 +111,15 @@ struct TrainView: View {
                                 } label: {
                                     Label("Edit", systemImage: "pencil")
                                 }
+                                Button {
+                                    let copy = WorkoutTemplate(
+                                        name: template.name + " Copy",
+                                        exercises: template.exercises
+                                    )
+                                    modelContext.insert(copy)
+                                } label: {
+                                    Label("Duplicate", systemImage: "doc.on.doc")
+                                }
                                 Button(role: .destructive) {
                                     modelContext.delete(template)
                                 } label: {

@@ -14,6 +14,8 @@ struct ActiveWorkoutView: View {
     @State private var startDate = Date()
     @State private var restTimer = RestTimerState()
     @State private var showingDiscardAlert = false
+    @State private var completedWorkout: Workout?
+    @State private var showingSummary = false
 
     private let sourceTemplate: WorkoutTemplate?
 
@@ -34,6 +36,14 @@ struct ActiveWorkoutView: View {
     }
 
     var body: some View {
+        if showingSummary, let workout = completedWorkout {
+            workoutSummaryView(workout: workout)
+        } else {
+            workoutContentView
+        }
+    }
+
+    private var workoutContentView: some View {
         VStack(spacing: 0) {
             workoutToolbar
             Divider()
@@ -243,7 +253,117 @@ struct ActiveWorkoutView: View {
         modelContext.insert(workout)
         try? modelContext.save()
 
-        dismiss()
+        completedWorkout = workout
+        withAnimation {
+            showingSummary = true
+        }
+    }
+
+    // MARK: - Workout Summary
+
+    private func workoutSummaryView(workout: Workout) -> some View {
+        VStack(spacing: 0) {
+            Spacer()
+
+            VStack(spacing: 32) {
+                // Checkmark
+                Image(systemName: "checkmark.circle")
+                    .font(.system(size: 56, weight: .thin))
+                    .foregroundStyle(.green)
+
+                // Title
+                Text("Workout Complete")
+                    .font(.system(size: 24, weight: .medium, design: .monospaced))
+
+                // Workout name
+                Text(workout.name)
+                    .font(.system(size: 17, design: .monospaced))
+                    .foregroundStyle(.secondary)
+
+                // Stats
+                VStack(spacing: 28) {
+                    summaryStatView(
+                        label: "DURATION",
+                        value: formattedDuration(workout.duration)
+                    )
+
+                    summaryStatView(
+                        label: "EXERCISES",
+                        value: "\(workout.exerciseLogs.count)"
+                    )
+
+                    summaryStatView(
+                        label: "SETS",
+                        value: "\(totalSets(workout))"
+                    )
+
+                    summaryStatView(
+                        label: "VOLUME",
+                        value: formattedVolume(workout)
+                    )
+                }
+                .padding(.top, 8)
+            }
+
+            Spacer()
+
+            // Done button
+            Button {
+                dismiss()
+            } label: {
+                Text("DONE")
+                    .font(.system(size: 15, weight: .medium, design: .monospaced))
+                    .tracking(1.5)
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(Color(.systemGreen))
+                    .cornerRadius(4)
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 20)
+            .padding(.bottom, 40)
+        }
+        .background(Color(.systemBackground))
+    }
+
+    private func summaryStatView(label: String, value: String) -> some View {
+        VStack(spacing: 6) {
+            Text(value)
+                .font(.system(size: 36, weight: .medium, design: .monospaced))
+            Text(label)
+                .font(.system(size: 11, weight: .medium, design: .monospaced))
+                .tracking(1.5)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private func formattedDuration(_ interval: TimeInterval) -> String {
+        let totalMinutes = Int(interval) / 60
+        let hours = totalMinutes / 60
+        let minutes = totalMinutes % 60
+        if hours > 0 {
+            return "\(hours)h \(minutes)m"
+        }
+        return "\(minutes)m"
+    }
+
+    private func totalSets(_ workout: Workout) -> Int {
+        workout.exerciseLogs.reduce(0) { $0 + $1.sets.filter(\.isCompleted).count }
+    }
+
+    private func totalVolume(_ workout: Workout) -> Double {
+        workout.exerciseLogs.reduce(0.0) { total, log in
+            total + log.sets.filter(\.isCompleted).reduce(0.0) { $0 + $1.weight * Double($1.reps) }
+        }
+    }
+
+    private func formattedVolume(_ workout: Workout) -> String {
+        let volume = Int(totalVolume(workout))
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        let formatted = formatter.string(from: NSNumber(value: volume)) ?? "\(volume)"
+        return "\(formatted) lbs"
     }
 }
 
