@@ -4,6 +4,7 @@ import SwiftData
 struct ExerciseLiftDetailView: View {
     @Bindable var trackedLift: TrackedLift
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
     @Query(sort: \Workout.date, order: .reverse) private var workouts: [Workout]
 
     @State private var showingManualEntry = false
@@ -43,6 +44,21 @@ struct ExerciseLiftDetailView: View {
 
                 // History
                 historySection
+
+                // Remove button
+                Button(role: .destructive) {
+                    modelContext.delete(trackedLift)
+                    try? modelContext.save()
+                    dismiss()
+                } label: {
+                    Text("Remove from Tracking")
+                        .font(.system(.body, design: .monospaced))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.red)
+                .padding(.horizontal, 20)
             }
             .padding(.bottom, 40)
         }

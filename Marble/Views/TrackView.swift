@@ -7,6 +7,7 @@ struct TrackView: View {
     @Query(sort: \TrackedLift.displayOrder) private var trackedLifts: [TrackedLift]
 
     @State private var showingAddLift = false
+    @State private var workoutToDelete: Workout?
 
     private let columns = [
         GridItem(.flexible(), spacing: 12),
@@ -19,6 +20,7 @@ struct TrackView: View {
                 VStack(alignment: .leading, spacing: 32) {
                     contributionGrid
                     myLiftsSection
+                    historySection
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 8)
@@ -28,6 +30,21 @@ struct TrackView: View {
             .navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $showingAddLift) {
                 AddTrackedLiftSheet(trackedLifts: trackedLifts)
+            }
+            .alert("Delete this workout? This cannot be undone.", isPresented: Binding<Bool>(
+                get: { workoutToDelete != nil },
+                set: { if !$0 { workoutToDelete = nil } }
+            )) {
+                Button("Cancel", role: .cancel) {
+                    workoutToDelete = nil
+                }
+                Button("Delete", role: .destructive) {
+                    if let workout = workoutToDelete {
+                        modelContext.delete(workout)
+                        try? modelContext.save()
+                        workoutToDelete = nil
+                    }
+                }
             }
         }
     }
@@ -146,6 +163,70 @@ struct TrackView: View {
         return GridData(cells: cells, monthLabels: monthLabels)
     }
 
+    // MARK: - History
+
+    private var historySection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionHeader(title: "HISTORY")
+
+            if workouts.isEmpty {
+                Text("No workouts yet")
+                    .font(.system(.subheadline, design: .monospaced))
+                    .foregroundStyle(.tertiary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 40)
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(Array(workouts.enumerated()), id: \.element.id) { index, workout in
+                        NavigationLink(destination: WorkoutDetailView(workout: workout)) {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(workout.name)
+                                        .font(.system(size: 14, weight: .medium, design: .monospaced))
+                                        .foregroundStyle(.primary)
+
+                                    Text(historyDateString(workout.date))
+                                        .font(.system(size: 12, design: .monospaced))
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundStyle(.tertiary)
+                            }
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 12)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .contextMenu {
+                            Button(role: .destructive) {
+                                workoutToDelete = workout
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                        }
+
+                        if index < workouts.count - 1 {
+                            Divider().padding(.leading, 14)
+                        }
+                    }
+                }
+                .background(Color(.systemBackground))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 4)
+                        .stroke(Color(.separator), lineWidth: 1)
+                )
+            }
+        }
+    }
+
+    private func historyDateString(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEEE, MMM d"
+        return formatter.string(from: date)
+    }
+
     // MARK: - My Lifts
 
     private var myLiftsSection: some View {
@@ -181,6 +262,14 @@ struct TrackView: View {
                                 LiftCardView(lift: lift, exercise: exercise, workouts: workouts)
                             }
                             .buttonStyle(.plain)
+                            .contextMenu {
+                                Button(role: .destructive) {
+                                    modelContext.delete(lift)
+                                    try? modelContext.save()
+                                } label: {
+                                    Label("Remove", systemImage: "trash")
+                                }
+                            }
                         }
                     }
                 }

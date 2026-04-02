@@ -2,7 +2,11 @@ import SwiftUI
 import SwiftData
 
 struct WorkoutDetailView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
     let workout: Workout
+
+    @State private var showingDeleteConfirmation = false
 
     var body: some View {
         ScrollView {
@@ -43,6 +47,25 @@ struct WorkoutDetailView: View {
         }
         .background(Color(.systemBackground))
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .destructiveAction) {
+                Button {
+                    showingDeleteConfirmation = true
+                } label: {
+                    Image(systemName: "trash")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(.red)
+                }
+            }
+        }
+        .alert("Delete this workout? This cannot be undone.", isPresented: $showingDeleteConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) {
+                modelContext.delete(workout)
+                try? modelContext.save()
+                dismiss()
+            }
+        }
     }
 
     private func exerciseSection(log: ExerciseLog) -> some View {

@@ -1,4 +1,5 @@
 import SwiftUI
+import AudioToolbox
 
 // MARK: - Rest Timer State
 
@@ -59,6 +60,9 @@ class RestTimerState {
             let remaining = Int(ceil(self.endDate.timeIntervalSince(Date())))
             self.remainingSeconds = max(0, remaining)
             if self.remainingSeconds == 0 {
+                let generator = UINotificationFeedbackGenerator()
+                generator.notificationOccurred(.success)
+                AudioServicesPlaySystemSound(1007)
                 self.stop()
             }
         }
