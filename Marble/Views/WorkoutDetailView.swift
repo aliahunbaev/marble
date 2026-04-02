@@ -14,16 +14,17 @@ struct WorkoutDetailView: View {
                 // Header
                 VStack(alignment: .leading, spacing: 4) {
                     Text(workout.name)
-                        .font(.system(size: 28, weight: .medium, design: .monospaced))
+                        .font(.system(size: 28, weight: .medium, design: .default))
+                        .foregroundStyle(Color("marblePrimary"))
 
                     HStack(spacing: 12) {
                         Text(formattedDate)
                             .font(.system(size: 14, design: .monospaced))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Color("marbleSecondary"))
 
                         Text(formattedDuration)
                             .font(.system(size: 14, design: .monospaced))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Color("marbleSecondary"))
                     }
                 }
                 .padding(.horizontal, 20)
@@ -36,7 +37,7 @@ struct WorkoutDetailView: View {
 
                     if index < workout.exerciseLogs.count - 1 {
                         Rectangle()
-                            .fill(Color(.separator))
+                            .fill(Color("marbleTertiary"))
                             .frame(height: 1)
                             .padding(.horizontal, 20)
                             .padding(.vertical, 20)
@@ -45,7 +46,7 @@ struct WorkoutDetailView: View {
             }
             .padding(.bottom, 40)
         }
-        .background(Color(.systemBackground))
+        .background(Color("marbleBackground"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .destructiveAction) {
@@ -72,7 +73,8 @@ struct WorkoutDetailView: View {
         VStack(alignment: .leading, spacing: 0) {
             // Exercise name
             Text(log.exercise?.name ?? "Unknown")
-                .font(.system(size: 18, weight: .medium, design: .monospaced))
+                .font(.system(size: 18, weight: .medium, design: .default))
+                .foregroundStyle(Color("marblePrimary"))
                 .padding(.horizontal, 20)
                 .padding(.bottom, 12)
 
@@ -87,7 +89,7 @@ struct WorkoutDetailView: View {
             }
             .font(.system(size: 11, weight: .medium, design: .monospaced))
             .tracking(0.5)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Color("marbleSecondary"))
             .padding(.horizontal, 20)
             .padding(.bottom, 8)
 
@@ -97,15 +99,17 @@ struct WorkoutDetailView: View {
                 HStack(spacing: 12) {
                     Text("\(index + 1)")
                         .font(.system(size: 14, weight: .medium, design: .monospaced))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Color("marbleSecondary"))
                         .frame(width: 36, alignment: .center)
 
                     Text(formattedWeight(set.weight))
                         .font(.system(size: 14, weight: .medium, design: .monospaced))
+                        .foregroundStyle(Color("marblePrimary"))
                         .frame(maxWidth: .infinity)
 
                     Text("\(set.reps)")
                         .font(.system(size: 14, weight: .medium, design: .monospaced))
+                        .foregroundStyle(Color("marblePrimary"))
                         .frame(maxWidth: .infinity)
                 }
                 .padding(.horizontal, 20)

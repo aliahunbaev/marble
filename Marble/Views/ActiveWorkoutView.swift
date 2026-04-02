@@ -46,19 +46,22 @@ struct ActiveWorkoutView: View {
     private var workoutContentView: some View {
         VStack(spacing: 0) {
             workoutToolbar
-            Divider()
+            Rectangle()
+                .fill(Color("marbleTertiary"))
+                .frame(height: 1)
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     TextField("Workout", text: $name)
-                        .font(.system(size: 28, weight: .medium, design: .monospaced))
+                        .font(.system(size: 28, weight: .medium, design: .default))
+                        .foregroundStyle(Color("marblePrimary"))
                         .padding(.horizontal, 20)
                         .padding(.top, 20)
                         .padding(.bottom, 4)
 
                     Text(formattedTime)
                         .font(.system(size: 15, design: .monospaced))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Color("marbleSecondary"))
                         .padding(.horizontal, 20)
                         .padding(.bottom, 24)
 
@@ -89,7 +92,7 @@ struct ActiveWorkoutView: View {
                 }
             }
         }
-        .background(Color(.systemBackground))
+        .background(Color("marbleBackground"))
         .onAppear { startWorkoutTimer() }
         .onDisappear { stopWorkoutTimer(); restTimer.stop() }
         .sheet(isPresented: $showingLibrary) {
@@ -129,11 +132,11 @@ struct ActiveWorkoutView: View {
                 Text("FINISH")
                     .font(.system(size: 13, weight: .medium, design: .monospaced))
                     .tracking(1)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color("marbleBackground"))
                     .padding(.horizontal, 16)
                     .padding(.vertical, 8)
-                    .background(Color(.systemGreen))
-                    .cornerRadius(4)
+                    .background(Color("marblePrimary"))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
             }
             .buttonStyle(.plain)
         }
@@ -145,7 +148,7 @@ struct ActiveWorkoutView: View {
 
     private var exerciseDivider: some View {
         Rectangle()
-            .fill(Color(.separator))
+            .fill(Color("marbleTertiary"))
             .frame(height: 1)
             .padding(.horizontal, 20)
             .padding(.vertical, 20)
@@ -162,10 +165,12 @@ struct ActiveWorkoutView: View {
                     .font(.system(size: 13, weight: .medium, design: .monospaced))
                     .tracking(1)
             }
+            .foregroundStyle(Color("marbleSecondary"))
             .frame(maxWidth: .infinity)
             .padding(.vertical, 14)
-            .background(Color(.systemGreen).opacity(0.1))
-            .cornerRadius(4)
+            .background(Color("marbleCard"))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
         }
         .buttonStyle(.plain)
     }
@@ -269,16 +274,17 @@ struct ActiveWorkoutView: View {
                 // Checkmark
                 Image(systemName: "checkmark.circle")
                     .font(.system(size: 56, weight: .thin))
-                    .foregroundStyle(.green)
+                    .foregroundStyle(Color("marblePrimary"))
 
                 // Title
                 Text("Workout Complete")
-                    .font(.system(size: 24, weight: .medium, design: .monospaced))
+                    .font(.system(size: 24, weight: .medium, design: .default))
+                    .foregroundStyle(Color("marblePrimary"))
 
                 // Workout name
                 Text(workout.name)
-                    .font(.system(size: 17, design: .monospaced))
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 17, design: .default))
+                    .foregroundStyle(Color("marbleSecondary"))
 
                 // Stats
                 VStack(spacing: 28) {
@@ -314,27 +320,28 @@ struct ActiveWorkoutView: View {
                 Text("DONE")
                     .font(.system(size: 15, weight: .medium, design: .monospaced))
                     .tracking(1.5)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color("marbleBackground"))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
-                    .background(Color(.systemGreen))
-                    .cornerRadius(4)
+                    .background(Color("marblePrimary"))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
             }
             .buttonStyle(.plain)
             .padding(.horizontal, 20)
             .padding(.bottom, 40)
         }
-        .background(Color(.systemBackground))
+        .background(Color("marbleBackground"))
     }
 
     private func summaryStatView(label: String, value: String) -> some View {
         VStack(spacing: 6) {
             Text(value)
                 .font(.system(size: 36, weight: .medium, design: .monospaced))
+                .foregroundStyle(Color("marblePrimary"))
             Text(label)
                 .font(.system(size: 11, weight: .medium, design: .monospaced))
                 .tracking(1.5)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color("marbleSecondary"))
         }
     }
 

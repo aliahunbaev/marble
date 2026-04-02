@@ -17,12 +17,11 @@ struct AddTemplateView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         SectionHeader(title: "NAME")
                         TextField("e.g. Push, Pull, Legs", text: $name)
-                            .font(.system(.body, design: .monospaced))
+                            .font(.system(.body, design: .default))
+                            .foregroundStyle(Color("marblePrimary"))
                             .padding(14)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 4)
-                                    .stroke(Color(.separator), lineWidth: 1)
-                            )
+                            .background(Color("marbleFieldBackground"))
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
                     }
 
                     // Selected exercises
@@ -35,10 +34,11 @@ struct AddTemplateView: View {
                             } label: {
                                 Image(systemName: "plus")
                                     .font(.system(size: 13, weight: .medium, design: .monospaced))
+                                    .foregroundStyle(Color("marblePrimary"))
                                     .frame(width: 28, height: 28)
                                     .overlay(
-                                        RoundedRectangle(cornerRadius: 4)
-                                            .stroke(Color(.label), lineWidth: 1)
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .stroke(Color("marblePrimary"), lineWidth: 1)
                                     )
                             }
                             .buttonStyle(.plain)
@@ -47,7 +47,7 @@ struct AddTemplateView: View {
                         if selectedExercises.isEmpty {
                             Text("Tap + to add exercises")
                                 .font(.system(.subheadline, design: .monospaced))
-                                .foregroundStyle(.tertiary)
+                                .foregroundStyle(Color("marbleSecondary"))
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 24)
                         } else {
@@ -56,10 +56,11 @@ struct AddTemplateView: View {
                                     HStack {
                                         VStack(alignment: .leading, spacing: 2) {
                                             Text(exercise.name)
-                                                .font(.system(.body, design: .monospaced))
+                                                .font(.system(.body, design: .default))
+                                                .foregroundStyle(Color("marblePrimary"))
                                             Text(exercise.muscleGroup)
                                                 .font(.system(.caption, design: .monospaced))
-                                                .foregroundStyle(.secondary)
+                                                .foregroundStyle(Color("marbleSecondary"))
                                         }
                                         Spacer()
                                         Button {
@@ -67,27 +68,29 @@ struct AddTemplateView: View {
                                         } label: {
                                             Image(systemName: "xmark")
                                                 .font(.system(size: 12, weight: .medium))
-                                                .foregroundStyle(.secondary)
+                                                .foregroundStyle(Color("marbleSecondary"))
                                         }
                                         .buttonStyle(.plain)
                                     }
                                     .padding(14)
 
                                     if index < selectedExercises.count - 1 {
-                                        Divider()
+                                        Rectangle()
+                                            .fill(Color("marbleTertiary"))
+                                            .frame(height: 1)
                                     }
                                 }
                             }
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 4)
-                                    .stroke(Color(.separator), lineWidth: 1)
-                            )
+                            .background(Color("marbleCard"))
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
                         }
                     }
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 8)
             }
+            .background(Color("marbleBackground"))
             .navigationTitle("New Program")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

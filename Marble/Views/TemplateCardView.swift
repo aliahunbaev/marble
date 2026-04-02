@@ -6,31 +6,29 @@ struct TemplateCardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(template.name)
-                .font(.system(size: 16, weight: .medium, design: .monospaced))
-                .foregroundStyle(Color(.label))
+                .font(.system(size: 16, weight: .medium, design: .default))
+                .foregroundStyle(Color("marblePrimary"))
                 .lineLimit(2)
 
             VStack(alignment: .leading, spacing: 3) {
                 ForEach(template.exercises.prefix(5)) { exercise in
                     Text(exercise.name)
-                        .font(.system(size: 12, weight: .regular, design: .monospaced))
-                        .foregroundStyle(.secondary)
+                        .font(.system(size: 12, weight: .regular, design: .default))
+                        .foregroundStyle(Color("marbleSecondary"))
                         .lineLimit(1)
                 }
                 if template.exercises.count > 5 {
                     Text("...")
-                        .font(.system(size: 12, weight: .regular, design: .monospaced))
-                        .foregroundStyle(.tertiary)
+                        .font(.system(size: 12, weight: .regular, design: .default))
+                        .foregroundStyle(Color("marbleTertiary"))
                 }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(14)
-        .background(Color(.systemBackground))
-        .overlay(
-            RoundedRectangle(cornerRadius: 4)
-                .stroke(Color(.separator), lineWidth: 1)
-        )
+        .background(Color("marbleCard"))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
     }
 }
 

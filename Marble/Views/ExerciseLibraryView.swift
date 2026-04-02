@@ -34,17 +34,15 @@ struct ExerciseLibraryView: View {
                     // Search bar
                     HStack(spacing: 8) {
                         Image(systemName: "magnifyingglass")
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Color("marbleSecondary"))
                             .font(.system(size: 14))
                         TextField("Search exercises", text: $searchText)
-                            .font(.system(.body, design: .monospaced))
+                            .font(.system(.body, design: .default))
                             .autocorrectionDisabled()
                     }
                     .padding(12)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 4)
-                            .stroke(Color(.separator), lineWidth: 1)
-                    )
+                    .background(Color("marbleFieldBackground"))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
                     .padding(.horizontal, 20)
                     .padding(.top, 8)
                     .padding(.bottom, 20)
@@ -59,6 +57,7 @@ struct ExerciseLibraryView: View {
                 }
                 .padding(.bottom, 40)
             }
+            .background(Color("marbleBackground"))
             .navigationTitle("Exercises")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -66,7 +65,7 @@ struct ExerciseLibraryView: View {
                     Button { dismiss() } label: {
                         Image(systemName: "xmark")
                             .font(.system(size: 14, weight: .medium))
-                            .foregroundStyle(.primary)
+                            .foregroundStyle(Color("marblePrimary"))
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
@@ -105,20 +104,23 @@ struct ExerciseLibraryView: View {
                 ForEach(exercises) { exercise in
                     exerciseRow(exercise)
                     if exercise.id != exercises.last?.id {
-                        Divider().padding(.leading, 20)
+                        Rectangle()
+                            .fill(Color("marbleTertiary"))
+                            .frame(height: 1)
+                            .padding(.leading, 20)
                     }
                 }
             }
             .overlay(
                 Rectangle()
                     .frame(height: 1)
-                    .foregroundStyle(Color(.separator)),
+                    .foregroundStyle(Color("marbleTertiary")),
                 alignment: .top
             )
             .overlay(
                 Rectangle()
                     .frame(height: 1)
-                    .foregroundStyle(Color(.separator)),
+                    .foregroundStyle(Color("marbleTertiary")),
                 alignment: .bottom
             )
             .padding(.bottom, 24)
@@ -133,16 +135,17 @@ struct ExerciseLibraryView: View {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(exercise.name)
-                        .font(.system(.body, design: .monospaced))
+                        .font(.system(.body, design: .default))
+                        .foregroundStyle(Color("marblePrimary"))
                     Text(exercise.muscleGroup)
                         .font(.system(.caption, design: .monospaced))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Color("marbleSecondary"))
                 }
                 Spacer()
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
-            .background(isSelected ? Color(.systemBlue).opacity(0.1) : Color.clear)
+            .background(isSelected ? Color("marbleAccent").opacity(0.1) : Color.clear)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -152,7 +155,7 @@ struct ExerciseLibraryView: View {
         VStack(spacing: 12) {
             Text("No exercises found")
                 .font(.system(.subheadline, design: .monospaced))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Color("marbleSecondary"))
             if !searchText.isEmpty {
                 Button {
                     newName = searchText
@@ -160,11 +163,12 @@ struct ExerciseLibraryView: View {
                 } label: {
                     Text("Create \"\(searchText)\"")
                         .font(.system(.subheadline, design: .monospaced))
+                        .foregroundStyle(Color("marblePrimary"))
                         .padding(.horizontal, 16)
                         .padding(.vertical, 10)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 4)
-                                .stroke(Color(.label), lineWidth: 1)
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(Color("marblePrimary"), lineWidth: 1)
                         )
                 }
                 .buttonStyle(.plain)

@@ -31,7 +31,8 @@ struct ExerciseLiftDetailView: View {
                 // Exercise name
                 if let exercise {
                     Text(exercise.name)
-                        .font(.system(size: 24, weight: .medium, design: .monospaced))
+                        .font(.system(size: 24, weight: .medium, design: .default))
+                        .foregroundStyle(Color("marblePrimary"))
                         .padding(.horizontal, 20)
                         .padding(.top, 16)
                 }
@@ -52,7 +53,7 @@ struct ExerciseLiftDetailView: View {
                     dismiss()
                 } label: {
                     Text("Remove from Tracking")
-                        .font(.system(.body, design: .monospaced))
+                        .font(.system(.body, design: .default))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 8)
                 }
@@ -62,7 +63,7 @@ struct ExerciseLiftDetailView: View {
             }
             .padding(.bottom, 40)
         }
-        .background(Color(.systemBackground))
+        .background(Color("marbleBackground"))
         .navigationBarTitleDisplayMode(.inline)
         .alert(manualEntryTitle, isPresented: $showingManualEntry) {
             manualEntryAlertContent
@@ -121,26 +122,27 @@ struct ExerciseLiftDetailView: View {
 
                 // Show auto value for comparison if manual exists
                 if hasManualValueForCurrentMetric {
-                    Divider().padding(.leading, 14)
+                    Rectangle()
+                        .fill(Color("marbleTertiary"))
+                        .frame(height: 1)
+                        .padding(.leading, 14)
 
                     HStack {
                         Text("From workouts")
                             .font(.system(size: 12, design: .monospaced))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Color("marbleSecondary"))
                         Spacer()
                         Text(autoValueForCurrentMetric)
                             .font(.system(size: 13, weight: .medium, design: .monospaced))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Color("marbleSecondary"))
                     }
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
                 }
             }
-            .background(Color(.systemBackground))
-            .overlay(
-                RoundedRectangle(cornerRadius: 4)
-                    .stroke(Color(.separator), lineWidth: 1)
-            )
+            .background(Color("marbleCard"))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
             .padding(.horizontal, 20)
         }
     }
@@ -152,14 +154,15 @@ struct ExerciseLiftDetailView: View {
                     HStack(spacing: 6) {
                         Text(manualValueForCurrentMetric)
                             .font(.system(size: 15, weight: .medium, design: .monospaced))
+                            .foregroundStyle(Color("marblePrimary"))
                         Text("Manual")
                             .font(.system(size: 10, design: .monospaced))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Color("marbleSecondary"))
                             .padding(.horizontal, 5)
                             .padding(.vertical, 2)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 3)
-                                    .stroke(Color(.separator), lineWidth: 1)
+                                    .stroke(Color("marbleTertiary"), lineWidth: 1)
                             )
                     }
                 }
@@ -171,11 +174,11 @@ struct ExerciseLiftDetailView: View {
                 } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Color("marbleSecondary"))
                         .frame(width: 28, height: 28)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 4)
-                                .stroke(Color(.separator), lineWidth: 1)
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(Color("marbleTertiary"), lineWidth: 1)
                         )
                 }
                 .buttonStyle(.plain)
@@ -190,7 +193,7 @@ struct ExerciseLiftDetailView: View {
                         Text("Record \(currentMetricName)")
                             .font(.system(size: 13, weight: .medium, design: .monospaced))
                     }
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(Color("marblePrimary"))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)
                 }
@@ -325,7 +328,7 @@ struct ExerciseLiftDetailView: View {
             if performances.isEmpty {
                 Text("No data yet")
                     .font(.system(.subheadline, design: .monospaced))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Color("marbleSecondary"))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 40)
             } else {
@@ -334,12 +337,12 @@ struct ExerciseLiftDetailView: View {
                         HStack(alignment: .top) {
                             Text(perf.dateString)
                                 .font(.system(size: 13, design: .monospaced))
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(Color("marbleSecondary"))
                                 .frame(width: 56, alignment: .leading)
 
                             Text(perf.setsDescription)
                                 .font(.system(size: 13, design: .monospaced))
-                                .foregroundStyle(.primary)
+                                .foregroundStyle(Color("marblePrimary"))
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .lineLimit(3)
                         }
@@ -347,16 +350,16 @@ struct ExerciseLiftDetailView: View {
                         .padding(.vertical, 10)
 
                         if index < performances.count - 1 {
-                            Divider()
+                            Rectangle()
+                                .fill(Color("marbleTertiary"))
+                                .frame(height: 1)
                                 .padding(.leading, 14)
                         }
                     }
                 }
-                .background(Color(.systemBackground))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 4)
-                        .stroke(Color(.separator), lineWidth: 1)
-                )
+                .background(Color("marbleCard"))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
                 .padding(.horizontal, 20)
             }
         }
@@ -421,30 +424,31 @@ private struct MetricTile: View {
         VStack(spacing: 4) {
             Text(value)
                 .font(.system(size: 15, weight: .semibold, design: .monospaced))
-                .foregroundStyle(.primary)
+                .foregroundStyle(Color("marblePrimary"))
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
 
             Text(title)
                 .font(.system(size: 10, design: .monospaced))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color("marbleSecondary"))
                 .lineLimit(1)
 
             if isManual {
                 Text("Manual")
                     .font(.system(size: 8, design: .monospaced))
-                    .foregroundStyle(.blue)
+                    .foregroundStyle(Color("marbleAccent"))
             }
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 12)
         .padding(.horizontal, 6)
-        .background(isSelected ? Color(.systemBlue).opacity(0.08) : Color(.systemGray6))
-        .clipShape(RoundedRectangle(cornerRadius: 6))
+        .background(isSelected ? Color("marbleAccent").opacity(0.08) : Color("marbleCard"))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(
-            RoundedRectangle(cornerRadius: 6)
-                .stroke(isSelected ? Color(.systemBlue) : Color.clear, lineWidth: 1.5)
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(isSelected ? Color("marbleAccent") : Color.clear, lineWidth: 1.5)
         )
+        .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
         .onTapGesture {
             onTap()
         }

@@ -10,7 +10,8 @@ struct TemplateDetailSheet: View {
             VStack(alignment: .leading, spacing: 0) {
                 // Template name
                 Text(template.name)
-                    .font(.system(size: 28, weight: .medium, design: .monospaced))
+                    .font(.system(size: 28, weight: .medium, design: .default))
+                    .foregroundStyle(Color("marblePrimary"))
                     .padding(.top, 24)
                     .padding(.horizontal, 24)
                     .padding(.bottom, 20)
@@ -21,17 +22,20 @@ struct TemplateDetailSheet: View {
                         ForEach(Array(template.exercises.enumerated()), id: \.element.id) { index, exercise in
                             HStack {
                                 Text(exercise.name)
-                                    .font(.system(.body, design: .monospaced))
+                                    .font(.system(.body, design: .default))
+                                    .foregroundStyle(Color("marblePrimary"))
                                 Spacer()
                                 Text(exercise.muscleGroup)
                                     .font(.system(.caption, design: .monospaced))
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(Color("marbleSecondary"))
                             }
                             .padding(.horizontal, 24)
                             .padding(.vertical, 14)
 
                             if index < template.exercises.count - 1 {
-                                Divider()
+                                Rectangle()
+                                    .fill(Color("marbleTertiary"))
+                                    .frame(height: 1)
                                     .padding(.leading, 24)
                             }
                         }
@@ -43,13 +47,13 @@ struct TemplateDetailSheet: View {
                     onStartWorkout()
                 } label: {
                     Text("Start Workout")
-                        .font(.system(.title3, design: .monospaced))
+                        .font(.system(.title3, design: .default))
                         .fontWeight(.medium)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
-                        .background(Color(.label))
-                        .foregroundStyle(Color(.systemBackground))
-                        .cornerRadius(4)
+                        .background(Color("marblePrimary"))
+                        .foregroundStyle(Color("marbleBackground"))
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
                 .buttonStyle(.plain)
                 .padding(.horizontal, 24)
@@ -63,9 +67,9 @@ struct TemplateDetailSheet: View {
             } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color("marbleSecondary"))
                     .frame(width: 28, height: 28)
-                    .background(Color(.tertiarySystemFill))
+                    .background(Color("marbleTertiary"))
                     .clipShape(Circle())
             }
             .buttonStyle(.plain)
@@ -75,7 +79,7 @@ struct TemplateDetailSheet: View {
         .presentationDetents([.medium])
         .presentationDragIndicator(.hidden)
         .presentationCornerRadius(12)
-        .presentationBackground(.regularMaterial)
+        .presentationBackground(Color("marbleCard"))
     }
 }
 

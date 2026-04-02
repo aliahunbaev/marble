@@ -16,7 +16,7 @@ struct YouView: View {
                 .padding(.top, 8)
                 .padding(.bottom, 40)
             }
-            .background(Color(.systemBackground))
+            .background(Color("marbleBackground"))
             .navigationBarTitleDisplayMode(.inline)
             .alert("Clear All Data", isPresented: $showingClearConfirmation) {
                 Button("Cancel", role: .cancel) { }
@@ -37,25 +37,27 @@ struct YouView: View {
 
             VStack(spacing: 0) {
                 settingsRow(label: "Weight Unit", value: "lbs")
-                Divider().padding(.leading, 14)
+                Rectangle()
+                    .fill(Color("marbleTertiary"))
+                    .frame(height: 1)
+                    .padding(.leading, 14)
                 settingsRow(label: "Rest Timer", value: "90s")
             }
-            .background(Color(.systemBackground))
-            .overlay(
-                RoundedRectangle(cornerRadius: 4)
-                    .stroke(Color(.separator), lineWidth: 1)
-            )
+            .background(Color("marbleCard"))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
         }
     }
 
     private func settingsRow(label: String, value: String) -> some View {
         HStack {
             Text(label)
-                .font(.system(size: 14, weight: .medium, design: .monospaced))
+                .font(.system(size: 14, weight: .medium, design: .default))
+                .foregroundStyle(Color("marblePrimary"))
             Spacer()
             Text(value)
                 .font(.system(size: 14, design: .monospaced))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color("marbleSecondary"))
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 14)
@@ -75,9 +77,10 @@ struct YouView: View {
                     .foregroundStyle(.red)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
-                    .background(Color(.systemBackground))
+                    .background(Color("marbleCard"))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 4)
+                        RoundedRectangle(cornerRadius: 12)
                             .stroke(Color.red.opacity(0.3), lineWidth: 1)
                     )
             }

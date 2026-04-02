@@ -41,12 +41,15 @@ struct TemplateEditorView: View {
     var body: some View {
         VStack(spacing: 0) {
             editorToolbar
-            Divider()
+            Rectangle()
+                .fill(Color("marbleTertiary"))
+                .frame(height: 1)
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     TextField("Template", text: $name)
-                        .font(.system(size: 28, weight: .medium, design: .monospaced))
+                        .font(.system(size: 28, weight: .medium, design: .default))
+                        .foregroundStyle(Color("marblePrimary"))
                         .padding(.horizontal, 20)
                         .padding(.top, 20)
                         .padding(.bottom, 24)
@@ -70,7 +73,7 @@ struct TemplateEditorView: View {
                 }
             }
         }
-        .background(Color(.systemBackground))
+        .background(Color("marbleBackground"))
         .sheet(isPresented: $showingLibrary) {
             let selectedExercises = entries.map(\.exercise)
             ExerciseLibraryView(selectedExercises: selectedExercises) { exercise in
@@ -86,7 +89,7 @@ struct TemplateEditorView: View {
             } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(Color("marblePrimary"))
                     .frame(width: 36, height: 36)
             }
             .buttonStyle(.plain)
@@ -99,12 +102,12 @@ struct TemplateEditorView: View {
                 Text("SAVE")
                     .font(.system(size: 13, weight: .medium, design: .monospaced))
                     .tracking(1)
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(Color("marblePrimary"))
                     .padding(.horizontal, 14)
                     .padding(.vertical, 8)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 4)
-                            .stroke(Color(.separator), lineWidth: 1)
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color("marbleTertiary"), lineWidth: 1)
                     )
             }
             .buttonStyle(.plain)
@@ -117,7 +120,7 @@ struct TemplateEditorView: View {
 
     private var exerciseDivider: some View {
         Rectangle()
-            .fill(Color(.separator))
+            .fill(Color("marbleTertiary"))
             .frame(height: 1)
             .padding(.horizontal, 20)
             .padding(.vertical, 20)
@@ -134,10 +137,12 @@ struct TemplateEditorView: View {
                     .font(.system(size: 13, weight: .medium, design: .monospaced))
                     .tracking(1)
             }
+            .foregroundStyle(Color("marbleSecondary"))
             .frame(maxWidth: .infinity)
             .padding(.vertical, 14)
-            .background(Color(.systemGreen).opacity(0.1))
-            .cornerRadius(4)
+            .background(Color("marbleCard"))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
         }
         .buttonStyle(.plain)
     }
@@ -185,7 +190,8 @@ struct ExerciseSetTable: View {
             // Exercise name header
             HStack {
                 Text(entry.exercise.name)
-                    .font(.system(size: 18, weight: .medium, design: .monospaced))
+                    .font(.system(size: 18, weight: .medium, design: .default))
+                    .foregroundStyle(Color("marblePrimary"))
 
                 Spacer()
 
@@ -195,7 +201,7 @@ struct ExerciseSetTable: View {
                     } label: {
                         Image(systemName: "xmark")
                             .font(.system(size: 11, weight: .medium))
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(Color("marbleTertiary"))
                     }
                     .buttonStyle(.plain)
                 }
@@ -227,7 +233,7 @@ struct ExerciseSetTable: View {
                     .padding(.vertical, 6)
                     .background(
                         set.isCompleted && isWorkoutMode
-                            ? Color(.systemGreen).opacity(0.12)
+                            ? Color("marbleCompletedRow")
                             : Color.clear
                     )
                 } onDelete: {
@@ -248,12 +254,12 @@ struct ExerciseSetTable: View {
                         .font(.system(size: 11, weight: .medium, design: .monospaced))
                         .tracking(1)
                 }
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color("marbleSecondary"))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 10)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 4)
-                        .stroke(Color(.separator).opacity(0.5), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color("marbleTertiary"), lineWidth: 1)
                 )
             }
             .buttonStyle(.plain)
@@ -282,7 +288,7 @@ struct ExerciseSetTable: View {
         }
         .font(.system(size: 11, weight: .medium, design: .monospaced))
         .tracking(0.5)
-        .foregroundStyle(.secondary)
+        .foregroundStyle(Color("marbleSecondary"))
     }
 }
 
@@ -301,14 +307,14 @@ struct SetRowView: View {
             // Set number
             Text("\(setNumber)")
                 .font(.system(size: 14, weight: .medium, design: .monospaced))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color("marbleSecondary"))
                 .frame(width: 28, height: 32, alignment: .center)
 
             // Previous
             if showCheckmark || previousText != nil {
                 Text(previousText ?? "—")
                     .font(.system(size: 13, design: .monospaced))
-                    .foregroundStyle(.quaternary)
+                    .foregroundStyle(Color("marbleTertiary"))
                     .frame(height: 32)
                     .frame(maxWidth: .infinity)
             } else {
@@ -324,7 +330,7 @@ struct SetRowView: View {
                 .background(
                     isCompleted && showCheckmark
                         ? Color.clear
-                        : Color(.systemBlue).opacity(0.06)
+                        : Color("marbleFieldBackground")
                 )
                 .cornerRadius(6)
 
@@ -337,7 +343,7 @@ struct SetRowView: View {
                 .background(
                     isCompleted && showCheckmark
                         ? Color.clear
-                        : Color(.systemBlue).opacity(0.06)
+                        : Color("marbleFieldBackground")
                 )
                 .cornerRadius(6)
 
@@ -350,7 +356,7 @@ struct SetRowView: View {
                 } label: {
                     Image(systemName: isCompleted ? "checkmark.circle.fill" : "circle")
                         .font(.system(size: 22))
-                        .foregroundStyle(isCompleted ? Color(.systemGreen) : Color(.separator))
+                        .foregroundStyle(isCompleted ? Color("marblePrimary") : Color("marbleTertiary"))
                 }
                 .buttonStyle(.plain)
                 .frame(width: 32)
@@ -392,7 +398,7 @@ struct SwipeToDeleteRow<Content: View>: View {
             .opacity(offset < 0 ? 1 : 0)
 
             content()
-                .background(Color(.systemBackground))
+                .background(Color("marbleBackground"))
                 .offset(x: offset)
                 .gesture(
                     DragGesture(minimumDistance: 20)

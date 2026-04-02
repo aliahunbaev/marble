@@ -26,7 +26,7 @@ struct TrackView: View {
                 .padding(.top, 8)
                 .padding(.bottom, 40)
             }
-            .background(Color(.systemBackground))
+            .background(Color("marbleBackground"))
             .navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $showingAddLift) {
                 AddTrackedLiftSheet(trackedLifts: trackedLifts)
@@ -69,7 +69,7 @@ struct TrackView: View {
                             let label = gridData.monthLabels[col]
                             Text(label)
                                 .font(.system(size: 10, design: .monospaced))
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(Color("marbleSecondary"))
                                 .frame(maxWidth: .infinity)
                         }
                     }
@@ -82,14 +82,14 @@ struct TrackView: View {
                     HStack(spacing: 0) {
                         Text(dayLabels[row])
                             .font(.system(size: 10, design: .monospaced))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Color("marbleSecondary"))
                             .frame(width: 18, alignment: .leading)
 
                         HStack(spacing: 0) {
                             ForEach(0..<8, id: \.self) { col in
                                 let hasWorkout = gridData.cells[row][col]
                                 Circle()
-                                    .fill(hasWorkout ? Color(.label) : Color(.label).opacity(0.08))
+                                    .fill(hasWorkout ? Color("marblePrimary") : Color("marbleTertiary"))
                                     .frame(width: 10, height: 10)
                                     .frame(maxWidth: .infinity)
                             }
@@ -99,11 +99,9 @@ struct TrackView: View {
                 }
             }
             .padding(14)
-            .background(Color(.systemBackground))
-            .overlay(
-                RoundedRectangle(cornerRadius: 4)
-                    .stroke(Color(.separator), lineWidth: 1)
-            )
+            .background(Color("marbleCard"))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
         }
     }
 
@@ -172,7 +170,7 @@ struct TrackView: View {
             if workouts.isEmpty {
                 Text("No workouts yet")
                     .font(.system(.subheadline, design: .monospaced))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Color("marbleSecondary"))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 40)
             } else {
@@ -182,17 +180,17 @@ struct TrackView: View {
                             HStack {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(workout.name)
-                                        .font(.system(size: 14, weight: .medium, design: .monospaced))
-                                        .foregroundStyle(.primary)
+                                        .font(.system(size: 14, weight: .medium, design: .default))
+                                        .foregroundStyle(Color("marblePrimary"))
 
                                     Text(historyDateString(workout.date))
                                         .font(.system(size: 12, design: .monospaced))
-                                        .foregroundStyle(.secondary)
+                                        .foregroundStyle(Color("marbleSecondary"))
                                 }
                                 Spacer()
                                 Image(systemName: "chevron.right")
                                     .font(.system(size: 12, weight: .medium))
-                                    .foregroundStyle(.tertiary)
+                                    .foregroundStyle(Color("marbleTertiary"))
                             }
                             .padding(.horizontal, 14)
                             .padding(.vertical, 12)
@@ -208,15 +206,16 @@ struct TrackView: View {
                         }
 
                         if index < workouts.count - 1 {
-                            Divider().padding(.leading, 14)
+                            Rectangle()
+                                .fill(Color("marbleTertiary"))
+                                .frame(height: 1)
+                                .padding(.leading, 14)
                         }
                     }
                 }
-                .background(Color(.systemBackground))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 4)
-                        .stroke(Color(.separator), lineWidth: 1)
-                )
+                .background(Color("marbleCard"))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
             }
         }
     }
@@ -239,10 +238,11 @@ struct TrackView: View {
                 } label: {
                     Image(systemName: "plus")
                         .font(.system(size: 14, weight: .medium, design: .monospaced))
+                        .foregroundStyle(Color("marblePrimary"))
                         .frame(width: 32, height: 32)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 4)
-                                .stroke(Color(.label), lineWidth: 1)
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(Color("marblePrimary"), lineWidth: 1)
                         )
                 }
                 .buttonStyle(.plain)
@@ -251,7 +251,7 @@ struct TrackView: View {
             if trackedLifts.isEmpty {
                 Text("Tap + to track your lifts")
                     .font(.system(.subheadline, design: .monospaced))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Color("marbleSecondary"))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 40)
             } else {
@@ -288,8 +288,8 @@ private struct LiftCardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(exercise.name)
-                .font(.system(size: 14, weight: .medium, design: .monospaced))
-                .foregroundStyle(.primary)
+                .font(.system(size: 14, weight: .medium, design: .default))
+                .foregroundStyle(Color("marblePrimary"))
                 .lineLimit(2)
                 .multilineTextAlignment(.leading)
 
@@ -297,20 +297,21 @@ private struct LiftCardView: View {
 
             Text(metricValue)
                 .font(.system(size: 20, weight: .semibold, design: .monospaced))
-                .foregroundStyle(.primary)
+                .foregroundStyle(Color("marblePrimary"))
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
 
             Text(metricLabel)
                 .font(.system(size: 11, design: .monospaced))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color("marbleSecondary"))
                 .tracking(0.3)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
         .frame(minHeight: 110)
-        .background(Color(.systemGray6))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .background(Color("marbleCard"))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
     }
 
     private var metricLabel: String {
@@ -335,6 +336,140 @@ private struct LiftCardView: View {
         default:
             return metrics.bestWeightFormatted
         }
+    }
+}
+
+// MARK: - Add Tracked Lift Sheet
+
+private struct AddTrackedLiftSheet: View {
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
+    @Query(sort: \Exercise.name) private var allExercises: [Exercise]
+
+    let trackedLifts: [TrackedLift]
+
+    @State private var searchText = ""
+
+    private var filteredExercises: [Exercise] {
+        if searchText.isEmpty { return allExercises }
+        return allExercises.filter {
+            $0.name.localizedCaseInsensitiveContains(searchText) ||
+            $0.muscleGroup.localizedCaseInsensitiveContains(searchText)
+        }
+    }
+
+    private var groupedExercises: [(String, [Exercise])] {
+        let grouped = Dictionary(grouping: filteredExercises) { $0.muscleGroup }
+        return grouped.sorted { $0.key < $1.key }
+    }
+
+    private func isTracked(_ exercise: Exercise) -> Bool {
+        trackedLifts.contains { $0.exercise?.persistentModelID == exercise.persistentModelID }
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    // Search bar
+                    HStack(spacing: 8) {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundStyle(Color("marbleSecondary"))
+                            .font(.system(size: 14))
+                        TextField("Search exercises", text: $searchText)
+                            .font(.system(.body, design: .default))
+                            .autocorrectionDisabled()
+                    }
+                    .padding(12)
+                    .background(Color("marbleFieldBackground"))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .padding(.horizontal, 20)
+                    .padding(.top, 8)
+                    .padding(.bottom, 20)
+
+                    ForEach(groupedExercises, id: \.0) { group, exercises in
+                        VStack(alignment: .leading, spacing: 0) {
+                            SectionHeader(title: group.uppercased())
+                                .padding(.horizontal, 20)
+                                .padding(.bottom, 8)
+
+                            VStack(spacing: 0) {
+                                ForEach(exercises) { exercise in
+                                    Button {
+                                        toggleTracked(exercise)
+                                    } label: {
+                                        HStack {
+                                            VStack(alignment: .leading, spacing: 2) {
+                                                Text(exercise.name)
+                                                    .font(.system(.body, design: .default))
+                                                    .foregroundStyle(Color("marblePrimary"))
+                                                Text(exercise.muscleGroup)
+                                                    .font(.system(.caption, design: .monospaced))
+                                                    .foregroundStyle(Color("marbleSecondary"))
+                                            }
+                                            Spacer()
+                                        }
+                                        .padding(.horizontal, 20)
+                                        .padding(.vertical, 12)
+                                        .background(isTracked(exercise) ? Color("marbleAccent").opacity(0.1) : Color.clear)
+                                        .contentShape(Rectangle())
+                                    }
+                                    .buttonStyle(.plain)
+
+                                    if exercise.id != exercises.last?.id {
+                                        Rectangle()
+                                            .fill(Color("marbleTertiary"))
+                                            .frame(height: 1)
+                                            .padding(.leading, 20)
+                                    }
+                                }
+                            }
+                            .overlay(
+                                Rectangle()
+                                    .frame(height: 1)
+                                    .foregroundStyle(Color("marbleTertiary")),
+                                alignment: .top
+                            )
+                            .overlay(
+                                Rectangle()
+                                    .frame(height: 1)
+                                    .foregroundStyle(Color("marbleTertiary")),
+                                alignment: .bottom
+                            )
+                            .padding(.bottom, 24)
+                        }
+                    }
+                }
+                .padding(.bottom, 40)
+            }
+            .background(Color("marbleBackground"))
+            .navigationTitle("Track Exercise")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button { dismiss() } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundStyle(Color("marblePrimary"))
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Add") { dismiss() }
+                        .font(.system(.body, design: .monospaced))
+                        .fontWeight(.medium)
+                }
+            }
+        }
+    }
+
+    private func toggleTracked(_ exercise: Exercise) {
+        if let existing = trackedLifts.first(where: { $0.exercise?.persistentModelID == exercise.persistentModelID }) {
+            modelContext.delete(existing)
+        } else {
+            let lift = TrackedLift(exercise: exercise, metricType: "bestWeight", displayOrder: trackedLifts.count)
+            modelContext.insert(lift)
+        }
+        try? modelContext.save()
     }
 }
 
@@ -454,137 +589,6 @@ struct LiftMetrics {
             }
         }
         return result
-    }
-}
-
-// MARK: - Add Tracked Lift Sheet
-
-private struct AddTrackedLiftSheet: View {
-    @Environment(\.modelContext) private var modelContext
-    @Environment(\.dismiss) private var dismiss
-    @Query(sort: \Exercise.name) private var allExercises: [Exercise]
-
-    let trackedLifts: [TrackedLift]
-
-    @State private var searchText = ""
-
-    private var filteredExercises: [Exercise] {
-        if searchText.isEmpty { return allExercises }
-        return allExercises.filter {
-            $0.name.localizedCaseInsensitiveContains(searchText) ||
-            $0.muscleGroup.localizedCaseInsensitiveContains(searchText)
-        }
-    }
-
-    private var groupedExercises: [(String, [Exercise])] {
-        let grouped = Dictionary(grouping: filteredExercises) { $0.muscleGroup }
-        return grouped.sorted { $0.key < $1.key }
-    }
-
-    private func isTracked(_ exercise: Exercise) -> Bool {
-        trackedLifts.contains { $0.exercise?.persistentModelID == exercise.persistentModelID }
-    }
-
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    // Search bar
-                    HStack(spacing: 8) {
-                        Image(systemName: "magnifyingglass")
-                            .foregroundStyle(.secondary)
-                            .font(.system(size: 14))
-                        TextField("Search exercises", text: $searchText)
-                            .font(.system(.body, design: .monospaced))
-                            .autocorrectionDisabled()
-                    }
-                    .padding(12)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 4)
-                            .stroke(Color(.separator), lineWidth: 1)
-                    )
-                    .padding(.horizontal, 20)
-                    .padding(.top, 8)
-                    .padding(.bottom, 20)
-
-                    ForEach(groupedExercises, id: \.0) { group, exercises in
-                        VStack(alignment: .leading, spacing: 0) {
-                            SectionHeader(title: group.uppercased())
-                                .padding(.horizontal, 20)
-                                .padding(.bottom, 8)
-
-                            VStack(spacing: 0) {
-                                ForEach(exercises) { exercise in
-                                    Button {
-                                        toggleTracked(exercise)
-                                    } label: {
-                                        HStack {
-                                            VStack(alignment: .leading, spacing: 2) {
-                                                Text(exercise.name)
-                                                    .font(.system(.body, design: .monospaced))
-                                                Text(exercise.muscleGroup)
-                                                    .font(.system(.caption, design: .monospaced))
-                                                    .foregroundStyle(.secondary)
-                                            }
-                                            Spacer()
-                                        }
-                                        .padding(.horizontal, 20)
-                                        .padding(.vertical, 12)
-                                        .background(isTracked(exercise) ? Color(.systemBlue).opacity(0.1) : Color.clear)
-                                        .contentShape(Rectangle())
-                                    }
-                                    .buttonStyle(.plain)
-
-                                    if exercise.id != exercises.last?.id {
-                                        Divider().padding(.leading, 20)
-                                    }
-                                }
-                            }
-                            .overlay(
-                                Rectangle()
-                                    .frame(height: 1)
-                                    .foregroundStyle(Color(.separator)),
-                                alignment: .top
-                            )
-                            .overlay(
-                                Rectangle()
-                                    .frame(height: 1)
-                                    .foregroundStyle(Color(.separator)),
-                                alignment: .bottom
-                            )
-                            .padding(.bottom, 24)
-                        }
-                    }
-                }
-                .padding(.bottom, 40)
-            }
-            .navigationTitle("Track Exercise")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button { dismiss() } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundStyle(.primary)
-                    }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Add") { dismiss() }
-                        .font(.system(.body, design: .monospaced))
-                        .fontWeight(.medium)
-                }
-            }
-        }
-    }
-
-    private func toggleTracked(_ exercise: Exercise) {
-        if let existing = trackedLifts.first(where: { $0.exercise?.persistentModelID == exercise.persistentModelID }) {
-            modelContext.delete(existing)
-        } else {
-            let lift = TrackedLift(exercise: exercise, metricType: "bestWeight", displayOrder: trackedLifts.count)
-            modelContext.insert(lift)
-        }
-        try? modelContext.save()
     }
 }
 

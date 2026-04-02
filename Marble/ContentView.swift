@@ -19,7 +19,9 @@ struct ContentView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             // Custom tab bar
-            Divider()
+            Rectangle()
+                .fill(Color("marbleTertiary"))
+                .frame(height: 1)
             HStack(spacing: 0) {
                 ForEach(0..<tabs.count, id: \.self) { index in
                     Button {
@@ -31,10 +33,10 @@ struct ContentView: View {
                             Text(tabs[index])
                                 .font(.system(size: 11, weight: .medium, design: .monospaced))
                                 .tracking(1.5)
-                                .foregroundStyle(selectedTab == index ? .primary : .tertiary)
+                                .foregroundStyle(selectedTab == index ? Color("marblePrimary") : Color("marbleSecondary"))
 
                             Circle()
-                                .fill(selectedTab == index ? Color(.label) : Color.clear)
+                                .fill(selectedTab == index ? Color("marblePrimary") : Color.clear)
                                 .frame(width: 4, height: 4)
                         }
                         .frame(maxWidth: .infinity)
@@ -46,7 +48,7 @@ struct ContentView: View {
                 }
             }
             .padding(.bottom, 16)
-            .background(Color(.systemBackground))
+            .background(Color("marbleBackground"))
         }
         .ignoresSafeArea(.keyboard)
     }

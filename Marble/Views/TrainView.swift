@@ -27,7 +27,7 @@ struct TrainView: View {
                 .padding(.top, 8)
                 .padding(.bottom, 40)
             }
-            .background(Color(.systemBackground))
+            .background(Color("marbleBackground"))
             .navigationBarTitleDisplayMode(.inline)
             .fullScreenCover(isPresented: $showingTemplateEditor) {
                 TemplateEditorView(template: editingTemplate)
@@ -59,15 +59,14 @@ struct TrainView: View {
                 showingEmptyWorkout = true
             } label: {
                 Text("Start Workout")
-                    .font(.system(.title3, design: .monospaced))
+                    .font(.system(.title3, design: .default))
                     .fontWeight(.medium)
+                    .foregroundStyle(Color("marblePrimary"))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 18)
-                    .background(Color(.systemBackground))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 4)
-                            .stroke(Color(.label), lineWidth: 1.5)
-                    )
+                    .background(Color("marbleCard"))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
             }
             .buttonStyle(.plain)
         }
@@ -86,10 +85,11 @@ struct TrainView: View {
                 } label: {
                     Image(systemName: "plus")
                         .font(.system(size: 14, weight: .medium, design: .monospaced))
+                        .foregroundStyle(Color("marblePrimary"))
                         .frame(width: 32, height: 32)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 4)
-                                .stroke(Color(.label), lineWidth: 1)
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(Color("marblePrimary"), lineWidth: 1)
                         )
                 }
                 .buttonStyle(.plain)
@@ -136,7 +136,7 @@ struct TrainView: View {
         VStack(spacing: 8) {
             Text("No programs yet")
                 .font(.system(.subheadline, design: .monospaced))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Color("marbleSecondary"))
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 40)

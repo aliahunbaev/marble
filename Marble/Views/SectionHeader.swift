@@ -5,9 +5,9 @@ struct SectionHeader: View {
 
     var body: some View {
         Text(title)
-            .font(.system(size: 13, weight: .regular, design: .monospaced))
-            .foregroundStyle(.secondary)
-            .tracking(1)
+            .font(.system(size: 11, weight: .medium, design: .monospaced))
+            .foregroundStyle(Color("marbleSecondary"))
+            .tracking(1.5)
     }
 }
 
