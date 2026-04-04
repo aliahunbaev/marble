@@ -2,8 +2,17 @@ import SwiftUI
 
 struct ContentView: View {
     @State private var selectedTab = 1
+    @AppStorage("appTheme") private var appTheme: String = "system"
 
     private let tabs = ["TRACK", "TRAIN", "YOU"]
+
+    private var colorScheme: ColorScheme? {
+        switch appTheme {
+        case "light": return .light
+        case "dark": return .dark
+        default: return nil
+        }
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -51,6 +60,7 @@ struct ContentView: View {
             .background(Color("marbleBackground"))
         }
         .ignoresSafeArea(.keyboard)
+        .preferredColorScheme(colorScheme)
     }
 }
 

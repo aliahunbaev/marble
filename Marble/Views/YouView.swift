@@ -3,12 +3,14 @@ import SwiftData
 
 struct YouView: View {
     @Environment(\.modelContext) private var modelContext
+    @AppStorage("appTheme") private var appTheme: String = "system"
     @State private var showingClearConfirmation = false
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 32) {
+                    appearanceSection
                     preferencesSection
                     dataSection
                 }
@@ -27,6 +29,48 @@ struct YouView: View {
                 Text("This will delete all workouts, templates, and exercise data. This cannot be undone.")
             }
         }
+    }
+
+    // MARK: - Appearance
+
+    private var appearanceSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionHeader(title: "APPEARANCE")
+
+            HStack(spacing: 0) {
+                themeOption(label: "Light", value: "light", icon: "sun.max")
+                themeOption(label: "Dark", value: "dark", icon: "moon")
+                themeOption(label: "System", value: "system", icon: "circle.lefthalf.filled")
+            }
+        }
+    }
+
+    private func themeOption(label: String, value: String, icon: String) -> some View {
+        let isSelected = appTheme == value
+        return Button {
+            withAnimation(.easeInOut(duration: 0.15)) {
+                appTheme = value
+            }
+        } label: {
+            VStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .light))
+                Text(label)
+                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 11).weight(.light))
+                    .tracking(0.5)
+            }
+            .foregroundStyle(isSelected ? Color("marblePrimary") : Color("marbleSecondary"))
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .overlay(
+                RoundedRectangle(cornerRadius: 4)
+                    .stroke(
+                        isSelected ? Color("marblePrimary") : Color("marblePrimary").opacity(0.12),
+                        lineWidth: isSelected ? 1 : 0.5
+                    )
+            )
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Preferences
