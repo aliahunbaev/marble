@@ -106,7 +106,7 @@ struct ExerciseLibraryView: View {
                     exerciseRow(exercise)
                     if exercise.id != exercises.last?.id {
                         Rectangle()
-                            .fill(Color.white.opacity(0.06))
+                            .fill(Color("marblePrimary").opacity(0.06))
                             .frame(height: 0.5)
                             .padding(.leading, 20)
                     }
@@ -115,13 +115,13 @@ struct ExerciseLibraryView: View {
             .overlay(
                 Rectangle()
                     .frame(height: 0.5)
-                    .foregroundStyle(Color.white.opacity(0.06)),
+                    .foregroundStyle(Color("marblePrimary").opacity(0.06)),
                 alignment: .top
             )
             .overlay(
                 Rectangle()
                     .frame(height: 0.5)
-                    .foregroundStyle(Color.white.opacity(0.06)),
+                    .foregroundStyle(Color("marblePrimary").opacity(0.06)),
                 alignment: .bottom
             )
             .padding(.bottom, 24)
@@ -175,7 +175,7 @@ struct ExerciseLibraryView: View {
                         .padding(.vertical, 10)
                         .overlay(
                             RoundedRectangle(cornerRadius: 4)
-                                .stroke(Color.white.opacity(0.12), lineWidth: 0.5)
+                                .stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5)
                         )
                 }
                 .buttonStyle(.plain)

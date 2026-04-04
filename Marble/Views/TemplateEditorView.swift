@@ -42,7 +42,7 @@ struct TemplateEditorView: View {
         VStack(spacing: 0) {
             editorToolbar
             Rectangle()
-                .fill(Color.white.opacity(0.06))
+                .fill(Color("marblePrimary").opacity(0.06))
                 .frame(height: 0.5)
 
             ScrollView {
@@ -107,7 +107,7 @@ struct TemplateEditorView: View {
                     .padding(.vertical, 8)
                     .overlay(
                         RoundedRectangle(cornerRadius: 4)
-                            .stroke(Color.white.opacity(0.12), lineWidth: 0.5)
+                            .stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5)
                     )
             }
             .buttonStyle(.plain)
@@ -120,7 +120,7 @@ struct TemplateEditorView: View {
 
     private var exerciseDivider: some View {
         Rectangle()
-            .fill(Color.white.opacity(0.06))
+            .fill(Color("marblePrimary").opacity(0.06))
             .frame(height: 0.5)
             .padding(.horizontal, 20)
             .padding(.vertical, 20)
@@ -140,7 +140,7 @@ struct TemplateEditorView: View {
             .foregroundStyle(Color("marbleSecondary"))
             .frame(maxWidth: .infinity)
             .padding(.vertical, 14)
-            .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.white.opacity(0.12), lineWidth: 0.5))
+            .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5))
         }
         .buttonStyle(.plain)
     }
@@ -257,7 +257,7 @@ struct ExerciseSetTable: View {
                 .padding(.vertical, 10)
                 .overlay(
                     RoundedRectangle(cornerRadius: 4)
-                        .stroke(Color.white.opacity(0.12), lineWidth: 0.5)
+                        .stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5)
                 )
             }
             .buttonStyle(.plain)
@@ -386,7 +386,7 @@ struct SwipeToDeleteRow<Content: View>: View {
                 Spacer()
                 Text("Delete")
                     .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 12).weight(.light))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color("marbleBackground"))
                     .padding(.trailing, 20)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)

@@ -37,7 +37,7 @@ struct WorkoutDetailView: View {
 
                     if index < workout.exerciseLogs.count - 1 {
                         Rectangle()
-                            .fill(Color.white.opacity(0.06))
+                            .fill(Color("marblePrimary").opacity(0.06))
                             .frame(height: 0.5)
                             .padding(.horizontal, 20)
                             .padding(.vertical, 20)

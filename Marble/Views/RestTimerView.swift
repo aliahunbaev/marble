@@ -195,7 +195,7 @@ struct RestTimerModal: View {
                             .foregroundStyle(Color("marblePrimary"))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 16)
-                            .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.white.opacity(0.12), lineWidth: 0.5))
+                            .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5))
                     }
                     .buttonStyle(.plain)
                 }
@@ -240,7 +240,7 @@ struct RestTimerModal: View {
                         .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 14).weight(.light))
                         .foregroundStyle(Color("marblePrimary"))
                         .frame(width: 72, height: 44)
-                        .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.white.opacity(0.12), lineWidth: 0.5))
+                        .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5))
                 }
                 .buttonStyle(.plain)
 
@@ -251,7 +251,7 @@ struct RestTimerModal: View {
                     Text("SKIP")
                         .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 12).weight(.light))
                         .tracking(1)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Color("marbleBackground"))
                         .frame(width: 80, height: 44)
                         .background(Color(.systemRed).opacity(0.85))
                         .clipShape(RoundedRectangle(cornerRadius: 4))
@@ -265,7 +265,7 @@ struct RestTimerModal: View {
                         .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 14).weight(.light))
                         .foregroundStyle(Color("marblePrimary"))
                         .frame(width: 72, height: 44)
-                        .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.white.opacity(0.12), lineWidth: 0.5))
+                        .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5))
                 }
                 .buttonStyle(.plain)
             }

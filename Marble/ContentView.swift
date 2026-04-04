@@ -20,7 +20,7 @@ struct ContentView: View {
 
             // Custom tab bar
             Rectangle()
-                .fill(Color.white.opacity(0.06))
+                .fill(Color("marblePrimary").opacity(0.06))
                 .frame(height: 0.5)
             HStack(spacing: 0) {
                 ForEach(0..<tabs.count, id: \.self) { index in

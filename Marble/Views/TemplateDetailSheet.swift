@@ -37,7 +37,7 @@ struct TemplateDetailSheet: View {
 
                             if index < template.exercises.count - 1 {
                                 Rectangle()
-                                    .fill(Color.white.opacity(0.06))
+                                    .fill(Color("marblePrimary").opacity(0.06))
                                     .frame(height: 0.5)
                                     .padding(.leading, 24)
                             }
@@ -74,7 +74,7 @@ struct TemplateDetailSheet: View {
                     .frame(width: 30, height: 30)
                     .overlay(
                         RoundedRectangle(cornerRadius: 4)
-                            .stroke(Color.white.opacity(0.12), lineWidth: 0.5)
+                            .stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5)
                     )
             }
             .buttonStyle(.plain)

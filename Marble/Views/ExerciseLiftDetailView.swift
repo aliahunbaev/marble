@@ -127,7 +127,7 @@ struct ExerciseLiftDetailView: View {
                 // Show auto value for comparison if manual exists
                 if hasManualValueForCurrentMetric {
                     Rectangle()
-                        .fill(Color.white.opacity(0.06))
+                        .fill(Color("marblePrimary").opacity(0.06))
                         .frame(height: 0.5)
                         .padding(.leading, 14)
 
@@ -146,7 +146,7 @@ struct ExerciseLiftDetailView: View {
             }
             .overlay(
                 RoundedRectangle(cornerRadius: 4)
-                    .stroke(Color.white.opacity(0.12), lineWidth: 0.5)
+                    .stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5)
             )
             .padding(.horizontal, 20)
         }
@@ -167,7 +167,7 @@ struct ExerciseLiftDetailView: View {
                             .padding(.vertical, 2)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 4)
-                                    .stroke(Color.white.opacity(0.12), lineWidth: 0.5)
+                                    .stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5)
                             )
                     }
                 }
@@ -183,7 +183,7 @@ struct ExerciseLiftDetailView: View {
                         .frame(width: 28, height: 28)
                         .overlay(
                             RoundedRectangle(cornerRadius: 4)
-                                .stroke(Color.white.opacity(0.12), lineWidth: 0.5)
+                                .stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5)
                         )
                 }
                 .buttonStyle(.plain)
@@ -356,7 +356,7 @@ struct ExerciseLiftDetailView: View {
 
                         if index < performances.count - 1 {
                             Rectangle()
-                                .fill(Color.white.opacity(0.06))
+                                .fill(Color("marblePrimary").opacity(0.06))
                                 .frame(height: 0.5)
                                 .padding(.leading, 14)
                         }
@@ -364,7 +364,7 @@ struct ExerciseLiftDetailView: View {
                 }
                 .overlay(
                     RoundedRectangle(cornerRadius: 4)
-                        .stroke(Color.white.opacity(0.12), lineWidth: 0.5)
+                        .stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5)
                 )
                 .padding(.horizontal, 20)
             }
@@ -450,7 +450,7 @@ private struct MetricTile: View {
         .padding(.horizontal, 6)
         .overlay(
             RoundedRectangle(cornerRadius: 4)
-                .stroke(isSelected ? Color("marbleAccent") : Color.white.opacity(0.12), lineWidth: 0.5)
+                .stroke(isSelected ? Color("marbleAccent") : Color("marblePrimary").opacity(0.12), lineWidth: 0.5)
         )
         .onTapGesture {
             onTap()

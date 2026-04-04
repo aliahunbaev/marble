@@ -38,7 +38,7 @@ struct YouView: View {
             VStack(spacing: 0) {
                 settingsRow(label: "Weight Unit", value: "lbs")
                 Rectangle()
-                    .fill(Color.white.opacity(0.06))
+                    .fill(Color("marblePrimary").opacity(0.06))
                     .frame(height: 0.5)
                     .padding(.leading, 14)
                 settingsRow(label: "Rest Timer", value: "90s")

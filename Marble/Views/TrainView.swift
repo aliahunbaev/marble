@@ -46,7 +46,7 @@ struct TrainView: View {
 
                 RadialGradient(
                     colors: [
-                        Color(red: 0.14, green: 0.12, blue: 0.10),
+                        Color("marbleTertiary").opacity(0.5),
                         Color("marbleBackground")
                     ],
                     center: .top,
@@ -65,7 +65,7 @@ struct TrainView: View {
 
                         // Divider
                         Rectangle()
-                            .fill(Color.white.opacity(0.06))
+                            .fill(Color("marblePrimary").opacity(0.06))
                             .frame(height: 0.5)
                             .padding(.horizontal, 20)
 
@@ -164,7 +164,7 @@ struct TrainView: View {
                         .frame(width: 30, height: 30)
                         .overlay(
                             RoundedRectangle(cornerRadius: 4)
-                                .stroke(Color.white.opacity(0.12), lineWidth: 0.5)
+                                .stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5)
                         )
                 }
                 .buttonStyle(.plain)
@@ -206,7 +206,7 @@ struct TrainView: View {
 
                         if index < templates.count - 1 {
                             Rectangle()
-                                .fill(Color.white.opacity(0.06))
+                                .fill(Color("marblePrimary").opacity(0.06))
                                 .frame(height: 0.5)
                         }
                     }

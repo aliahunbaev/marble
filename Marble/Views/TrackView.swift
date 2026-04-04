@@ -101,7 +101,7 @@ struct TrackView: View {
                 }
             }
             .padding(14)
-            .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.white.opacity(0.12), lineWidth: 0.5))
+            .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5))
         }
     }
 
@@ -207,7 +207,7 @@ struct TrackView: View {
 
                         if index < workouts.count - 1 {
                             Rectangle()
-                                .fill(Color.white.opacity(0.06))
+                                .fill(Color("marblePrimary").opacity(0.06))
                                 .frame(height: 0.5)
                                 .padding(.leading, 14)
                         }
@@ -239,7 +239,7 @@ struct TrackView: View {
                         .frame(width: 30, height: 30)
                         .overlay(
                             RoundedRectangle(cornerRadius: 4)
-                                .stroke(Color.white.opacity(0.12), lineWidth: 0.5)
+                                .stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5)
                         )
                 }
                 .buttonStyle(.plain)
@@ -310,7 +310,7 @@ private struct LiftCardView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
         .frame(minHeight: 110)
-        .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.white.opacity(0.12), lineWidth: 0.5))
+        .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5))
     }
 
     private var metricLabel: String {
@@ -419,7 +419,7 @@ private struct AddTrackedLiftSheet: View {
 
                                     if exercise.id != exercises.last?.id {
                                         Rectangle()
-                                            .fill(Color.white.opacity(0.06))
+                                            .fill(Color("marblePrimary").opacity(0.06))
                                             .frame(height: 0.5)
                                             .padding(.leading, 20)
                                     }
@@ -428,13 +428,13 @@ private struct AddTrackedLiftSheet: View {
                             .overlay(
                                 Rectangle()
                                     .frame(height: 0.5)
-                                    .foregroundStyle(Color.white.opacity(0.06)),
+                                    .foregroundStyle(Color("marblePrimary").opacity(0.06)),
                                 alignment: .top
                             )
                             .overlay(
                                 Rectangle()
                                     .frame(height: 0.5)
-                                    .foregroundStyle(Color.white.opacity(0.06)),
+                                    .foregroundStyle(Color("marblePrimary").opacity(0.06)),
                                 alignment: .bottom
                             )
                             .padding(.bottom, 24)

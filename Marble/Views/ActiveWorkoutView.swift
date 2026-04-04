@@ -47,7 +47,7 @@ struct ActiveWorkoutView: View {
         VStack(spacing: 0) {
             workoutToolbar
             Rectangle()
-                .fill(Color.white.opacity(0.06))
+                .fill(Color("marblePrimary").opacity(0.06))
                 .frame(height: 0.5)
 
             ScrollView {
@@ -148,7 +148,7 @@ struct ActiveWorkoutView: View {
 
     private var exerciseDivider: some View {
         Rectangle()
-            .fill(Color.white.opacity(0.06))
+            .fill(Color("marblePrimary").opacity(0.06))
             .frame(height: 0.5)
             .padding(.horizontal, 20)
             .padding(.vertical, 20)
@@ -168,7 +168,7 @@ struct ActiveWorkoutView: View {
             .foregroundStyle(Color("marbleSecondary"))
             .frame(maxWidth: .infinity)
             .padding(.vertical, 14)
-            .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.white.opacity(0.12), lineWidth: 0.5))
+            .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5))
         }
         .buttonStyle(.plain)
     }
