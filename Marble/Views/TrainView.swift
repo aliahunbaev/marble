@@ -14,12 +14,11 @@ struct TrainView: View {
 
     // Daily quotes
     private let quotes: [(text: String, author: String)] = [
-        ("Man cannot remake himself without suffering, for he is both the marble and the sculptor.", "Alexis Carrel"),
         ("It is a shame for a man to grow old without seeing the beauty and strength of which his body is capable.", "Socrates"),
+        ("What is happiness? The feeling that power is growing, that resistance is overcome.", "Nietzsche"),
         ("The fight is won or lost far away from witnesses — behind the lines, in the gym, and out there on the road, long before I dance under those lights.", "Muhammad Ali"),
         ("I have never changed my clothes. I have always worn a uniform because what I did was change my own body instead; that is much more hardcore than changing an outfit.", "Rick Owens"),
-        ("Pain, I came to feel, might well prove to be the sole proof of the persistence of consciousness within the flesh, the sole physical expression of consciousness.", "Yukio Mishima"),
-        ("What is happiness? The feeling that power is growing, that resistance is overcome.", "Nietzsche"),
+        ("Man cannot remake himself without suffering, for he is both the marble and the sculptor.", "Alexis Carrel"),
         ("Working out is modern couture. No outfit is going to make you look or feel as good as having a fit body.", "Rick Owens"),
         ("I don't count my sit-ups. I only start counting when it starts hurting, because they're the only ones that count.", "Muhammad Ali"),
         ("The world breaks everyone, and afterward, many are strong at the broken places.", "Hemingway"),
@@ -131,6 +130,7 @@ struct TrainView: View {
 
             // Start workout
             Button {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 showingEmptyWorkout = true
             } label: {
                 Text("Start Workout")
