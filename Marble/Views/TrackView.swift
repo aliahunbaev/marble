@@ -19,11 +19,10 @@ struct TrackView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 32) {
-                    contributionGrid
                     myLiftsSection
+                    contributionGrid
                     historySection
                 }
-                .padding(.horizontal, 20)
                 .padding(.top, 8)
                 .padding(.bottom, 40)
             }
@@ -53,42 +52,40 @@ struct TrackView: View {
     // MARK: - Contribution Grid
 
     private var contributionGrid: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: "ACTIVITY")
+        let gridData = buildGridData()
+        let gridSpacing: CGFloat = 2
+        let gridWidth: CGFloat = UIScreen.main.bounds.width - 40
+        let cellSize: CGFloat = (gridWidth - gridSpacing * CGFloat(gridData.columns - 1)) / CGFloat(gridData.columns)
+        let gridHeight: CGFloat = cellSize * 7 + gridSpacing * 6
 
-            let gridData = buildGridData()
-
-            VStack(spacing: 8) {
-                // Grid — tight squares
-                HStack(spacing: 3) {
-                    ForEach(0..<gridData.columns, id: \.self) { col in
-                        VStack(spacing: 3) {
-                            ForEach(0..<7, id: \.self) { row in
-                                let state = gridData.cells[row][col]
-                                RoundedRectangle(cornerRadius: 1.5)
-                                    .fill(
-                                        state == .active
-                                            ? Color("marblePrimary")
-                                            : state == .empty
-                                                ? Color("marbleTertiary").opacity(0.5)
-                                                : Color.clear
-                                    )
-                                    .aspectRatio(1, contentMode: .fit)
-                            }
+        return VStack(alignment: .leading, spacing: 8) {
+            // Grid — dense, full-width
+            HStack(spacing: gridSpacing) {
+                ForEach(0..<gridData.columns, id: \.self) { col in
+                    VStack(spacing: gridSpacing) {
+                        ForEach(0..<7, id: \.self) { row in
+                            let state = gridData.cells[row][col]
+                            RoundedRectangle(cornerRadius: 1)
+                                .fill(
+                                    state == .active
+                                        ? Color("marblePrimary")
+                                        : state == .empty
+                                            ? Color("marblePrimary").opacity(0.06)
+                                            : Color.clear
+                                )
+                                .frame(width: cellSize, height: cellSize)
                         }
                     }
                 }
-
-                // Summary line
-                Text(gridSummary(gridData))
-                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 11).weight(.light))
-                    .foregroundStyle(Color("marbleSecondary"))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.top, 2)
             }
-            .padding(12)
-            .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5))
+            .frame(height: gridHeight)
+
+            // Summary
+            Text(gridSummary(gridData))
+                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 11).weight(.light))
+                .foregroundStyle(Color("marbleSecondary"))
         }
+        .padding(.horizontal, 20)
     }
 
     private enum CellState {
@@ -96,7 +93,7 @@ struct TrackView: View {
     }
 
     private struct GridData {
-        var cells: [[CellState]] // [row 0=Mon..6=Sun][col 0=oldest]
+        var cells: [[CellState]]
         var columns: Int
         var totalWorkouts: Int
         var totalWeeks: Int
@@ -105,9 +102,8 @@ struct TrackView: View {
     private func buildGridData() -> GridData {
         let calendar = Calendar(identifier: .iso8601)
         let today = calendar.startOfDay(for: Date())
-        let numWeeks = 8
+        let numWeeks = 26
 
-        // Find Monday of current week
         let todayWeekday = calendar.component(.weekday, from: today)
         let daysFromMonday = (todayWeekday + 5) % 7
         guard let currentWeekMonday = calendar.date(byAdding: .day, value: -daysFromMonday, to: today),
@@ -143,11 +139,8 @@ struct TrackView: View {
 
     private func gridSummary(_ data: GridData) -> String {
         let workouts = data.totalWorkouts
-        let weeks = data.totalWeeks
-        if workouts == 0 {
-            return "No workouts in the last \(weeks) weeks"
-        }
-        let avg = Double(workouts) / Double(weeks)
+        if workouts == 0 { return "No workouts yet" }
+        let avg = Double(workouts) / Double(data.totalWeeks)
         let avgStr = avg == floor(avg) ? "\(Int(avg))" : String(format: "%.1f", avg)
         return "\(workouts) workouts · \(avgStr)/week"
     }
@@ -201,6 +194,7 @@ struct TrackView: View {
                 }
             }
         }
+        .padding(.horizontal, 20)
     }
 
     // MARK: - History
@@ -260,6 +254,7 @@ struct TrackView: View {
                 }
             }
         }
+        .padding(.horizontal, 20)
     }
 
     private func historyDateString(_ date: Date) -> String {
