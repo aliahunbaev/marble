@@ -19,7 +19,6 @@ struct TrackView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 32) {
-                    summaryStats
                     contributionGrid
                     myLiftsSection
                     historySection
@@ -51,86 +50,6 @@ struct TrackView: View {
         }
     }
 
-    // MARK: - Summary Stats
-
-    private var summaryStats: some View {
-        HStack(spacing: 0) {
-            statCell(value: "\(workoutsThisWeek)", label: "THIS WEEK")
-            statCell(value: "\(currentStreak)", label: "STREAK")
-            statCell(value: formattedWeeklyVolume, label: "VOLUME")
-        }
-        .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5))
-    }
-
-    private func statCell(value: String, label: String) -> some View {
-        VStack(spacing: 4) {
-            Text(value)
-                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 22).weight(.light))
-                .foregroundStyle(Color("marblePrimary"))
-                .lineLimit(1)
-                .minimumScaleFactor(0.6)
-            Text(label)
-                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 9).weight(.light))
-                .tracking(0.5)
-                .foregroundStyle(Color("marbleSecondary"))
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 16)
-    }
-
-    private var workoutsThisWeek: Int {
-        let calendar = Calendar.current
-        let startOfWeek = calendar.dateInterval(of: .weekOfYear, for: Date())?.start ?? Date()
-        return workouts.filter { $0.date >= startOfWeek }.count
-    }
-
-    private var currentStreak: Int {
-        let calendar = Calendar.current
-        var streak = 0
-        var checkDate = calendar.startOfDay(for: Date())
-
-        // Check if there's a workout today, if not start from yesterday
-        let todayWorkouts = workouts.filter { calendar.isDate($0.date, inSameDayAs: checkDate) }
-        if todayWorkouts.isEmpty {
-            guard let yesterday = calendar.date(byAdding: .day, value: -1, to: checkDate) else { return 0 }
-            checkDate = yesterday
-        }
-
-        while true {
-            let hasWorkout = workouts.contains { calendar.isDate($0.date, inSameDayAs: checkDate) }
-            if hasWorkout {
-                streak += 1
-                guard let prev = calendar.date(byAdding: .day, value: -1, to: checkDate) else { break }
-                checkDate = prev
-            } else {
-                break
-            }
-        }
-        return streak
-    }
-
-    private var formattedWeeklyVolume: String {
-        let calendar = Calendar.current
-        let startOfWeek = calendar.dateInterval(of: .weekOfYear, for: Date())?.start ?? Date()
-        let weekWorkouts = workouts.filter { $0.date >= startOfWeek }
-
-        var total: Double = 0
-        for workout in weekWorkouts {
-            for log in workout.exerciseLogs {
-                for set in log.sets where set.isCompleted {
-                    total += set.weight * Double(set.reps)
-                }
-            }
-        }
-
-        if total == 0 { return "0" }
-        if total >= 1000 {
-            let k = total / 1000.0
-            return String(format: "%.1fk", k)
-        }
-        return "\(Int(total))"
-    }
-
     // MARK: - Contribution Grid
 
     private var contributionGrid: some View {
@@ -139,101 +58,97 @@ struct TrackView: View {
 
             let gridData = buildGridData()
 
-            VStack(spacing: 0) {
-                // Month labels row
-                HStack(spacing: 0) {
-                    Color.clear
-                        .frame(width: 18)
-
+            VStack(spacing: 10) {
+                // Dot grid — no labels, just the pattern
+                ForEach(0..<7, id: \.self) { row in
                     HStack(spacing: 0) {
-                        ForEach(0..<8, id: \.self) { col in
-                            let label = gridData.monthLabels[col]
-                            Text(label)
-                                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 10).weight(.light))
-                                .foregroundStyle(Color("marbleSecondary"))
+                        ForEach(0..<gridData.columns, id: \.self) { col in
+                            let state = gridData.cells[row][col]
+                            Circle()
+                                .fill(
+                                    state == .active
+                                        ? Color("marblePrimary")
+                                        : state == .empty
+                                            ? Color("marbleTertiary")
+                                            : Color.clear
+                                )
+                                .frame(width: 12, height: 12)
                                 .frame(maxWidth: .infinity)
                         }
                     }
                 }
-                .padding(.bottom, 4)
 
-                // Grid rows (Mon-Sun)
-                let dayLabels = ["M", "T", "W", "T", "F", "S", "S"]
-                ForEach(0..<7, id: \.self) { row in
-                    HStack(spacing: 0) {
-                        Text(dayLabels[row])
-                            .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 10).weight(.light))
-                            .foregroundStyle(Color("marbleSecondary"))
-                            .frame(width: 18, alignment: .leading)
-
-                        HStack(spacing: 0) {
-                            ForEach(0..<8, id: \.self) { col in
-                                let hasWorkout = gridData.cells[row][col]
-                                Circle()
-                                    .fill(hasWorkout ? Color("marblePrimary") : Color("marbleTertiary"))
-                                    .frame(width: 10, height: 10)
-                                    .frame(maxWidth: .infinity)
-                            }
-                        }
-                    }
-                    .padding(.vertical, 2)
-                }
+                // Summary line
+                Text(gridSummary(gridData))
+                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 11).weight(.light))
+                    .foregroundStyle(Color("marbleSecondary"))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.top, 2)
             }
             .padding(14)
             .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5))
         }
     }
 
+    private enum CellState {
+        case active, empty, future
+    }
+
     private struct GridData {
-        var cells: [[Bool]]
-        var monthLabels: [String]
+        var cells: [[CellState]] // [row 0=Mon..6=Sun][col 0=oldest]
+        var columns: Int
+        var totalWorkouts: Int
+        var totalWeeks: Int
     }
 
     private func buildGridData() -> GridData {
         let calendar = Calendar(identifier: .iso8601)
         let today = calendar.startOfDay(for: Date())
+        let numWeeks = 8
 
+        // Find Monday of current week
         let todayWeekday = calendar.component(.weekday, from: today)
         let daysFromMonday = (todayWeekday + 5) % 7
-        guard let currentWeekMonday = calendar.date(byAdding: .day, value: -daysFromMonday, to: today) else {
-            return GridData(cells: Array(repeating: Array(repeating: false, count: 8), count: 7), monthLabels: Array(repeating: "", count: 8))
-        }
-
-        guard let gridStart = calendar.date(byAdding: .weekOfYear, value: -7, to: currentWeekMonday) else {
-            return GridData(cells: Array(repeating: Array(repeating: false, count: 8), count: 7), monthLabels: Array(repeating: "", count: 8))
+        guard let currentWeekMonday = calendar.date(byAdding: .day, value: -daysFromMonday, to: today),
+              let gridStart = calendar.date(byAdding: .weekOfYear, value: -(numWeeks - 1), to: currentWeekMonday) else {
+            return GridData(cells: Array(repeating: Array(repeating: .empty, count: numWeeks), count: 7), columns: numWeeks, totalWorkouts: 0, totalWeeks: numWeeks)
         }
 
         var workoutDates = Set<Date>()
         for workout in workouts {
-            let day = calendar.startOfDay(for: workout.date)
-            workoutDates.insert(day)
+            workoutDates.insert(calendar.startOfDay(for: workout.date))
         }
 
-        var cells = Array(repeating: Array(repeating: false, count: 8), count: 7)
-        var monthLabels = Array(repeating: "", count: 8)
-        let monthFormatter = DateFormatter()
-        monthFormatter.dateFormat = "MMM"
+        var cells = Array(repeating: Array(repeating: CellState.future, count: numWeeks), count: 7)
+        var totalWorkouts = 0
 
-        var lastMonth = -1
-
-        for col in 0..<8 {
+        for col in 0..<numWeeks {
             guard let weekStart = calendar.date(byAdding: .day, value: col * 7, to: gridStart) else { continue }
-
-            let month = calendar.component(.month, from: weekStart)
-            if month != lastMonth {
-                monthLabels[col] = monthFormatter.string(from: weekStart)
-                lastMonth = month
-            }
-
             for row in 0..<7 {
                 guard let cellDate = calendar.date(byAdding: .day, value: row, to: weekStart) else { continue }
-                if cellDate <= today {
-                    cells[row][col] = workoutDates.contains(cellDate)
+                if cellDate > today {
+                    cells[row][col] = .future
+                } else if workoutDates.contains(cellDate) {
+                    cells[row][col] = .active
+                    totalWorkouts += 1
+                } else {
+                    cells[row][col] = .empty
                 }
             }
         }
 
-        return GridData(cells: cells, monthLabels: monthLabels)
+        return GridData(cells: cells, columns: numWeeks, totalWorkouts: totalWorkouts, totalWeeks: numWeeks)
+    }
+
+    private func gridSummary(_ data: GridData) -> String {
+        let workouts = data.totalWorkouts
+        let weeks = data.totalWeeks
+        if workouts == 0 {
+            return "No workouts in the last \(weeks) weeks"
+        }
+        let avg = Double(workouts) / Double(weeks)
+        let avgStr = avg == floor(avg) ? "\(Int(avg))" : String(format: "%.1f", avg)
+        return "\(workouts) workouts · \(avgStr)/week"
     }
 
     // MARK: - My Lifts
@@ -269,7 +184,7 @@ struct TrackView: View {
                     ForEach(trackedLifts, id: \.id) { lift in
                         if let exercise = lift.exercise {
                             NavigationLink(destination: ExerciseLiftDetailView(trackedLift: lift)) {
-                                LiftCardView(lift: lift, exercise: exercise, workouts: workouts, weightUnit: weightUnit)
+                                LiftCardView(lift: lift, exercise: exercise, workouts: workouts)
                             }
                             .buttonStyle(.plain)
                             .contextMenu {
@@ -370,9 +285,11 @@ private struct LiftCardView: View {
     let lift: TrackedLift
     let exercise: Exercise
     let workouts: [Workout]
-    let weightUnit: String
 
     var body: some View {
+        let metrics = LiftMetrics.compute(for: exercise, workouts: workouts, lift: lift)
+        let trend = computeTrend(metrics: metrics)
+
         VStack(alignment: .leading, spacing: 6) {
             Text(exercise.name)
                 .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 14).weight(.light))
@@ -382,16 +299,24 @@ private struct LiftCardView: View {
 
             Spacer(minLength: 4)
 
-            Text(metricValue)
+            Text(metricValue(metrics))
                 .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 20).weight(.light))
                 .foregroundStyle(Color("marblePrimary"))
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
 
-            Text(metricLabel)
-                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 10).weight(.light))
-                .foregroundStyle(Color("marbleSecondary"))
-                .tracking(0.3)
+            HStack(spacing: 4) {
+                Text(metricLabel)
+                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 10).weight(.light))
+                    .foregroundStyle(Color("marbleSecondary"))
+                    .tracking(0.3)
+
+                if let trend {
+                    Text(trend)
+                        .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 10).weight(.light))
+                        .foregroundStyle(trend.hasPrefix("+") ? Color.green.opacity(0.8) : Color("marbleSecondary"))
+                }
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
@@ -408,18 +333,76 @@ private struct LiftCardView: View {
         }
     }
 
-    private var metricValue: String {
-        let metrics = LiftMetrics.compute(for: exercise, workouts: workouts, lift: lift)
+    private func metricValue(_ metrics: LiftMetrics) -> String {
+        switch lift.metricType {
+        case "bestWeight": return metrics.bestWeightFormatted
+        case "oneRepMax": return metrics.oneRepMaxFormatted
+        case "maxVolume": return metrics.maxVolumeFormatted
+        default: return metrics.bestWeightFormatted
+        }
+    }
+
+    // Compare current best to previous best (before last workout)
+    private func computeTrend(metrics: LiftMetrics) -> String? {
+        let exerciseID = exercise.persistentModelID
+
+        // Filter workouts containing this exercise with completed sets
+        let relevantWorkouts: [Workout] = workouts.filter { workout in
+            for log in workout.exerciseLogs {
+                guard log.exercise?.persistentModelID == exerciseID else { continue }
+                for s in log.sets where s.isCompleted && s.weight > 0 {
+                    return true
+                }
+            }
+            return false
+        }
+        guard relevantWorkouts.count >= 2 else { return nil }
+
+        let latestSets = setsFromWorkout(relevantWorkouts[0])
+        let previousWorkouts = Array(relevantWorkouts.dropFirst())
+        var allPreviousSets: [(weight: Double, reps: Int)] = []
+        for w in previousWorkouts {
+            allPreviousSets.append(contentsOf: setsFromWorkout(w))
+        }
 
         switch lift.metricType {
         case "bestWeight":
-            return metrics.bestWeightFormatted
+            guard let latest = latestSets.max(by: { $0.weight < $1.weight }),
+                  let prevBest = allPreviousSets.max(by: { $0.weight < $1.weight }) else { return nil }
+            return formatDelta(current: latest.weight, previous: prevBest.weight)
+
         case "oneRepMax":
-            return metrics.oneRepMaxFormatted
+            let latestORM: Double = latestSets.map { s in s.weight * (1.0 + Double(s.reps) / 30.0) }.max() ?? 0
+            let prevORM: Double = allPreviousSets.map { s in s.weight * (1.0 + Double(s.reps) / 30.0) }.max() ?? 0
+            guard latestORM > 0, prevORM > 0 else { return nil }
+            return formatDelta(current: latestORM, previous: prevORM)
+
         case "maxVolume":
-            return metrics.maxVolumeFormatted
+            let latestVol: Double = latestSets.map { s in s.weight * Double(s.reps) }.max() ?? 0
+            let prevVol: Double = allPreviousSets.map { s in s.weight * Double(s.reps) }.max() ?? 0
+            guard latestVol > 0, prevVol > 0 else { return nil }
+            return formatDelta(current: latestVol, previous: prevVol)
+
         default:
-            return metrics.bestWeightFormatted
+            return nil
+        }
+    }
+
+    private func setsFromWorkout(_ workout: Workout) -> [(weight: Double, reps: Int)] {
+        workout.exerciseLogs
+            .filter { $0.exercise?.persistentModelID == exercise.persistentModelID }
+            .flatMap { $0.sets.filter { $0.isCompleted && $0.weight > 0 } }
+            .map { (weight: $0.weight, reps: $0.reps) }
+    }
+
+    private func formatDelta(current: Double, previous: Double) -> String? {
+        guard previous > 0 else { return nil }
+        let pct = ((current - previous) / previous) * 100
+        guard abs(pct) >= 0.5 else { return nil } // ignore noise
+        if pct > 0 {
+            return "+\(Int(round(pct)))%"
+        } else {
+            return "\(Int(round(pct)))%"
         }
     }
 }
@@ -456,7 +439,6 @@ private struct AddTrackedLiftSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    // Search bar
                     HStack(spacing: 8) {
                         Image(systemName: "magnifyingglass")
                             .foregroundStyle(Color("marbleSecondary"))
@@ -597,7 +579,6 @@ struct LiftMetrics {
         return "\(formatted) lbs"
     }
 
-    // Auto-computed values (ignoring manual overrides)
     var autoBestWeight: Double
     var autoBestWeightReps: Int
     var autoOneRepMax: Double
