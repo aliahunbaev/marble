@@ -58,22 +58,23 @@ struct TrackView: View {
 
             let gridData = buildGridData()
 
-            VStack(spacing: 10) {
-                // Dot grid — no labels, just the pattern
-                ForEach(0..<7, id: \.self) { row in
-                    HStack(spacing: 0) {
-                        ForEach(0..<gridData.columns, id: \.self) { col in
-                            let state = gridData.cells[row][col]
-                            Circle()
-                                .fill(
-                                    state == .active
-                                        ? Color("marblePrimary")
-                                        : state == .empty
-                                            ? Color("marbleTertiary")
-                                            : Color.clear
-                                )
-                                .frame(width: 12, height: 12)
-                                .frame(maxWidth: .infinity)
+            VStack(spacing: 8) {
+                // Grid — tight squares
+                HStack(spacing: 3) {
+                    ForEach(0..<gridData.columns, id: \.self) { col in
+                        VStack(spacing: 3) {
+                            ForEach(0..<7, id: \.self) { row in
+                                let state = gridData.cells[row][col]
+                                RoundedRectangle(cornerRadius: 1.5)
+                                    .fill(
+                                        state == .active
+                                            ? Color("marblePrimary")
+                                            : state == .empty
+                                                ? Color("marbleTertiary").opacity(0.5)
+                                                : Color.clear
+                                    )
+                                    .aspectRatio(1, contentMode: .fit)
+                            }
                         }
                     }
                 }
@@ -85,7 +86,7 @@ struct TrackView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.top, 2)
             }
-            .padding(14)
+            .padding(12)
             .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5))
         }
     }
