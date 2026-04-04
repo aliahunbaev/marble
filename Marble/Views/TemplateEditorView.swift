@@ -55,14 +55,32 @@ struct TemplateEditorView: View {
                         .padding(.bottom, 24)
 
                     ForEach($entries) { $entry in
-                        ExerciseSetTable(entry: $entry, onRemove: {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                entries.removeAll { $0.id == entry.id }
-                            }
-                        }, showPrevious: false)
+                        if let currentIndex = entries.firstIndex(where: { $0.id == entry.id }) {
+                            ExerciseSetTable(
+                                entry: $entry,
+                                onRemove: {
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        entries.removeAll { $0.id == entry.id }
+                                    }
+                                },
+                                onMoveUp: {
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        moveExercise(from: currentIndex, direction: .up)
+                                    }
+                                },
+                                onMoveDown: {
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        moveExercise(from: currentIndex, direction: .down)
+                                    }
+                                },
+                                canMoveUp: currentIndex > 0,
+                                canMoveDown: currentIndex < entries.count - 1,
+                                showPrevious: false
+                            )
 
-                        if entry.id != entries.last?.id {
-                            exerciseDivider
+                            if entry.id != entries.last?.id {
+                                exerciseDivider
+                            }
                         }
                     }
 
@@ -79,6 +97,19 @@ struct TemplateEditorView: View {
             ExerciseLibraryView(selectedExercises: selectedExercises) { exercise in
                 toggleExercise(exercise)
             }
+        }
+    }
+
+    private enum MoveDirection { case up, down }
+
+    private func moveExercise(from index: Int, direction: MoveDirection) {
+        switch direction {
+        case .up where index > 0:
+            entries.swapAt(index, index - 1)
+        case .down where index < entries.count - 1:
+            entries.swapAt(index, index + 1)
+        default:
+            break
         }
     }
 
@@ -159,6 +190,7 @@ struct TemplateEditorView: View {
     private func save() {
         let trimmedName = name.trimmingCharacters(in: .whitespaces)
         guard !trimmedName.isEmpty else { return }
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
 
         let exercises = entries.map(\.exercise)
 
@@ -180,6 +212,10 @@ struct ExerciseSetTable: View {
     @Environment(\.modelContext) private var modelContext
     @Binding var entry: ExerciseEntry
     var onRemove: (() -> Void)? = nil
+    var onMoveUp: (() -> Void)? = nil
+    var onMoveDown: (() -> Void)? = nil
+    var canMoveUp: Bool = false
+    var canMoveDown: Bool = false
     var showPrevious: Bool = true
     var isWorkoutMode: Bool = false
 
@@ -192,6 +228,30 @@ struct ExerciseSetTable: View {
                     .foregroundStyle(Color("marblePrimary"))
 
                 Spacer()
+
+                if onMoveUp != nil || onMoveDown != nil {
+                    Button {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        onMoveUp?()
+                    } label: {
+                        Image(systemName: "chevron.up")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(canMoveUp ? Color("marbleSecondary") : Color("marbleSecondary").opacity(0.3))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!canMoveUp)
+
+                    Button {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        onMoveDown?()
+                    } label: {
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(canMoveDown ? Color("marbleSecondary") : Color("marbleSecondary").opacity(0.3))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!canMoveDown)
+                }
 
                 if let onRemove {
                     Button {
@@ -235,6 +295,7 @@ struct ExerciseSetTable: View {
                             : Color.clear
                     )
                 } onDelete: {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                     withAnimation(.easeInOut(duration: 0.2)) {
                         entry.sets.removeAll { $0.id == set.id }
                     }
@@ -243,6 +304,7 @@ struct ExerciseSetTable: View {
 
             // + SET button
             Button {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 entry.sets.append(EditableSet())
             } label: {
                 HStack(spacing: 4) {
@@ -348,6 +410,7 @@ struct SetRowView: View {
             // Checkmark button
             if showCheckmark {
                 Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     withAnimation(.easeInOut(duration: 0.15)) {
                         isCompleted.toggle()
                     }

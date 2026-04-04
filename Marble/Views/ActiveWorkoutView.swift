@@ -66,18 +66,32 @@ struct ActiveWorkoutView: View {
                         .padding(.bottom, 24)
 
                     ForEach($entries) { $entry in
-                        ExerciseSetTable(
-                            entry: $entry,
-                            onRemove: {
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    entries.removeAll { $0.id == entry.id }
-                                }
-                            },
-                            isWorkoutMode: true
-                        )
+                        if let currentIndex = entries.firstIndex(where: { $0.id == entry.id }) {
+                            ExerciseSetTable(
+                                entry: $entry,
+                                onRemove: {
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        entries.removeAll { $0.id == entry.id }
+                                    }
+                                },
+                                onMoveUp: {
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        moveExercise(from: currentIndex, direction: .up)
+                                    }
+                                },
+                                onMoveDown: {
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        moveExercise(from: currentIndex, direction: .down)
+                                    }
+                                },
+                                canMoveUp: currentIndex > 0,
+                                canMoveDown: currentIndex < entries.count - 1,
+                                isWorkoutMode: true
+                            )
 
-                        if entry.id != entries.last?.id {
-                            exerciseDivider
+                            if entry.id != entries.last?.id {
+                                exerciseDivider
+                            }
                         }
                     }
 
@@ -221,7 +235,21 @@ struct ActiveWorkoutView: View {
         }
     }
 
+    private enum MoveDirection { case up, down }
+
+    private func moveExercise(from index: Int, direction: MoveDirection) {
+        switch direction {
+        case .up where index > 0:
+            entries.swapAt(index, index - 1)
+        case .down where index < entries.count - 1:
+            entries.swapAt(index, index + 1)
+        default:
+            break
+        }
+    }
+
     private func finishWorkout() {
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
         stopWorkoutTimer()
         restTimer.stop()
 

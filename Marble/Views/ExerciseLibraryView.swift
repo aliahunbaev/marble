@@ -131,6 +131,7 @@ struct ExerciseLibraryView: View {
     private func exerciseRow(_ exercise: Exercise) -> some View {
         let isSelected = selectedExercises.contains(where: { $0.id == exercise.id })
         return Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
             onToggle(exercise)
         } label: {
             HStack {

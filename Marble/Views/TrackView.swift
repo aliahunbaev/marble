@@ -459,6 +459,7 @@ private struct AddTrackedLiftSheet: View {
                             VStack(spacing: 0) {
                                 ForEach(exercises) { exercise in
                                     Button {
+                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                         toggleTracked(exercise)
                                     } label: {
                                         HStack {

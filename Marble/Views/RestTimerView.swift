@@ -190,6 +190,7 @@ struct RestTimerModal: View {
                 ForEach(presets, id: \.self) { seconds in
                     let isDefault = seconds == defaultRestTimer
                     Button {
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                         state.start(duration: seconds)
                     } label: {
                         Text(formatPreset(seconds))
@@ -253,6 +254,7 @@ struct RestTimerModal: View {
                 .buttonStyle(.plain)
 
                 Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     state.skip()
                     dismiss()
                 } label: {
