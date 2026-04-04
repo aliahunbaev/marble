@@ -148,6 +148,7 @@ struct RestTimerButton: View {
 struct RestTimerModal: View {
     @Bindable var state: RestTimerState
     @Environment(\.dismiss) private var dismiss
+    @AppStorage("defaultRestTimer") private var defaultRestTimer: Int = 90
 
     private let presets = [30, 60, 90, 120, 180, 300]
 
@@ -187,6 +188,7 @@ struct RestTimerModal: View {
                 GridItem(.flexible(), spacing: 12)
             ], spacing: 12) {
                 ForEach(presets, id: \.self) { seconds in
+                    let isDefault = seconds == defaultRestTimer
                     Button {
                         state.start(duration: seconds)
                     } label: {
@@ -195,7 +197,13 @@ struct RestTimerModal: View {
                             .foregroundStyle(Color("marblePrimary"))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 16)
-                            .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 4)
+                                    .stroke(
+                                        isDefault ? Color("marblePrimary") : Color("marblePrimary").opacity(0.12),
+                                        lineWidth: isDefault ? 1 : 0.5
+                                    )
+                            )
                     }
                     .buttonStyle(.plain)
                 }

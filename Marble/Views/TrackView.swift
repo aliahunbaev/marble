@@ -5,6 +5,7 @@ struct TrackView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Workout.date, order: .reverse) private var workouts: [Workout]
     @Query(sort: \TrackedLift.displayOrder) private var trackedLifts: [TrackedLift]
+    @AppStorage("weightUnit") private var weightUnit: String = "lbs"
 
     @State private var showingAddLift = false
     @State private var workoutToDelete: Workout?
@@ -18,6 +19,7 @@ struct TrackView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 32) {
+                    summaryStats
                     contributionGrid
                     myLiftsSection
                     historySection
@@ -49,6 +51,86 @@ struct TrackView: View {
         }
     }
 
+    // MARK: - Summary Stats
+
+    private var summaryStats: some View {
+        HStack(spacing: 0) {
+            statCell(value: "\(workoutsThisWeek)", label: "THIS WEEK")
+            statCell(value: "\(currentStreak)", label: "STREAK")
+            statCell(value: formattedWeeklyVolume, label: "VOLUME")
+        }
+        .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5))
+    }
+
+    private func statCell(value: String, label: String) -> some View {
+        VStack(spacing: 4) {
+            Text(value)
+                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 22).weight(.light))
+                .foregroundStyle(Color("marblePrimary"))
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+            Text(label)
+                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 9).weight(.light))
+                .tracking(0.5)
+                .foregroundStyle(Color("marbleSecondary"))
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 16)
+    }
+
+    private var workoutsThisWeek: Int {
+        let calendar = Calendar.current
+        let startOfWeek = calendar.dateInterval(of: .weekOfYear, for: Date())?.start ?? Date()
+        return workouts.filter { $0.date >= startOfWeek }.count
+    }
+
+    private var currentStreak: Int {
+        let calendar = Calendar.current
+        var streak = 0
+        var checkDate = calendar.startOfDay(for: Date())
+
+        // Check if there's a workout today, if not start from yesterday
+        let todayWorkouts = workouts.filter { calendar.isDate($0.date, inSameDayAs: checkDate) }
+        if todayWorkouts.isEmpty {
+            guard let yesterday = calendar.date(byAdding: .day, value: -1, to: checkDate) else { return 0 }
+            checkDate = yesterday
+        }
+
+        while true {
+            let hasWorkout = workouts.contains { calendar.isDate($0.date, inSameDayAs: checkDate) }
+            if hasWorkout {
+                streak += 1
+                guard let prev = calendar.date(byAdding: .day, value: -1, to: checkDate) else { break }
+                checkDate = prev
+            } else {
+                break
+            }
+        }
+        return streak
+    }
+
+    private var formattedWeeklyVolume: String {
+        let calendar = Calendar.current
+        let startOfWeek = calendar.dateInterval(of: .weekOfYear, for: Date())?.start ?? Date()
+        let weekWorkouts = workouts.filter { $0.date >= startOfWeek }
+
+        var total: Double = 0
+        for workout in weekWorkouts {
+            for log in workout.exerciseLogs {
+                for set in log.sets where set.isCompleted {
+                    total += set.weight * Double(set.reps)
+                }
+            }
+        }
+
+        if total == 0 { return "0" }
+        if total >= 1000 {
+            let k = total / 1000.0
+            return String(format: "%.1fk", k)
+        }
+        return "\(Int(total))"
+    }
+
     // MARK: - Contribution Grid
 
     private var contributionGrid: some View {
@@ -60,7 +142,6 @@ struct TrackView: View {
             VStack(spacing: 0) {
                 // Month labels row
                 HStack(spacing: 0) {
-                    // Spacer for day labels column
                     Color.clear
                         .frame(width: 18)
 
@@ -68,8 +149,7 @@ struct TrackView: View {
                         ForEach(0..<8, id: \.self) { col in
                             let label = gridData.monthLabels[col]
                             Text(label)
-                                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 10))
-                                .fontWeight(.light)
+                                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 10).weight(.light))
                                 .foregroundStyle(Color("marbleSecondary"))
                                 .frame(maxWidth: .infinity)
                         }
@@ -82,8 +162,7 @@ struct TrackView: View {
                 ForEach(0..<7, id: \.self) { row in
                     HStack(spacing: 0) {
                         Text(dayLabels[row])
-                            .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 10))
-                            .fontWeight(.light)
+                            .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 10).weight(.light))
                             .foregroundStyle(Color("marbleSecondary"))
                             .frame(width: 18, alignment: .leading)
 
@@ -106,28 +185,24 @@ struct TrackView: View {
     }
 
     private struct GridData {
-        var cells: [[Bool]] // [row (day of week 0=Mon)][col (week 0=oldest)]
-        var monthLabels: [String] // one per column
+        var cells: [[Bool]]
+        var monthLabels: [String]
     }
 
     private func buildGridData() -> GridData {
         let calendar = Calendar(identifier: .iso8601)
         let today = calendar.startOfDay(for: Date())
 
-        // Find the Monday of the current week
         let todayWeekday = calendar.component(.weekday, from: today)
-        // ISO: Monday=2..Sunday=1 -> offset
         let daysFromMonday = (todayWeekday + 5) % 7
         guard let currentWeekMonday = calendar.date(byAdding: .day, value: -daysFromMonday, to: today) else {
             return GridData(cells: Array(repeating: Array(repeating: false, count: 8), count: 7), monthLabels: Array(repeating: "", count: 8))
         }
 
-        // 8 weeks: start from 7 weeks before current week's Monday
         guard let gridStart = calendar.date(byAdding: .weekOfYear, value: -7, to: currentWeekMonday) else {
             return GridData(cells: Array(repeating: Array(repeating: false, count: 8), count: 7), monthLabels: Array(repeating: "", count: 8))
         }
 
-        // Build set of workout dates
         var workoutDates = Set<Date>()
         for workout in workouts {
             let day = calendar.startOfDay(for: workout.date)
@@ -161,6 +236,57 @@ struct TrackView: View {
         return GridData(cells: cells, monthLabels: monthLabels)
     }
 
+    // MARK: - My Lifts
+
+    private var myLiftsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                SectionHeader(title: "MY LIFTS")
+                Spacer()
+                Button {
+                    showingAddLift = true
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 13, weight: .light))
+                        .foregroundStyle(Color("marbleSecondary"))
+                        .frame(width: 30, height: 30)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 4)
+                                .stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5)
+                        )
+                }
+                .buttonStyle(.plain)
+            }
+
+            if trackedLifts.isEmpty {
+                Text("Tap + to track your lifts")
+                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 13).weight(.light))
+                    .foregroundStyle(Color("marbleSecondary"))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 40)
+            } else {
+                LazyVGrid(columns: columns, spacing: 12) {
+                    ForEach(trackedLifts, id: \.id) { lift in
+                        if let exercise = lift.exercise {
+                            NavigationLink(destination: ExerciseLiftDetailView(trackedLift: lift)) {
+                                LiftCardView(lift: lift, exercise: exercise, workouts: workouts, weightUnit: weightUnit)
+                            }
+                            .buttonStyle(.plain)
+                            .contextMenu {
+                                Button(role: .destructive) {
+                                    modelContext.delete(lift)
+                                    try? modelContext.save()
+                                } label: {
+                                    Label("Remove", systemImage: "trash")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     // MARK: - History
 
     private var historySection: some View {
@@ -169,8 +295,7 @@ struct TrackView: View {
 
             if workouts.isEmpty {
                 Text("No workouts yet")
-                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 13))
-                    .fontWeight(.light)
+                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 13).weight(.light))
                     .foregroundStyle(Color("marbleSecondary"))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 40)
@@ -179,16 +304,20 @@ struct TrackView: View {
                     ForEach(Array(workouts.enumerated()), id: \.element.id) { index, workout in
                         NavigationLink(destination: WorkoutDetailView(workout: workout)) {
                             HStack {
-                                VStack(alignment: .leading, spacing: 2) {
+                                VStack(alignment: .leading, spacing: 4) {
                                     Text(workout.name)
-                                        .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 14))
-                                        .fontWeight(.light)
+                                        .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 14).weight(.light))
                                         .foregroundStyle(Color("marblePrimary"))
 
-                                    Text(historyDateString(workout.date))
-                                        .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 11))
-                                        .fontWeight(.light)
-                                        .foregroundStyle(Color("marbleSecondary"))
+                                    HStack(spacing: 8) {
+                                        Text(historyDateString(workout.date))
+                                        Text("·")
+                                        Text(formattedDuration(workout.duration))
+                                        Text("·")
+                                        Text("\(workout.exerciseLogs.count) exercises")
+                                    }
+                                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 11).weight(.light))
+                                    .foregroundStyle(Color("marbleSecondary"))
                                 }
                                 Spacer()
                             }
@@ -218,61 +347,20 @@ struct TrackView: View {
     }
 
     private func historyDateString(_ date: Date) -> String {
+        let calendar = Calendar.current
+        if calendar.isDateInToday(date) { return "Today" }
+        if calendar.isDateInYesterday(date) { return "Yesterday" }
         let formatter = DateFormatter()
-        formatter.dateFormat = "EEEE, MMM d"
+        formatter.dateFormat = "MMM d"
         return formatter.string(from: date)
     }
 
-    // MARK: - My Lifts
-
-    private var myLiftsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                SectionHeader(title: "MY LIFTS")
-                Spacer()
-                Button {
-                    showingAddLift = true
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.system(size: 13, weight: .light))
-                        .foregroundStyle(Color("marbleSecondary"))
-                        .frame(width: 30, height: 30)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 4)
-                                .stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5)
-                        )
-                }
-                .buttonStyle(.plain)
-            }
-
-            if trackedLifts.isEmpty {
-                Text("Tap + to track your lifts")
-                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 13))
-                    .fontWeight(.light)
-                    .foregroundStyle(Color("marbleSecondary"))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 40)
-            } else {
-                LazyVGrid(columns: columns, spacing: 12) {
-                    ForEach(trackedLifts, id: \.id) { lift in
-                        if let exercise = lift.exercise {
-                            NavigationLink(destination: ExerciseLiftDetailView(trackedLift: lift)) {
-                                LiftCardView(lift: lift, exercise: exercise, workouts: workouts)
-                            }
-                            .buttonStyle(.plain)
-                            .contextMenu {
-                                Button(role: .destructive) {
-                                    modelContext.delete(lift)
-                                    try? modelContext.save()
-                                } label: {
-                                    Label("Remove", systemImage: "trash")
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
+    private func formattedDuration(_ interval: TimeInterval) -> String {
+        let totalMinutes = Int(interval) / 60
+        if totalMinutes < 60 { return "\(totalMinutes)m" }
+        let hours = totalMinutes / 60
+        let minutes = totalMinutes % 60
+        return "\(hours)h \(minutes)m"
     }
 }
 
@@ -282,12 +370,12 @@ private struct LiftCardView: View {
     let lift: TrackedLift
     let exercise: Exercise
     let workouts: [Workout]
+    let weightUnit: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(exercise.name)
-                .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 14))
-                .fontWeight(.light)
+                .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 14).weight(.light))
                 .foregroundStyle(Color("marblePrimary"))
                 .lineLimit(2)
                 .multilineTextAlignment(.leading)
@@ -295,15 +383,13 @@ private struct LiftCardView: View {
             Spacer(minLength: 4)
 
             Text(metricValue)
-                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 20))
-                .fontWeight(.light)
+                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 20).weight(.light))
                 .foregroundStyle(Color("marblePrimary"))
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
 
             Text(metricLabel)
-                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 10))
-                .fontWeight(.light)
+                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 10).weight(.light))
                 .foregroundStyle(Color("marbleSecondary"))
                 .tracking(0.3)
         }
@@ -376,7 +462,7 @@ private struct AddTrackedLiftSheet: View {
                             .foregroundStyle(Color("marbleSecondary"))
                             .font(.system(size: 14))
                         TextField("Search exercises", text: $searchText)
-                            .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 14))
+                            .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 14).weight(.light))
                             .autocorrectionDisabled()
                     }
                     .padding(12)
@@ -400,19 +486,21 @@ private struct AddTrackedLiftSheet: View {
                                         HStack {
                                             VStack(alignment: .leading, spacing: 2) {
                                                 Text(exercise.name)
-                                                    .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 14))
-                                                    .fontWeight(.light)
+                                                    .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 14).weight(.light))
                                                     .foregroundStyle(Color("marblePrimary"))
                                                 Text(exercise.muscleGroup)
-                                                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 11))
-                                                    .fontWeight(.light)
+                                                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 11).weight(.light))
                                                     .foregroundStyle(Color("marbleSecondary"))
                                             }
                                             Spacer()
+                                            if isTracked(exercise) {
+                                                Image(systemName: "checkmark")
+                                                    .font(.system(size: 13, weight: .medium))
+                                                    .foregroundStyle(Color("marblePrimary"))
+                                            }
                                         }
                                         .padding(.horizontal, 20)
                                         .padding(.vertical, 12)
-                                        .background(isTracked(exercise) ? Color("marbleAccent").opacity(0.1) : Color.clear)
                                         .contentShape(Rectangle())
                                     }
                                     .buttonStyle(.plain)
@@ -448,8 +536,7 @@ private struct AddTrackedLiftSheet: View {
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     Text("Track Exercise")
-                        .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 14))
-                        .fontWeight(.light)
+                        .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 14).weight(.light))
                         .foregroundStyle(Color("marblePrimary"))
                 }
                 ToolbarItem(placement: .cancellationAction) {
@@ -460,9 +547,8 @@ private struct AddTrackedLiftSheet: View {
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Add") { dismiss() }
-                        .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 14))
-                        .fontWeight(.medium)
+                    Button("Done") { dismiss() }
+                        .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 14).weight(.light))
                 }
             }
         }
@@ -540,7 +626,6 @@ struct LiftMetrics {
     static func compute(for exercise: Exercise, workouts: [Workout], lift: TrackedLift? = nil) -> LiftMetrics {
         let allSets = completedSets(for: exercise, workouts: workouts)
 
-        // Auto-computed values
         var autoBW: Double = 0
         var autoBWReps: Int = 0
         var autoORM: Double = 0
@@ -563,7 +648,6 @@ struct LiftMetrics {
             autoMV = best.weight * Double(best.reps)
         }
 
-        // Apply manual overrides
         let finalBW = lift?.manualBestWeight ?? autoBW
         let finalBWReps = lift?.manualBestWeightReps ?? autoBWReps
         let finalORM = lift?.manualOneRepMax ?? autoORM

@@ -4,7 +4,11 @@ import SwiftData
 struct YouView: View {
     @Environment(\.modelContext) private var modelContext
     @AppStorage("appTheme") private var appTheme: String = "system"
+    @AppStorage("weightUnit") private var weightUnit: String = "lbs"
+    @AppStorage("defaultRestTimer") private var defaultRestTimer: Int = 90
     @State private var showingClearConfirmation = false
+
+    private let restTimerOptions = [30, 60, 90, 120, 180, 300]
 
     var body: some View {
         NavigationStack {
@@ -80,28 +84,90 @@ struct YouView: View {
             SectionHeader(title: "PREFERENCES")
 
             VStack(spacing: 0) {
-                settingsRow(label: "Weight Unit", value: "lbs")
+                // Weight Unit
+                HStack {
+                    Text("Weight Unit")
+                        .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 14).weight(.light))
+                        .foregroundStyle(Color("marblePrimary"))
+                    Spacer()
+                    HStack(spacing: 0) {
+                        unitOption(label: "lbs", isSelected: weightUnit == "lbs") {
+                            weightUnit = "lbs"
+                        }
+                        unitOption(label: "kg", isSelected: weightUnit == "kg") {
+                            weightUnit = "kg"
+                        }
+                    }
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+
                 Rectangle()
                     .fill(Color("marblePrimary").opacity(0.06))
                     .frame(height: 0.5)
                     .padding(.leading, 14)
-                settingsRow(label: "Rest Timer", value: "90s")
+
+                // Rest Timer
+                HStack {
+                    Text("Rest Timer")
+                        .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 14).weight(.light))
+                        .foregroundStyle(Color("marblePrimary"))
+                    Spacer()
+                    Menu {
+                        ForEach(restTimerOptions, id: \.self) { seconds in
+                            Button {
+                                defaultRestTimer = seconds
+                            } label: {
+                                HStack {
+                                    Text(formatRestTimer(seconds))
+                                    if seconds == defaultRestTimer {
+                                        Image(systemName: "checkmark")
+                                    }
+                                }
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text(formatRestTimer(defaultRestTimer))
+                                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 13).weight(.light))
+                                .foregroundStyle(Color("marbleSecondary"))
+                            Image(systemName: "chevron.up.chevron.down")
+                                .font(.system(size: 10, weight: .light))
+                                .foregroundStyle(Color("marbleSecondary"))
+                        }
+                    }
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
             }
         }
     }
 
-    private func settingsRow(label: String, value: String) -> some View {
-        HStack {
+    private func unitOption(label: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
             Text(label)
-                .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 14).weight(.light))
-                .foregroundStyle(Color("marblePrimary"))
-            Spacer()
-            Text(value)
                 .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 13).weight(.light))
-                .foregroundStyle(Color("marbleSecondary"))
+                .foregroundStyle(isSelected ? Color("marblePrimary") : Color("marbleSecondary"))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 4)
+                        .stroke(
+                            isSelected ? Color("marblePrimary") : Color("marblePrimary").opacity(0.12),
+                            lineWidth: isSelected ? 1 : 0.5
+                        )
+                )
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 14)
+        .buttonStyle(.plain)
+    }
+
+    private func formatRestTimer(_ seconds: Int) -> String {
+        if seconds >= 60 {
+            let m = seconds / 60
+            let s = seconds % 60
+            return s > 0 ? "\(m):\(String(format: "%02d", s))m" : "\(m)m"
+        }
+        return "\(seconds)s"
     }
 
     // MARK: - Data
