@@ -42,13 +42,13 @@ struct TemplateEditorView: View {
         VStack(spacing: 0) {
             editorToolbar
             Rectangle()
-                .fill(Color("marbleTertiary"))
-                .frame(height: 1)
+                .fill(Color.white.opacity(0.06))
+                .frame(height: 0.5)
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     TextField("Template", text: $name)
-                        .font(.system(size: 28, weight: .medium, design: .default))
+                        .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 26).weight(.light))
                         .foregroundStyle(Color("marblePrimary"))
                         .padding(.horizontal, 20)
                         .padding(.top, 20)
@@ -100,14 +100,14 @@ struct TemplateEditorView: View {
                 save()
             } label: {
                 Text("SAVE")
-                    .font(.system(size: 13, weight: .medium, design: .monospaced))
+                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 12).weight(.light))
                     .tracking(1)
                     .foregroundStyle(Color("marblePrimary"))
                     .padding(.horizontal, 14)
                     .padding(.vertical, 8)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(Color("marbleTertiary"), lineWidth: 1)
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke(Color.white.opacity(0.12), lineWidth: 0.5)
                     )
             }
             .buttonStyle(.plain)
@@ -120,8 +120,8 @@ struct TemplateEditorView: View {
 
     private var exerciseDivider: some View {
         Rectangle()
-            .fill(Color("marbleTertiary"))
-            .frame(height: 1)
+            .fill(Color.white.opacity(0.06))
+            .frame(height: 0.5)
             .padding(.horizontal, 20)
             .padding(.vertical, 20)
     }
@@ -132,17 +132,15 @@ struct TemplateEditorView: View {
         } label: {
             HStack(spacing: 6) {
                 Text("+")
-                    .font(.system(size: 15, weight: .medium, design: .monospaced))
+                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 14).weight(.light))
                 Text("EXERCISE")
-                    .font(.system(size: 13, weight: .medium, design: .monospaced))
+                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 12).weight(.light))
                     .tracking(1)
             }
             .foregroundStyle(Color("marbleSecondary"))
             .frame(maxWidth: .infinity)
             .padding(.vertical, 14)
-            .background(Color("marbleCard"))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
+            .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.white.opacity(0.12), lineWidth: 0.5))
         }
         .buttonStyle(.plain)
     }
@@ -190,7 +188,7 @@ struct ExerciseSetTable: View {
             // Exercise name header
             HStack {
                 Text(entry.exercise.name)
-                    .font(.system(size: 18, weight: .medium, design: .default))
+                    .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 18).weight(.light))
                     .foregroundStyle(Color("marblePrimary"))
 
                 Spacer()
@@ -201,7 +199,7 @@ struct ExerciseSetTable: View {
                     } label: {
                         Image(systemName: "xmark")
                             .font(.system(size: 11, weight: .medium))
-                            .foregroundStyle(Color("marbleTertiary"))
+                            .foregroundStyle(Color("marbleSecondary"))
                     }
                     .buttonStyle(.plain)
                 }
@@ -249,17 +247,17 @@ struct ExerciseSetTable: View {
             } label: {
                 HStack(spacing: 4) {
                     Text("+")
-                        .font(.system(size: 13, weight: .medium, design: .monospaced))
+                        .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 12).weight(.light))
                     Text("SET")
-                        .font(.system(size: 11, weight: .medium, design: .monospaced))
+                        .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 10).weight(.light))
                         .tracking(1)
                 }
                 .foregroundStyle(Color("marbleSecondary"))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 10)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(Color("marbleTertiary"), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 4)
+                        .stroke(Color.white.opacity(0.12), lineWidth: 0.5)
                 )
             }
             .buttonStyle(.plain)
@@ -286,7 +284,7 @@ struct ExerciseSetTable: View {
                 Spacer().frame(width: 32)
             }
         }
-        .font(.system(size: 11, weight: .medium, design: .monospaced))
+        .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 10).weight(.light))
         .tracking(0.5)
         .foregroundStyle(Color("marbleSecondary"))
     }
@@ -306,15 +304,15 @@ struct SetRowView: View {
         HStack(spacing: 12) {
             // Set number
             Text("\(setNumber)")
-                .font(.system(size: 14, weight: .medium, design: .monospaced))
+                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 13).weight(.light))
                 .foregroundStyle(Color("marbleSecondary"))
                 .frame(width: 28, height: 32, alignment: .center)
 
             // Previous
             if showCheckmark || previousText != nil {
                 Text(previousText ?? "—")
-                    .font(.system(size: 13, design: .monospaced))
-                    .foregroundStyle(Color("marbleTertiary"))
+                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 12).weight(.light))
+                    .foregroundStyle(Color("marbleSecondary"))
                     .frame(height: 32)
                     .frame(maxWidth: .infinity)
             } else {
@@ -323,7 +321,7 @@ struct SetRowView: View {
 
             // Weight
             TextField("—", text: $weight)
-                .font(.system(size: 14, weight: .medium, design: .monospaced))
+                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 13).weight(.light))
                 .multilineTextAlignment(.center)
                 .keyboardType(.decimalPad)
                 .frame(width: 72, height: 32)
@@ -332,11 +330,11 @@ struct SetRowView: View {
                         ? Color.clear
                         : Color("marbleFieldBackground")
                 )
-                .cornerRadius(6)
+                .cornerRadius(4)
 
             // Reps
             TextField("—", text: $reps)
-                .font(.system(size: 14, weight: .medium, design: .monospaced))
+                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 13).weight(.light))
                 .multilineTextAlignment(.center)
                 .keyboardType(.numberPad)
                 .frame(width: 72, height: 32)
@@ -345,7 +343,7 @@ struct SetRowView: View {
                         ? Color.clear
                         : Color("marbleFieldBackground")
                 )
-                .cornerRadius(6)
+                .cornerRadius(4)
 
             // Checkmark button
             if showCheckmark {
@@ -387,13 +385,13 @@ struct SwipeToDeleteRow<Content: View>: View {
             HStack {
                 Spacer()
                 Text("Delete")
-                    .font(.system(size: 13, weight: .medium, design: .monospaced))
+                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 12).weight(.light))
                     .foregroundStyle(.white)
                     .padding(.trailing, 20)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color.red)
-            .cornerRadius(6)
+            .cornerRadius(4)
             .padding(.horizontal, 4)
             .opacity(offset < 0 ? 1 : 0)
 

@@ -19,8 +19,6 @@
 		AA000010 /* YouView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000010; };
 		AA000011 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB000011; };
 		AA000012 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB000012; };
-		AA000013 /* TemplateCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000013; };
-		AA000014 /* AddTemplateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000014; };
 		AA000015 /* ActiveWorkoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000015; };
 		AA000016 /* SectionHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000016; };
 		AA000017 /* ExerciseSeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000017; };
@@ -32,6 +30,9 @@
 		AA000023 /* WorkoutDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000023; };
 		AA000024 /* TrackedLift.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000024; };
 		AA000025 /* ExerciseLiftDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000025; };
+		AA000026 /* ABCFavoritVariable-Trial.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB000026; };
+		AA000027 /* ABCFavoritMonoVariable-Trial.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB000027; };
+		AA000029 /* NothingYouCouldDo-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB000029; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -47,8 +48,6 @@
 		AB000010 /* YouView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YouView.swift; sourceTree = "<group>"; };
 		AB000011 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		AB000012 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
-		AB000013 /* TemplateCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplateCardView.swift; sourceTree = "<group>"; };
-		AB000014 /* AddTemplateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddTemplateView.swift; sourceTree = "<group>"; };
 		AB000015 /* ActiveWorkoutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveWorkoutView.swift; sourceTree = "<group>"; };
 		AB000016 /* SectionHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionHeader.swift; sourceTree = "<group>"; };
 		AB000017 /* ExerciseSeed.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseSeed.swift; sourceTree = "<group>"; };
@@ -61,6 +60,10 @@
 		AB000024 /* TrackedLift.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackedLift.swift; sourceTree = "<group>"; };
 		AB000025 /* ExerciseLiftDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseLiftDetailView.swift; sourceTree = "<group>"; };
 		AC000001 /* Marble.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Marble.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AB000026 /* ABCFavoritVariable-Trial.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "ABCFavoritVariable-Trial.ttf"; sourceTree = "<group>"; };
+		AB000027 /* ABCFavoritMonoVariable-Trial.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "ABCFavoritMonoVariable-Trial.ttf"; sourceTree = "<group>"; };
+		AB000028 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		AB000029 /* NothingYouCouldDo-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "NothingYouCouldDo-Regular.ttf"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -89,10 +92,22 @@
 				AB000002 /* ContentView.swift */,
 				AE000003 /* Models */,
 				AE000004 /* Views */,
+				AE000007 /* Fonts */,
 				AB000011 /* Assets.xcassets */,
+				AB000028 /* Info.plist */,
 				AE000006 /* Preview Content */,
 			);
 			path = Marble;
+			sourceTree = "<group>";
+		};
+		AE000007 /* Fonts */ = {
+			isa = PBXGroup;
+			children = (
+				AB000026 /* ABCFavoritVariable-Trial.ttf */,
+				AB000027 /* ABCFavoritMonoVariable-Trial.ttf */,
+				AB000029 /* NothingYouCouldDo-Regular.ttf */,
+			);
+			path = Fonts;
 			sourceTree = "<group>";
 		};
 		AE000003 /* Models */ = {
@@ -116,8 +131,6 @@
 				AB000008 /* TrainView.swift */,
 				AB000009 /* TrackView.swift */,
 				AB000010 /* YouView.swift */,
-				AB000013 /* TemplateCardView.swift */,
-				AB000014 /* AddTemplateView.swift */,
 				AB000015 /* ActiveWorkoutView.swift */,
 				AB000016 /* SectionHeader.swift */,
 				AB000018 /* ExerciseLibraryView.swift */,
@@ -206,6 +219,9 @@
 			files = (
 				AA000011 /* Assets.xcassets in Resources */,
 				AA000012 /* Preview Assets.xcassets in Resources */,
+				AA000026 /* ABCFavoritVariable-Trial.ttf in Resources */,
+				AA000027 /* ABCFavoritMonoVariable-Trial.ttf in Resources */,
+				AA000029 /* NothingYouCouldDo-Regular.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -226,8 +242,6 @@
 				AA000008 /* TrainView.swift in Sources */,
 				AA000009 /* TrackView.swift in Sources */,
 				AA000010 /* YouView.swift in Sources */,
-				AA000013 /* TemplateCardView.swift in Sources */,
-				AA000014 /* AddTemplateView.swift in Sources */,
 				AA000015 /* ActiveWorkoutView.swift in Sources */,
 				AA000016 /* SectionHeader.swift in Sources */,
 				AA000017 /* ExerciseSeed.swift in Sources */,
@@ -374,6 +388,7 @@
 				DEVELOPMENT_ASSET_PATHS = "\"Marble/Preview Content\"";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Marble/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -402,6 +417,7 @@
 				DEVELOPMENT_ASSET_PATHS = "\"Marble/Preview Content\"";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Marble/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

@@ -38,25 +38,22 @@ struct YouView: View {
             VStack(spacing: 0) {
                 settingsRow(label: "Weight Unit", value: "lbs")
                 Rectangle()
-                    .fill(Color("marbleTertiary"))
-                    .frame(height: 1)
+                    .fill(Color.white.opacity(0.06))
+                    .frame(height: 0.5)
                     .padding(.leading, 14)
                 settingsRow(label: "Rest Timer", value: "90s")
             }
-            .background(Color("marbleCard"))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
         }
     }
 
     private func settingsRow(label: String, value: String) -> some View {
         HStack {
             Text(label)
-                .font(.system(size: 14, weight: .medium, design: .default))
+                .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 14).weight(.light))
                 .foregroundStyle(Color("marblePrimary"))
             Spacer()
             Text(value)
-                .font(.system(size: 14, design: .monospaced))
+                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 13).weight(.light))
                 .foregroundStyle(Color("marbleSecondary"))
         }
         .padding(.horizontal, 14)
@@ -73,15 +70,13 @@ struct YouView: View {
                 showingClearConfirmation = true
             } label: {
                 Text("Clear All Data")
-                    .font(.system(size: 14, weight: .medium, design: .monospaced))
+                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 13).weight(.light))
                     .foregroundStyle(.red)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
-                    .background(Color("marbleCard"))
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color.red.opacity(0.3), lineWidth: 1)
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke(Color.red.opacity(0.3), lineWidth: 0.5)
                     )
             }
             .buttonStyle(.plain)
@@ -90,6 +85,7 @@ struct YouView: View {
 
     private func clearAllData() {
         do {
+            try modelContext.delete(model: TrackedLift.self)
             try modelContext.delete(model: Workout.self)
             try modelContext.delete(model: ExerciseLog.self)
             try modelContext.delete(model: WorkoutSet.self)

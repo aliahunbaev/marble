@@ -20,8 +20,8 @@ struct ContentView: View {
 
             // Custom tab bar
             Rectangle()
-                .fill(Color("marbleTertiary"))
-                .frame(height: 1)
+                .fill(Color.white.opacity(0.06))
+                .frame(height: 0.5)
             HStack(spacing: 0) {
                 ForEach(0..<tabs.count, id: \.self) { index in
                     Button {
@@ -31,8 +31,8 @@ struct ContentView: View {
                     } label: {
                         VStack(spacing: 6) {
                             Text(tabs[index])
-                                .font(.system(size: 11, weight: .medium, design: .monospaced))
-                                .tracking(1.5)
+                                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 11).weight(.medium))
+                                .tracking(1)
                                 .foregroundStyle(selectedTab == index ? Color("marblePrimary") : Color("marbleSecondary"))
 
                             Circle()

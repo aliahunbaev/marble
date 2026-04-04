@@ -37,12 +37,13 @@ struct ExerciseLibraryView: View {
                             .foregroundStyle(Color("marbleSecondary"))
                             .font(.system(size: 14))
                         TextField("Search exercises", text: $searchText)
-                            .font(.system(.body, design: .default))
+                            .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 14))
+                            .fontWeight(.light)
                             .autocorrectionDisabled()
                     }
                     .padding(12)
                     .background(Color("marbleFieldBackground"))
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
                     .padding(.horizontal, 20)
                     .padding(.top, 8)
                     .padding(.bottom, 20)
@@ -70,8 +71,8 @@ struct ExerciseLibraryView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Add") { dismiss() }
-                        .font(.system(.body, design: .monospaced))
-                        .fontWeight(.medium)
+                        .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 14))
+                        .fontWeight(.light)
                 }
                 ToolbarItem(placement: .primaryAction) {
                     Button {
@@ -105,22 +106,22 @@ struct ExerciseLibraryView: View {
                     exerciseRow(exercise)
                     if exercise.id != exercises.last?.id {
                         Rectangle()
-                            .fill(Color("marbleTertiary"))
-                            .frame(height: 1)
+                            .fill(Color.white.opacity(0.06))
+                            .frame(height: 0.5)
                             .padding(.leading, 20)
                     }
                 }
             }
             .overlay(
                 Rectangle()
-                    .frame(height: 1)
-                    .foregroundStyle(Color("marbleTertiary")),
+                    .frame(height: 0.5)
+                    .foregroundStyle(Color.white.opacity(0.06)),
                 alignment: .top
             )
             .overlay(
                 Rectangle()
-                    .frame(height: 1)
-                    .foregroundStyle(Color("marbleTertiary")),
+                    .frame(height: 0.5)
+                    .foregroundStyle(Color.white.opacity(0.06)),
                 alignment: .bottom
             )
             .padding(.bottom, 24)
@@ -135,17 +136,21 @@ struct ExerciseLibraryView: View {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(exercise.name)
-                        .font(.system(.body, design: .default))
+                        .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 14).weight(.light))
                         .foregroundStyle(Color("marblePrimary"))
                     Text(exercise.muscleGroup)
-                        .font(.system(.caption, design: .monospaced))
+                        .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 11).weight(.light))
                         .foregroundStyle(Color("marbleSecondary"))
                 }
                 Spacer()
+                if isSelected {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(Color("marblePrimary"))
+                }
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
-            .background(isSelected ? Color("marbleAccent").opacity(0.1) : Color.clear)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -154,7 +159,8 @@ struct ExerciseLibraryView: View {
     private var emptyState: some View {
         VStack(spacing: 12) {
             Text("No exercises found")
-                .font(.system(.subheadline, design: .monospaced))
+                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 13))
+                .fontWeight(.light)
                 .foregroundStyle(Color("marbleSecondary"))
             if !searchText.isEmpty {
                 Button {
@@ -162,13 +168,14 @@ struct ExerciseLibraryView: View {
                     showingCreate = true
                 } label: {
                     Text("Create \"\(searchText)\"")
-                        .font(.system(.subheadline, design: .monospaced))
+                        .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 13))
+                        .fontWeight(.light)
                         .foregroundStyle(Color("marblePrimary"))
                         .padding(.horizontal, 16)
                         .padding(.vertical, 10)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(Color("marblePrimary"), lineWidth: 1)
+                            RoundedRectangle(cornerRadius: 4)
+                                .stroke(Color.white.opacity(0.12), lineWidth: 0.5)
                         )
                 }
                 .buttonStyle(.plain)

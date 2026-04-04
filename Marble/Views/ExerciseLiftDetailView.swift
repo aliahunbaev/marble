@@ -31,7 +31,7 @@ struct ExerciseLiftDetailView: View {
                 // Exercise name
                 if let exercise {
                     Text(exercise.name)
-                        .font(.system(size: 24, weight: .medium, design: .default))
+                        .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 24).weight(.light))
                         .foregroundStyle(Color("marblePrimary"))
                         .padding(.horizontal, 20)
                         .padding(.top, 16)
@@ -53,12 +53,16 @@ struct ExerciseLiftDetailView: View {
                     dismiss()
                 } label: {
                     Text("Remove from Tracking")
-                        .font(.system(.body, design: .default))
+                        .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 13).weight(.light))
+                        .foregroundStyle(.red)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
+                        .padding(.vertical, 14)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 4)
+                                .stroke(Color.red.opacity(0.3), lineWidth: 0.5)
+                        )
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(.red)
                 .padding(.horizontal, 20)
             }
             .padding(.bottom, 40)
@@ -123,26 +127,27 @@ struct ExerciseLiftDetailView: View {
                 // Show auto value for comparison if manual exists
                 if hasManualValueForCurrentMetric {
                     Rectangle()
-                        .fill(Color("marbleTertiary"))
-                        .frame(height: 1)
+                        .fill(Color.white.opacity(0.06))
+                        .frame(height: 0.5)
                         .padding(.leading, 14)
 
                     HStack {
                         Text("From workouts")
-                            .font(.system(size: 12, design: .monospaced))
+                            .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 11).weight(.light))
                             .foregroundStyle(Color("marbleSecondary"))
                         Spacer()
                         Text(autoValueForCurrentMetric)
-                            .font(.system(size: 13, weight: .medium, design: .monospaced))
+                            .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 13).weight(.light))
                             .foregroundStyle(Color("marbleSecondary"))
                     }
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
                 }
             }
-            .background(Color("marbleCard"))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
+            .overlay(
+                RoundedRectangle(cornerRadius: 4)
+                    .stroke(Color.white.opacity(0.12), lineWidth: 0.5)
+            )
             .padding(.horizontal, 20)
         }
     }
@@ -153,16 +158,16 @@ struct ExerciseLiftDetailView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 6) {
                         Text(manualValueForCurrentMetric)
-                            .font(.system(size: 15, weight: .medium, design: .monospaced))
+                            .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 14).weight(.light))
                             .foregroundStyle(Color("marblePrimary"))
                         Text("Manual")
-                            .font(.system(size: 10, design: .monospaced))
+                            .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 9).weight(.light))
                             .foregroundStyle(Color("marbleSecondary"))
                             .padding(.horizontal, 5)
                             .padding(.vertical, 2)
                             .overlay(
-                                RoundedRectangle(cornerRadius: 3)
-                                    .stroke(Color("marbleTertiary"), lineWidth: 1)
+                                RoundedRectangle(cornerRadius: 4)
+                                    .stroke(Color.white.opacity(0.12), lineWidth: 0.5)
                             )
                     }
                 }
@@ -173,12 +178,12 @@ struct ExerciseLiftDetailView: View {
                     clearManualValue()
                 } label: {
                     Image(systemName: "xmark")
-                        .font(.system(size: 11, weight: .medium))
+                        .font(.system(size: 11, weight: .light))
                         .foregroundStyle(Color("marbleSecondary"))
                         .frame(width: 28, height: 28)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(Color("marbleTertiary"), lineWidth: 1)
+                            RoundedRectangle(cornerRadius: 4)
+                                .stroke(Color.white.opacity(0.12), lineWidth: 0.5)
                         )
                 }
                 .buttonStyle(.plain)
@@ -189,9 +194,9 @@ struct ExerciseLiftDetailView: View {
                 } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "plus")
-                            .font(.system(size: 12, weight: .medium))
+                            .font(.system(size: 12, weight: .light))
                         Text("Record \(currentMetricName)")
-                            .font(.system(size: 13, weight: .medium, design: .monospaced))
+                            .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 13).weight(.light))
                     }
                     .foregroundStyle(Color("marblePrimary"))
                     .frame(maxWidth: .infinity)
@@ -327,7 +332,7 @@ struct ExerciseLiftDetailView: View {
 
             if performances.isEmpty {
                 Text("No data yet")
-                    .font(.system(.subheadline, design: .monospaced))
+                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 13).weight(.light))
                     .foregroundStyle(Color("marbleSecondary"))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 40)
@@ -336,12 +341,12 @@ struct ExerciseLiftDetailView: View {
                     ForEach(Array(performances.enumerated()), id: \.offset) { index, perf in
                         HStack(alignment: .top) {
                             Text(perf.dateString)
-                                .font(.system(size: 13, design: .monospaced))
+                                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 12).weight(.light))
                                 .foregroundStyle(Color("marbleSecondary"))
                                 .frame(width: 56, alignment: .leading)
 
                             Text(perf.setsDescription)
-                                .font(.system(size: 13, design: .monospaced))
+                                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 12).weight(.light))
                                 .foregroundStyle(Color("marblePrimary"))
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .lineLimit(3)
@@ -351,15 +356,16 @@ struct ExerciseLiftDetailView: View {
 
                         if index < performances.count - 1 {
                             Rectangle()
-                                .fill(Color("marbleTertiary"))
-                                .frame(height: 1)
+                                .fill(Color.white.opacity(0.06))
+                                .frame(height: 0.5)
                                 .padding(.leading, 14)
                         }
                     }
                 }
-                .background(Color("marbleCard"))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 4)
+                        .stroke(Color.white.opacity(0.12), lineWidth: 0.5)
+                )
                 .padding(.horizontal, 20)
             }
         }
@@ -423,32 +429,29 @@ private struct MetricTile: View {
     var body: some View {
         VStack(spacing: 4) {
             Text(value)
-                .font(.system(size: 15, weight: .semibold, design: .monospaced))
+                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 14).weight(.light))
                 .foregroundStyle(Color("marblePrimary"))
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
 
             Text(title)
-                .font(.system(size: 10, design: .monospaced))
+                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 9).weight(.light))
                 .foregroundStyle(Color("marbleSecondary"))
                 .lineLimit(1)
 
             if isManual {
                 Text("Manual")
-                    .font(.system(size: 8, design: .monospaced))
+                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 8).weight(.light))
                     .foregroundStyle(Color("marbleAccent"))
             }
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 12)
         .padding(.horizontal, 6)
-        .background(isSelected ? Color("marbleAccent").opacity(0.08) : Color("marbleCard"))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(isSelected ? Color("marbleAccent") : Color.clear, lineWidth: 1.5)
+            RoundedRectangle(cornerRadius: 4)
+                .stroke(isSelected ? Color("marbleAccent") : Color.white.opacity(0.12), lineWidth: 0.5)
         )
-        .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
         .onTapGesture {
             onTap()
         }

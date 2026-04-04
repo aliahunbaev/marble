@@ -10,7 +10,8 @@ struct TemplateDetailSheet: View {
             VStack(alignment: .leading, spacing: 0) {
                 // Template name
                 Text(template.name)
-                    .font(.system(size: 28, weight: .medium, design: .default))
+                    .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 26))
+                    .fontWeight(.light)
                     .foregroundStyle(Color("marblePrimary"))
                     .padding(.top, 24)
                     .padding(.horizontal, 24)
@@ -22,11 +23,13 @@ struct TemplateDetailSheet: View {
                         ForEach(Array(template.exercises.enumerated()), id: \.element.id) { index, exercise in
                             HStack {
                                 Text(exercise.name)
-                                    .font(.system(.body, design: .default))
+                                    .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 14))
+                                    .fontWeight(.light)
                                     .foregroundStyle(Color("marblePrimary"))
                                 Spacer()
                                 Text(exercise.muscleGroup)
-                                    .font(.system(.caption, design: .monospaced))
+                                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 11))
+                                    .fontWeight(.light)
                                     .foregroundStyle(Color("marbleSecondary"))
                             }
                             .padding(.horizontal, 24)
@@ -34,8 +37,8 @@ struct TemplateDetailSheet: View {
 
                             if index < template.exercises.count - 1 {
                                 Rectangle()
-                                    .fill(Color("marbleTertiary"))
-                                    .frame(height: 1)
+                                    .fill(Color.white.opacity(0.06))
+                                    .frame(height: 0.5)
                                     .padding(.leading, 24)
                             }
                         }
@@ -47,13 +50,13 @@ struct TemplateDetailSheet: View {
                     onStartWorkout()
                 } label: {
                     Text("Start Workout")
-                        .font(.system(.title3, design: .default))
-                        .fontWeight(.medium)
+                        .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 16))
+                        .fontWeight(.light)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
                         .background(Color("marblePrimary"))
                         .foregroundStyle(Color("marbleBackground"))
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .clipShape(Capsule())
                 }
                 .buttonStyle(.plain)
                 .padding(.horizontal, 24)
@@ -66,20 +69,22 @@ struct TemplateDetailSheet: View {
                 dismiss()
             } label: {
                 Image(systemName: "xmark")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: 11, weight: .light))
                     .foregroundStyle(Color("marbleSecondary"))
-                    .frame(width: 28, height: 28)
-                    .background(Color("marbleTertiary"))
-                    .clipShape(Circle())
+                    .frame(width: 30, height: 30)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke(Color.white.opacity(0.12), lineWidth: 0.5)
+                    )
             }
             .buttonStyle(.plain)
             .padding(.top, 16)
             .padding(.trailing, 16)
         }
-        .presentationDetents([.medium])
+        .presentationDetents([.medium, .large])
         .presentationDragIndicator(.hidden)
         .presentationCornerRadius(12)
-        .presentationBackground(Color("marbleCard"))
+        .presentationBackground(Color("marbleBackground"))
     }
 }
 

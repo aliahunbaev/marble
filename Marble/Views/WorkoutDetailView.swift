@@ -12,18 +12,18 @@ struct WorkoutDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 // Header
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 6) {
                     Text(workout.name)
-                        .font(.system(size: 28, weight: .medium, design: .default))
+                        .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 24).weight(.light))
                         .foregroundStyle(Color("marblePrimary"))
 
                     HStack(spacing: 12) {
                         Text(formattedDate)
-                            .font(.system(size: 14, design: .monospaced))
+                            .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 12).weight(.light))
                             .foregroundStyle(Color("marbleSecondary"))
 
                         Text(formattedDuration)
-                            .font(.system(size: 14, design: .monospaced))
+                            .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 12).weight(.light))
                             .foregroundStyle(Color("marbleSecondary"))
                     }
                 }
@@ -37,28 +37,35 @@ struct WorkoutDetailView: View {
 
                     if index < workout.exerciseLogs.count - 1 {
                         Rectangle()
-                            .fill(Color("marbleTertiary"))
-                            .frame(height: 1)
+                            .fill(Color.white.opacity(0.06))
+                            .frame(height: 0.5)
                             .padding(.horizontal, 20)
                             .padding(.vertical, 20)
                     }
                 }
+
+                // Delete button
+                Button(role: .destructive) {
+                    showingDeleteConfirmation = true
+                } label: {
+                    Text("Delete Workout")
+                        .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 13).weight(.light))
+                        .foregroundStyle(.red)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 4)
+                                .stroke(Color.red.opacity(0.3), lineWidth: 0.5)
+                        )
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 20)
+                .padding(.top, 32)
             }
             .padding(.bottom, 40)
         }
         .background(Color("marbleBackground"))
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .destructiveAction) {
-                Button {
-                    showingDeleteConfirmation = true
-                } label: {
-                    Image(systemName: "trash")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(.red)
-                }
-            }
-        }
         .alert("Delete this workout? This cannot be undone.", isPresented: $showingDeleteConfirmation) {
             Button("Cancel", role: .cancel) { }
             Button("Delete", role: .destructive) {
@@ -73,7 +80,7 @@ struct WorkoutDetailView: View {
         VStack(alignment: .leading, spacing: 0) {
             // Exercise name
             Text(log.exercise?.name ?? "Unknown")
-                .font(.system(size: 18, weight: .medium, design: .default))
+                .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 18).weight(.light))
                 .foregroundStyle(Color("marblePrimary"))
                 .padding(.horizontal, 20)
                 .padding(.bottom, 12)
@@ -87,7 +94,7 @@ struct WorkoutDetailView: View {
                 Text("REPS")
                     .frame(maxWidth: .infinity)
             }
-            .font(.system(size: 11, weight: .medium, design: .monospaced))
+            .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 10).weight(.light))
             .tracking(0.5)
             .foregroundStyle(Color("marbleSecondary"))
             .padding(.horizontal, 20)
@@ -98,17 +105,17 @@ struct WorkoutDetailView: View {
             ForEach(Array(completedSets.enumerated()), id: \.offset) { index, set in
                 HStack(spacing: 12) {
                     Text("\(index + 1)")
-                        .font(.system(size: 14, weight: .medium, design: .monospaced))
+                        .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 13).weight(.light))
                         .foregroundStyle(Color("marbleSecondary"))
                         .frame(width: 36, alignment: .center)
 
                     Text(formattedWeight(set.weight))
-                        .font(.system(size: 14, weight: .medium, design: .monospaced))
+                        .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 13).weight(.light))
                         .foregroundStyle(Color("marblePrimary"))
                         .frame(maxWidth: .infinity)
 
                     Text("\(set.reps)")
-                        .font(.system(size: 14, weight: .medium, design: .monospaced))
+                        .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 13).weight(.light))
                         .foregroundStyle(Color("marblePrimary"))
                         .frame(maxWidth: .infinity)
                 }

@@ -81,7 +81,7 @@ struct RestTimerButton: View {
                 activeButton
             } else {
                 Image(systemName: "clock")
-                    .font(.system(size: 18, weight: .medium))
+                    .font(.system(size: 16, weight: .light))
                     .foregroundStyle(Color("marbleSecondary"))
                     .frame(width: 36, height: 36)
             }
@@ -92,9 +92,9 @@ struct RestTimerButton: View {
     private var timerLabel: some View {
         HStack(spacing: 4) {
             Image(systemName: "clock")
-                .font(.system(size: 13, weight: .medium))
+                .font(.system(size: 12, weight: .light))
             Text(state.formattedRemaining)
-                .font(.system(size: 13, weight: .medium, design: .monospaced))
+                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 12).weight(.light))
         }
         .frame(maxWidth: .infinity)
     }
@@ -169,7 +169,7 @@ struct RestTimerModal: View {
         .background(Color("marbleBackground"))
         .presentationDetents([.height(320)])
         .presentationDragIndicator(.hidden)
-        .presentationCornerRadius(16)
+        .presentationCornerRadius(12)
     }
 
     // MARK: - Preset Picker (inactive)
@@ -177,8 +177,8 @@ struct RestTimerModal: View {
     private var presetPickerView: some View {
         VStack(spacing: 24) {
             Text("REST TIMER")
-                .font(.system(size: 13, weight: .medium, design: .monospaced))
-                .tracking(1)
+                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 12).weight(.light))
+                .tracking(1.5)
                 .foregroundStyle(Color("marbleSecondary"))
 
             LazyVGrid(columns: [
@@ -191,13 +191,11 @@ struct RestTimerModal: View {
                         state.start(duration: seconds)
                     } label: {
                         Text(formatPreset(seconds))
-                            .font(.system(size: 17, weight: .medium, design: .monospaced))
+                            .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 16).weight(.light))
                             .foregroundStyle(Color("marblePrimary"))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 16)
-                            .background(Color("marbleCard"))
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                            .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
+                            .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.white.opacity(0.12), lineWidth: 0.5))
                     }
                     .buttonStyle(.plain)
                 }
@@ -215,7 +213,7 @@ struct RestTimerModal: View {
         VStack(spacing: 28) {
             // Big remaining time
             Text(formattedBig)
-                .font(.system(size: 56, weight: .light, design: .monospaced))
+                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 48).weight(.light))
                 .foregroundStyle(Color("marblePrimary"))
                 .monospacedDigit()
 
@@ -239,12 +237,10 @@ struct RestTimerModal: View {
                     state.adjustBy(-10)
                 } label: {
                     Text("-10s")
-                        .font(.system(size: 15, weight: .medium, design: .monospaced))
+                        .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 14).weight(.light))
                         .foregroundStyle(Color("marblePrimary"))
                         .frame(width: 72, height: 44)
-                        .background(Color("marbleCard"))
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                        .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
+                        .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.white.opacity(0.12), lineWidth: 0.5))
                 }
                 .buttonStyle(.plain)
 
@@ -253,12 +249,12 @@ struct RestTimerModal: View {
                     dismiss()
                 } label: {
                     Text("SKIP")
-                        .font(.system(size: 13, weight: .medium, design: .monospaced))
+                        .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 12).weight(.light))
                         .tracking(1)
                         .foregroundStyle(.white)
                         .frame(width: 80, height: 44)
                         .background(Color(.systemRed).opacity(0.85))
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
                 }
                 .buttonStyle(.plain)
 
@@ -266,12 +262,10 @@ struct RestTimerModal: View {
                     state.adjustBy(10)
                 } label: {
                     Text("+10s")
-                        .font(.system(size: 15, weight: .medium, design: .monospaced))
+                        .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 14).weight(.light))
                         .foregroundStyle(Color("marblePrimary"))
                         .frame(width: 72, height: 44)
-                        .background(Color("marbleCard"))
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                        .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
+                        .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.white.opacity(0.12), lineWidth: 0.5))
                 }
                 .buttonStyle(.plain)
             }

@@ -47,20 +47,20 @@ struct ActiveWorkoutView: View {
         VStack(spacing: 0) {
             workoutToolbar
             Rectangle()
-                .fill(Color("marbleTertiary"))
-                .frame(height: 1)
+                .fill(Color.white.opacity(0.06))
+                .frame(height: 0.5)
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     TextField("Workout", text: $name)
-                        .font(.system(size: 28, weight: .medium, design: .default))
+                        .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 26).weight(.light))
                         .foregroundStyle(Color("marblePrimary"))
                         .padding(.horizontal, 20)
                         .padding(.top, 20)
                         .padding(.bottom, 4)
 
                     Text(formattedTime)
-                        .font(.system(size: 15, design: .monospaced))
+                        .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 14).weight(.light))
                         .foregroundStyle(Color("marbleSecondary"))
                         .padding(.horizontal, 20)
                         .padding(.bottom, 24)
@@ -130,13 +130,13 @@ struct ActiveWorkoutView: View {
                 finishWorkout()
             } label: {
                 Text("FINISH")
-                    .font(.system(size: 13, weight: .medium, design: .monospaced))
+                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 12).weight(.light))
                     .tracking(1)
                     .foregroundStyle(Color("marbleBackground"))
                     .padding(.horizontal, 16)
                     .padding(.vertical, 8)
                     .background(Color("marblePrimary"))
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
             }
             .buttonStyle(.plain)
         }
@@ -148,8 +148,8 @@ struct ActiveWorkoutView: View {
 
     private var exerciseDivider: some View {
         Rectangle()
-            .fill(Color("marbleTertiary"))
-            .frame(height: 1)
+            .fill(Color.white.opacity(0.06))
+            .frame(height: 0.5)
             .padding(.horizontal, 20)
             .padding(.vertical, 20)
     }
@@ -160,17 +160,15 @@ struct ActiveWorkoutView: View {
         } label: {
             HStack(spacing: 6) {
                 Text("+")
-                    .font(.system(size: 15, weight: .medium, design: .monospaced))
+                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 14).weight(.light))
                 Text("EXERCISE")
-                    .font(.system(size: 13, weight: .medium, design: .monospaced))
+                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 12).weight(.light))
                     .tracking(1)
             }
             .foregroundStyle(Color("marbleSecondary"))
             .frame(maxWidth: .infinity)
             .padding(.vertical, 14)
-            .background(Color("marbleCard"))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
+            .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.white.opacity(0.12), lineWidth: 0.5))
         }
         .buttonStyle(.plain)
     }
@@ -182,7 +180,7 @@ struct ActiveWorkoutView: View {
             showingDiscardAlert = true
         } label: {
             Text("Discard Workout")
-                .font(.system(size: 14, weight: .medium, design: .monospaced))
+                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 13).weight(.light))
                 .foregroundStyle(.red)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
@@ -278,12 +276,12 @@ struct ActiveWorkoutView: View {
 
                 // Title
                 Text("Workout Complete")
-                    .font(.system(size: 24, weight: .medium, design: .default))
+                    .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 24).weight(.light))
                     .foregroundStyle(Color("marblePrimary"))
 
                 // Workout name
                 Text(workout.name)
-                    .font(.system(size: 17, design: .default))
+                    .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 16).weight(.light))
                     .foregroundStyle(Color("marbleSecondary"))
 
                 // Stats
@@ -318,13 +316,12 @@ struct ActiveWorkoutView: View {
                 dismiss()
             } label: {
                 Text("DONE")
-                    .font(.system(size: 15, weight: .medium, design: .monospaced))
-                    .tracking(1.5)
+                    .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 16).weight(.light))
                     .foregroundStyle(Color("marbleBackground"))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
                     .background(Color("marblePrimary"))
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .clipShape(Capsule())
             }
             .buttonStyle(.plain)
             .padding(.horizontal, 20)
@@ -336,10 +333,10 @@ struct ActiveWorkoutView: View {
     private func summaryStatView(label: String, value: String) -> some View {
         VStack(spacing: 6) {
             Text(value)
-                .font(.system(size: 36, weight: .medium, design: .monospaced))
+                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 32).weight(.light))
                 .foregroundStyle(Color("marblePrimary"))
             Text(label)
-                .font(.system(size: 11, weight: .medium, design: .monospaced))
+                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 10).weight(.light))
                 .tracking(1.5)
                 .foregroundStyle(Color("marbleSecondary"))
         }

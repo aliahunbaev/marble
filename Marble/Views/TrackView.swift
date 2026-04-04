@@ -68,7 +68,8 @@ struct TrackView: View {
                         ForEach(0..<8, id: \.self) { col in
                             let label = gridData.monthLabels[col]
                             Text(label)
-                                .font(.system(size: 10, design: .monospaced))
+                                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 10))
+                                .fontWeight(.light)
                                 .foregroundStyle(Color("marbleSecondary"))
                                 .frame(maxWidth: .infinity)
                         }
@@ -81,7 +82,8 @@ struct TrackView: View {
                 ForEach(0..<7, id: \.self) { row in
                     HStack(spacing: 0) {
                         Text(dayLabels[row])
-                            .font(.system(size: 10, design: .monospaced))
+                            .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 10))
+                            .fontWeight(.light)
                             .foregroundStyle(Color("marbleSecondary"))
                             .frame(width: 18, alignment: .leading)
 
@@ -99,9 +101,7 @@ struct TrackView: View {
                 }
             }
             .padding(14)
-            .background(Color("marbleCard"))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
+            .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.white.opacity(0.12), lineWidth: 0.5))
         }
     }
 
@@ -169,7 +169,8 @@ struct TrackView: View {
 
             if workouts.isEmpty {
                 Text("No workouts yet")
-                    .font(.system(.subheadline, design: .monospaced))
+                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 13))
+                    .fontWeight(.light)
                     .foregroundStyle(Color("marbleSecondary"))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 40)
@@ -180,17 +181,16 @@ struct TrackView: View {
                             HStack {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(workout.name)
-                                        .font(.system(size: 14, weight: .medium, design: .default))
+                                        .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 14))
+                                        .fontWeight(.light)
                                         .foregroundStyle(Color("marblePrimary"))
 
                                     Text(historyDateString(workout.date))
-                                        .font(.system(size: 12, design: .monospaced))
+                                        .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 11))
+                                        .fontWeight(.light)
                                         .foregroundStyle(Color("marbleSecondary"))
                                 }
                                 Spacer()
-                                Image(systemName: "chevron.right")
-                                    .font(.system(size: 12, weight: .medium))
-                                    .foregroundStyle(Color("marbleTertiary"))
                             }
                             .padding(.horizontal, 14)
                             .padding(.vertical, 12)
@@ -207,15 +207,12 @@ struct TrackView: View {
 
                         if index < workouts.count - 1 {
                             Rectangle()
-                                .fill(Color("marbleTertiary"))
-                                .frame(height: 1)
+                                .fill(Color.white.opacity(0.06))
+                                .frame(height: 0.5)
                                 .padding(.leading, 14)
                         }
                     }
                 }
-                .background(Color("marbleCard"))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
             }
         }
     }
@@ -237,12 +234,12 @@ struct TrackView: View {
                     showingAddLift = true
                 } label: {
                     Image(systemName: "plus")
-                        .font(.system(size: 14, weight: .medium, design: .monospaced))
-                        .foregroundStyle(Color("marblePrimary"))
-                        .frame(width: 32, height: 32)
+                        .font(.system(size: 13, weight: .light))
+                        .foregroundStyle(Color("marbleSecondary"))
+                        .frame(width: 30, height: 30)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(Color("marblePrimary"), lineWidth: 1)
+                            RoundedRectangle(cornerRadius: 4)
+                                .stroke(Color.white.opacity(0.12), lineWidth: 0.5)
                         )
                 }
                 .buttonStyle(.plain)
@@ -250,7 +247,8 @@ struct TrackView: View {
 
             if trackedLifts.isEmpty {
                 Text("Tap + to track your lifts")
-                    .font(.system(.subheadline, design: .monospaced))
+                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 13))
+                    .fontWeight(.light)
                     .foregroundStyle(Color("marbleSecondary"))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 40)
@@ -288,7 +286,8 @@ private struct LiftCardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(exercise.name)
-                .font(.system(size: 14, weight: .medium, design: .default))
+                .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 14))
+                .fontWeight(.light)
                 .foregroundStyle(Color("marblePrimary"))
                 .lineLimit(2)
                 .multilineTextAlignment(.leading)
@@ -296,22 +295,22 @@ private struct LiftCardView: View {
             Spacer(minLength: 4)
 
             Text(metricValue)
-                .font(.system(size: 20, weight: .semibold, design: .monospaced))
+                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 20))
+                .fontWeight(.light)
                 .foregroundStyle(Color("marblePrimary"))
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
 
             Text(metricLabel)
-                .font(.system(size: 11, design: .monospaced))
+                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 10))
+                .fontWeight(.light)
                 .foregroundStyle(Color("marbleSecondary"))
                 .tracking(0.3)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
         .frame(minHeight: 110)
-        .background(Color("marbleCard"))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
+        .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.white.opacity(0.12), lineWidth: 0.5))
     }
 
     private var metricLabel: String {
@@ -377,12 +376,12 @@ private struct AddTrackedLiftSheet: View {
                             .foregroundStyle(Color("marbleSecondary"))
                             .font(.system(size: 14))
                         TextField("Search exercises", text: $searchText)
-                            .font(.system(.body, design: .default))
+                            .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 14))
                             .autocorrectionDisabled()
                     }
                     .padding(12)
                     .background(Color("marbleFieldBackground"))
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
                     .padding(.horizontal, 20)
                     .padding(.top, 8)
                     .padding(.bottom, 20)
@@ -401,10 +400,12 @@ private struct AddTrackedLiftSheet: View {
                                         HStack {
                                             VStack(alignment: .leading, spacing: 2) {
                                                 Text(exercise.name)
-                                                    .font(.system(.body, design: .default))
+                                                    .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 14))
+                                                    .fontWeight(.light)
                                                     .foregroundStyle(Color("marblePrimary"))
                                                 Text(exercise.muscleGroup)
-                                                    .font(.system(.caption, design: .monospaced))
+                                                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 11))
+                                                    .fontWeight(.light)
                                                     .foregroundStyle(Color("marbleSecondary"))
                                             }
                                             Spacer()
@@ -418,22 +419,22 @@ private struct AddTrackedLiftSheet: View {
 
                                     if exercise.id != exercises.last?.id {
                                         Rectangle()
-                                            .fill(Color("marbleTertiary"))
-                                            .frame(height: 1)
+                                            .fill(Color.white.opacity(0.06))
+                                            .frame(height: 0.5)
                                             .padding(.leading, 20)
                                     }
                                 }
                             }
                             .overlay(
                                 Rectangle()
-                                    .frame(height: 1)
-                                    .foregroundStyle(Color("marbleTertiary")),
+                                    .frame(height: 0.5)
+                                    .foregroundStyle(Color.white.opacity(0.06)),
                                 alignment: .top
                             )
                             .overlay(
                                 Rectangle()
-                                    .frame(height: 1)
-                                    .foregroundStyle(Color("marbleTertiary")),
+                                    .frame(height: 0.5)
+                                    .foregroundStyle(Color.white.opacity(0.06)),
                                 alignment: .bottom
                             )
                             .padding(.bottom, 24)
@@ -443,9 +444,14 @@ private struct AddTrackedLiftSheet: View {
                 .padding(.bottom, 40)
             }
             .background(Color("marbleBackground"))
-            .navigationTitle("Track Exercise")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("Track Exercise")
+                        .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 14))
+                        .fontWeight(.light)
+                        .foregroundStyle(Color("marblePrimary"))
+                }
                 ToolbarItem(placement: .cancellationAction) {
                     Button { dismiss() } label: {
                         Image(systemName: "xmark")
@@ -455,7 +461,7 @@ private struct AddTrackedLiftSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Add") { dismiss() }
-                        .font(.system(.body, design: .monospaced))
+                        .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 14))
                         .fontWeight(.medium)
                 }
             }
