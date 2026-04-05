@@ -6,6 +6,7 @@ struct YouView: View {
     @AppStorage("appTheme") private var appTheme: String = "system"
     @AppStorage("weightUnit") private var weightUnit: String = "lbs"
     @AppStorage("defaultRestTimer") private var defaultRestTimer: Int = 90
+    @AppStorage("appIcon") private var appIcon: String = "light"
     @State private var showingClearConfirmation = false
 
     private let restTimerOptions = [30, 60, 90, 120, 180, 300]
@@ -14,6 +15,7 @@ struct YouView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 32) {
+                    appIconSection
                     appearanceSection
                     preferencesSection
                     dataSection
@@ -33,6 +35,54 @@ struct YouView: View {
                 Text("This will delete all workouts, templates, and exercise data. This cannot be undone.")
             }
         }
+    }
+
+    // MARK: - App Icon
+
+    private var appIconSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionHeader(title: "APP ICON")
+
+            HStack(spacing: 12) {
+                iconOption(label: "Light", value: "light", imageName: "icon-preview-light")
+                iconOption(label: "Dark", value: "dark", imageName: "icon-preview-dark")
+            }
+        }
+    }
+
+    private func iconOption(label: String, value: String, imageName: String) -> some View {
+        let isSelected = appIcon == value
+        return Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            appIcon = value
+            let iconName: String? = value == "light" ? nil : "AppIcon-Dark"
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                UIApplication.shared.setAlternateIconName(iconName) { error in
+                    if let error {
+                        print("Icon change error: \(error)")
+                    }
+                }
+            }
+        } label: {
+            VStack(spacing: 8) {
+                Image(imageName)
+                    .resizable()
+                    .frame(width: 60, height: 60)
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14)
+                            .stroke(
+                                isSelected ? Color("marblePrimary") : Color("marblePrimary").opacity(0.12),
+                                lineWidth: isSelected ? 1.5 : 0.5
+                            )
+                    )
+                Text(label)
+                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 11).weight(.light))
+                    .foregroundStyle(isSelected ? Color("marblePrimary") : Color("marbleSecondary"))
+                    .tracking(0.5)
+            }
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Appearance

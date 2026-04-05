@@ -25,6 +25,8 @@ struct TemplateEditorView: View {
     @State private var name: String
     @State private var entries: [ExerciseEntry]
     @State private var showingLibrary = false
+    @State private var draggingEntryID: UUID?
+    @State private var lastSwapOffset: CGFloat = 0
 
     private let existingTemplate: WorkoutTemplate?
 
@@ -54,8 +56,12 @@ struct TemplateEditorView: View {
                         .padding(.top, 20)
                         .padding(.bottom, 24)
 
-                    ForEach($entries) { $entry in
-                        if let currentIndex = entries.firstIndex(where: { $0.id == entry.id }) {
+                    if draggingEntryID != nil {
+                        ForEach(entries) { entry in
+                            reorderRow(entry: entry)
+                        }
+                    } else {
+                        ForEach($entries) { $entry in
                             ExerciseSetTable(
                                 entry: $entry,
                                 onRemove: {
@@ -63,21 +69,20 @@ struct TemplateEditorView: View {
                                         entries.removeAll { $0.id == entry.id }
                                     }
                                 },
-                                onMoveUp: {
+                                showPrevious: false,
+                                dragHandle: true,
+                                onDragChanged: { translation in
                                     withAnimation(.easeInOut(duration: 0.2)) {
-                                        moveExercise(from: currentIndex, direction: .up)
+                                        handleDrag(entryID: entry.id, translation: translation)
                                     }
                                 },
-                                onMoveDown: {
-                                    withAnimation(.easeInOut(duration: 0.2)) {
-                                        moveExercise(from: currentIndex, direction: .down)
+                                onDragEnded: {
+                                    withAnimation(.easeInOut(duration: 0.25)) {
+                                        draggingEntryID = nil
                                     }
-                                },
-                                canMoveUp: currentIndex > 0,
-                                canMoveDown: currentIndex < entries.count - 1,
-                                showPrevious: false
+                                    lastSwapOffset = 0
+                                }
                             )
-
                             if entry.id != entries.last?.id {
                                 exerciseDivider
                             }
@@ -97,19 +102,6 @@ struct TemplateEditorView: View {
             ExerciseLibraryView(selectedExercises: selectedExercises) { exercise in
                 toggleExercise(exercise)
             }
-        }
-    }
-
-    private enum MoveDirection { case up, down }
-
-    private func moveExercise(from index: Int, direction: MoveDirection) {
-        switch direction {
-        case .up where index > 0:
-            entries.swapAt(index, index - 1)
-        case .down where index < entries.count - 1:
-            entries.swapAt(index, index + 1)
-        default:
-            break
         }
     }
 
@@ -176,6 +168,65 @@ struct TemplateEditorView: View {
         .buttonStyle(.plain)
     }
 
+    private func reorderRow(entry: ExerciseEntry) -> some View {
+        HStack {
+            Image(systemName: "line.3.horizontal")
+                .font(.system(size: 12, weight: .light))
+                .foregroundStyle(Color("marbleTertiary"))
+                .padding(.trailing, 6)
+
+            Text(entry.exercise.name)
+                .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 16).weight(.light))
+                .foregroundStyle(Color("marblePrimary"))
+
+            Spacer()
+
+            Text("\(entry.sets.count) sets")
+                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 11).weight(.light))
+                .foregroundStyle(Color("marbleSecondary"))
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 14)
+        .background(draggingEntryID == entry.id ? Color("marblePrimary").opacity(0.06) : Color.clear)
+        .gesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { value in
+                    handleDrag(entryID: entry.id, translation: value.translation.height)
+                }
+                .onEnded { _ in
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        draggingEntryID = nil
+                    }
+                    lastSwapOffset = 0
+                }
+        )
+    }
+
+    private func handleDrag(entryID: UUID, translation: CGFloat) {
+        if draggingEntryID == nil {
+            draggingEntryID = entryID
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        }
+
+        guard let currentIndex = entries.firstIndex(where: { $0.id == entryID }) else { return }
+        let delta = translation - lastSwapOffset
+        let threshold: CGFloat = 50
+
+        if delta > threshold, currentIndex < entries.count - 1 {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            withAnimation(.easeInOut(duration: 0.2)) {
+                entries.move(fromOffsets: IndexSet(integer: currentIndex), toOffset: currentIndex + 2)
+            }
+            lastSwapOffset = translation
+        } else if delta < -threshold, currentIndex > 0 {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            withAnimation(.easeInOut(duration: 0.2)) {
+                entries.move(fromOffsets: IndexSet(integer: currentIndex), toOffset: currentIndex - 1)
+            }
+            lastSwapOffset = translation
+        }
+    }
+
     private func toggleExercise(_ exercise: Exercise) {
         if let index = entries.firstIndex(where: { $0.exercise.id == exercise.id }) {
             entries.remove(at: index)
@@ -212,46 +263,38 @@ struct ExerciseSetTable: View {
     @Environment(\.modelContext) private var modelContext
     @Binding var entry: ExerciseEntry
     var onRemove: (() -> Void)? = nil
-    var onMoveUp: (() -> Void)? = nil
-    var onMoveDown: (() -> Void)? = nil
-    var canMoveUp: Bool = false
-    var canMoveDown: Bool = false
     var showPrevious: Bool = true
     var isWorkoutMode: Bool = false
+    var onSetCompleted: (() -> Void)? = nil
+    var dragHandle: Bool = false
+    var onDragChanged: ((CGFloat) -> Void)? = nil
+    var onDragEnded: (() -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // Exercise name header
             HStack {
+                if dragHandle {
+                    Image(systemName: "line.3.horizontal")
+                        .font(.system(size: 12, weight: .light))
+                        .foregroundStyle(Color("marbleTertiary"))
+                        .padding(.trailing, 6)
+                        .gesture(
+                            DragGesture(minimumDistance: 0)
+                                .onChanged { value in
+                                    onDragChanged?(value.translation.height)
+                                }
+                                .onEnded { _ in
+                                    onDragEnded?()
+                                }
+                        )
+                }
+
                 Text(entry.exercise.name)
                     .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 18).weight(.light))
                     .foregroundStyle(Color("marblePrimary"))
 
                 Spacer()
-
-                if onMoveUp != nil || onMoveDown != nil {
-                    Button {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        onMoveUp?()
-                    } label: {
-                        Image(systemName: "chevron.up")
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundStyle(canMoveUp ? Color("marbleSecondary") : Color("marbleSecondary").opacity(0.3))
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(!canMoveUp)
-
-                    Button {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        onMoveDown?()
-                    } label: {
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundStyle(canMoveDown ? Color("marbleSecondary") : Color("marbleSecondary").opacity(0.3))
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(!canMoveDown)
-                }
 
                 if let onRemove {
                     Button {
@@ -285,7 +328,8 @@ struct ExerciseSetTable: View {
                         reps: $set.reps,
                         isCompleted: $set.isCompleted,
                         previousText: prevText,
-                        showCheckmark: isWorkoutMode
+                        showCheckmark: isWorkoutMode,
+                        onComplete: onSetCompleted
                     )
                     .padding(.horizontal, 20)
                     .padding(.vertical, 6)
@@ -361,6 +405,9 @@ struct SetRowView: View {
     @Binding var isCompleted: Bool
     var previousText: String? = nil
     var showCheckmark: Bool = false
+    var onComplete: (() -> Void)? = nil
+
+    @State private var checkScale: CGFloat = 1.0
 
     var body: some View {
         HStack(spacing: 12) {
@@ -411,13 +458,27 @@ struct SetRowView: View {
             if showCheckmark {
                 Button {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    let wasCompleted = isCompleted
                     withAnimation(.easeInOut(duration: 0.15)) {
                         isCompleted.toggle()
+                    }
+                    if !wasCompleted {
+                        // Scale pulse animation
+                        withAnimation(.spring(response: 0.2, dampingFraction: 0.5)) {
+                            checkScale = 1.3
+                        }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                            withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) {
+                                checkScale = 1.0
+                            }
+                        }
+                        onComplete?()
                     }
                 } label: {
                     Image(systemName: isCompleted ? "checkmark.circle.fill" : "circle")
                         .font(.system(size: 22))
                         .foregroundStyle(isCompleted ? Color("marblePrimary") : Color("marbleTertiary"))
+                        .scaleEffect(checkScale)
                 }
                 .buttonStyle(.plain)
                 .frame(width: 32)
@@ -500,6 +561,7 @@ struct SwipeToDeleteRow<Content: View>: View {
         }
     }
 }
+
 
 #Preview {
     TemplateEditorView()

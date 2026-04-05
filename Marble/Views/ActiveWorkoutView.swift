@@ -16,6 +16,8 @@ struct ActiveWorkoutView: View {
     @State private var showingDiscardAlert = false
     @State private var completedWorkout: Workout?
     @State private var showingSummary = false
+    @State private var draggingEntryID: UUID?
+    @State private var lastSwapOffset: CGFloat = 0
 
     private let sourceTemplate: WorkoutTemplate?
 
@@ -65,8 +67,12 @@ struct ActiveWorkoutView: View {
                         .padding(.horizontal, 20)
                         .padding(.bottom, 24)
 
-                    ForEach($entries) { $entry in
-                        if let currentIndex = entries.firstIndex(where: { $0.id == entry.id }) {
+                    if draggingEntryID != nil {
+                        ForEach(entries) { entry in
+                            reorderRow(entry: entry)
+                        }
+                    } else {
+                        ForEach($entries) { $entry in
                             ExerciseSetTable(
                                 entry: $entry,
                                 onRemove: {
@@ -74,21 +80,23 @@ struct ActiveWorkoutView: View {
                                         entries.removeAll { $0.id == entry.id }
                                     }
                                 },
-                                onMoveUp: {
+                                isWorkoutMode: true,
+                                onSetCompleted: {
+                                    startRestTimerIfNeeded()
+                                },
+                                dragHandle: true,
+                                onDragChanged: { translation in
                                     withAnimation(.easeInOut(duration: 0.2)) {
-                                        moveExercise(from: currentIndex, direction: .up)
+                                        handleDrag(entryID: entry.id, translation: translation)
                                     }
                                 },
-                                onMoveDown: {
-                                    withAnimation(.easeInOut(duration: 0.2)) {
-                                        moveExercise(from: currentIndex, direction: .down)
+                                onDragEnded: {
+                                    withAnimation(.easeInOut(duration: 0.25)) {
+                                        draggingEntryID = nil
                                     }
-                                },
-                                canMoveUp: currentIndex > 0,
-                                canMoveDown: currentIndex < entries.count - 1,
-                                isWorkoutMode: true
+                                    lastSwapOffset = 0
+                                }
                             )
-
                             if entry.id != entries.last?.id {
                                 exerciseDivider
                             }
@@ -235,17 +243,70 @@ struct ActiveWorkoutView: View {
         }
     }
 
-    private enum MoveDirection { case up, down }
+    private func reorderRow(entry: ExerciseEntry) -> some View {
+        HStack {
+            Image(systemName: "line.3.horizontal")
+                .font(.system(size: 12, weight: .light))
+                .foregroundStyle(Color("marbleTertiary"))
+                .padding(.trailing, 6)
 
-    private func moveExercise(from index: Int, direction: MoveDirection) {
-        switch direction {
-        case .up where index > 0:
-            entries.swapAt(index, index - 1)
-        case .down where index < entries.count - 1:
-            entries.swapAt(index, index + 1)
-        default:
-            break
+            Text(entry.exercise.name)
+                .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 16).weight(.light))
+                .foregroundStyle(Color("marblePrimary"))
+
+            Spacer()
+
+            Text("\(entry.sets.count) sets")
+                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 11).weight(.light))
+                .foregroundStyle(Color("marbleSecondary"))
         }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 14)
+        .background(draggingEntryID == entry.id ? Color("marblePrimary").opacity(0.06) : Color.clear)
+        .gesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { value in
+                    handleDrag(entryID: entry.id, translation: value.translation.height)
+                }
+                .onEnded { _ in
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        draggingEntryID = nil
+                    }
+                    lastSwapOffset = 0
+                }
+        )
+    }
+
+    private func handleDrag(entryID: UUID, translation: CGFloat) {
+        if draggingEntryID == nil {
+            draggingEntryID = entryID
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        }
+
+        guard let currentIndex = entries.firstIndex(where: { $0.id == entryID }) else { return }
+        let delta = translation - lastSwapOffset
+        let threshold: CGFloat = 50
+
+        if delta > threshold, currentIndex < entries.count - 1 {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            withAnimation(.easeInOut(duration: 0.2)) {
+                entries.move(fromOffsets: IndexSet(integer: currentIndex), toOffset: currentIndex + 2)
+            }
+            lastSwapOffset = translation
+        } else if delta < -threshold, currentIndex > 0 {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            withAnimation(.easeInOut(duration: 0.2)) {
+                entries.move(fromOffsets: IndexSet(integer: currentIndex), toOffset: currentIndex - 1)
+            }
+            lastSwapOffset = translation
+        }
+    }
+
+    @AppStorage("defaultRestTimer") private var defaultRestTimer: Int = 90
+
+    private func startRestTimerIfNeeded() {
+        guard !restTimer.isActive else { return }
+        restTimer.start(duration: defaultRestTimer)
     }
 
     private func finishWorkout() {
