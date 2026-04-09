@@ -12,26 +12,27 @@ struct TrainView: View {
     @State private var editingTemplate: WorkoutTemplate?
     @State private var workoutTemplate: WorkoutTemplate?
 
-    // Daily quotes
-    private let quotes: [(text: String, author: String)] = [
-        ("It is a shame for a man to grow old without seeing the beauty and strength of which his body is capable.", "Socrates"),
-        ("What is happiness? The feeling that power is growing, that resistance is overcome.", "Nietzsche"),
-        ("The fight is won or lost far away from witnesses — behind the lines, in the gym, and out there on the road, long before I dance under those lights.", "Muhammad Ali"),
-        ("I have never changed my clothes. I have always worn a uniform because what I did was change my own body instead; that is much more hardcore than changing an outfit.", "Rick Owens"),
-        ("Man cannot remake himself without suffering, for he is both the marble and the sculptor.", "Alexis Carrel"),
-        ("Working out is modern couture. No outfit is going to make you look or feel as good as having a fit body.", "Rick Owens"),
-        ("I don't count my sit-ups. I only start counting when it starts hurting, because they're the only ones that count.", "Muhammad Ali"),
-        ("The world breaks everyone, and afterward, many are strong at the broken places.", "Hemingway"),
-        ("Courage is grace under pressure.", "Hemingway"),
-        ("Muscles have gradually become something akin to classical Greek. To revive the dead language, the discipline of the steel was required.", "Mishima"),
-        ("My humanity is a constant self-overcoming.", "Nietzsche"),
-        ("You have passed through life without an opponent — no one can ever know what you are capable of, not even you.", "Seneca"),
-        ("The purpose of life is to be defeated by greater and greater things.", "Rilke"),
-        ("Let everything happen to you: beauty and terror. Just keep going. No feeling is final.", "Rilke"),
-        ("Do not pray for an easy life, pray for the strength to endure a difficult one.", "Bruce Lee"),
+    // Daily quotes — terse, classical, on-thesis
+    private let quotes: [String] = [
+        "It is a shame for a man to grow old without seeing the beauty and strength of which his body is capable.",
+        "Man cannot remake himself without suffering, for he is both the marble and the sculptor.",
+        "The world breaks everyone, and afterward, many are strong at the broken places.",
+        "Courage is grace under pressure.",
+        "Muscles have gradually become something akin to classical Greek. To revive the dead language, the discipline of the steel was required.",
+        "My humanity is a constant self-overcoming.",
+        "You have passed through life without an opponent — no one can ever know what you are capable of, not even you.",
+        "The purpose of life is to be defeated by greater and greater things.",
+        "Do not pray for an easy life, pray for the strength to endure a difficult one.",
+        "The impediment to action advances action. What stands in the way becomes the way.",
+        "Difficulties strengthen the mind, as labor does the body.",
+        "Character is destiny.",
+        "No man is free who is not master of himself.",
+        "Become who you are.",
+        "You have power over your mind — not outside events. Realize this, and you will find strength.",
+        "Perfect purity is possible if you turn your life into a line of poetry written with a splash of blood.",
     ]
 
-    private var dailyQuote: (text: String, author: String) {
+    private var dailyQuote: String {
         let day = Calendar.current.ordinality(of: .day, in: .year, for: Date()) ?? 0
         return quotes[day % quotes.count]
     }
@@ -118,7 +119,7 @@ struct TrainView: View {
             // Quote — vertically centered in fixed zone
             VStack {
                 Spacer()
-                Text(dailyQuote.text)
+                Text(dailyQuote)
                     .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 22).weight(.light))
                     .foregroundStyle(Color("marblePrimary"))
                     .lineSpacing(4)
