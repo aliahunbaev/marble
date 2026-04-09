@@ -3,6 +3,7 @@ import SwiftData
 
 struct TrainView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.colorScheme) private var colorScheme
     @Query private var templates: [WorkoutTemplate]
     @Query(sort: \Workout.date, order: .reverse) private var workouts: [Workout]
 
@@ -46,14 +47,15 @@ struct TrainView: View {
 
                 RadialGradient(
                     colors: [
-                        Color("marbleTertiary").opacity(0.5),
-                        Color("marbleBackground")
+                        Color.white.opacity(colorScheme == .dark ? 0.12 : 0.7),
+                        Color("marbleBackground").opacity(0)
                     ],
                     center: .top,
                     startRadius: 0,
                     endRadius: 600
                 )
                 .ignoresSafeArea()
+                .blendMode(colorScheme == .dark ? .plusLighter : .normal)
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
