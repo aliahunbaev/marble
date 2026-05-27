@@ -2,12 +2,18 @@ import SwiftUI
 import SwiftData
 
 struct YouView: View {
+    @EnvironmentObject private var auth: AuthenticationService
     @Environment(\.modelContext) private var modelContext
     @AppStorage("appTheme") private var appTheme: String = "system"
     @AppStorage("weightUnit") private var weightUnit: String = "lbs"
     @AppStorage("defaultRestTimer") private var defaultRestTimer: Int = 90
     @AppStorage("appIcon") private var appIcon: String = "light"
     @State private var showingClearConfirmation = false
+    @State private var showingSignIn = false
+    @State private var showingSignOutConfirmation = false
+    @State private var showingDeleteConfirmation = false
+    @State private var isEditingName = false
+    @State private var editedName = ""
 
     private let restTimerOptions = [30, 60, 90, 120, 180, 300]
 
@@ -15,6 +21,7 @@ struct YouView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 32) {
+                    profileSection
                     appIconSection
                     appearanceSection
                     preferencesSection
@@ -33,6 +40,139 @@ struct YouView: View {
                 }
             } message: {
                 Text("This will delete all workouts, templates, and exercise data. This cannot be undone.")
+            }
+        }
+    }
+
+    // MARK: - Profile
+
+    private var profileSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionHeader(title: "PROFILE")
+
+            if auth.isAuthenticated, let profile = auth.userProfile {
+                VStack(spacing: 0) {
+                    // Name
+                    HStack {
+                        if isEditingName {
+                            TextField("Name", text: $editedName)
+                                .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 14).weight(.light))
+                                .foregroundStyle(Color("marblePrimary"))
+                                .onSubmit {
+                                    Task {
+                                        await auth.updateName(editedName)
+                                        isEditingName = false
+                                    }
+                                }
+                        } else {
+                            Text(profile.name)
+                                .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 14).weight(.light))
+                                .foregroundStyle(Color("marblePrimary"))
+                        }
+                        Spacer()
+                        Button(isEditingName ? "Save" : "Edit") {
+                            if isEditingName {
+                                Task {
+                                    await auth.updateName(editedName)
+                                    isEditingName = false
+                                }
+                            } else {
+                                editedName = profile.name
+                                isEditingName = true
+                            }
+                        }
+                        .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 11).weight(.light))
+                        .foregroundStyle(Color("marbleSecondary"))
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
+
+                    if let email = profile.email {
+                        Rectangle()
+                            .fill(Color("marblePrimary").opacity(0.06))
+                            .frame(height: 0.5)
+                            .padding(.leading, 14)
+
+                        HStack {
+                            Text(email)
+                                .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 14).weight(.light))
+                                .foregroundStyle(Color("marbleSecondary"))
+                            Spacer()
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 12)
+                    }
+                }
+
+                // Sign Out
+                Button {
+                    showingSignOutConfirmation = true
+                } label: {
+                    Text("Sign Out")
+                        .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 13).weight(.light))
+                        .foregroundStyle(Color("marblePrimary"))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 4)
+                                .stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5)
+                        )
+                }
+                .buttonStyle(.plain)
+                .confirmationDialog("Sign Out", isPresented: $showingSignOutConfirmation) {
+                    Button("Sign Out") { auth.signOut() }
+                    Button("Cancel", role: .cancel) { }
+                }
+
+                // Delete Account
+                Button {
+                    showingDeleteConfirmation = true
+                } label: {
+                    Text("Delete Account")
+                        .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 13).weight(.light))
+                        .foregroundStyle(.red.opacity(0.7))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 4)
+                                .stroke(Color.red.opacity(0.2), lineWidth: 0.5)
+                        )
+                }
+                .buttonStyle(.plain)
+                .alert("Delete Account", isPresented: $showingDeleteConfirmation) {
+                    Button("Cancel", role: .cancel) { }
+                    Button("Delete", role: .destructive) {
+                        Task { await auth.deleteAccount() }
+                    }
+                } message: {
+                    Text("This will permanently delete your account and profile. Your local workout data will remain on this device.")
+                }
+            } else {
+                Button {
+                    showingSignIn = true
+                } label: {
+                    HStack {
+                        Image(systemName: "person.crop.circle")
+                            .font(.system(size: 16, weight: .light))
+                        Text("Sign in to save your profile")
+                            .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 14).weight(.light))
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 12, weight: .light))
+                    }
+                    .foregroundStyle(Color("marblePrimary"))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 14)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5)
+                        )
+                }
+                .buttonStyle(.plain)
+                .sheet(isPresented: $showingSignIn) {
+                    SignInView()
+                        .environmentObject(auth)
+                }
             }
         }
     }

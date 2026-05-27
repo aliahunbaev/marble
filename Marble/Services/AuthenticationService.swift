@@ -1,0 +1,207 @@
+import SwiftUI
+import FirebaseAuth
+import FirebaseFirestore
+import AuthenticationServices
+import CryptoKit
+
+@MainActor
+final class AuthenticationService: ObservableObject {
+    @Published var user: FirebaseAuth.User?
+    @Published var userProfile: UserProfile?
+    @Published var isLoading = false
+    @Published var error: String?
+
+    var isAuthenticated: Bool { user != nil }
+
+    private var authStateListener: AuthStateDidChangeListenerHandle?
+    private var currentNonce: String?
+    private let db = Firestore.firestore()
+
+    init() {
+        authStateListener = Auth.auth().addStateDidChangeListener { [weak self] _, user in
+            Task { @MainActor in
+                self?.user = user
+                if let user {
+                    await self?.fetchProfile(for: user.uid)
+                } else {
+                    self?.userProfile = nil
+                }
+            }
+        }
+    }
+
+    deinit {
+        if let listener = authStateListener {
+            Auth.auth().removeStateDidChangeListener(listener)
+        }
+    }
+
+    // MARK: - Sign in with Apple
+
+    func handleSignInWithApple(_ result: Result<ASAuthorization, Error>) async {
+        switch result {
+        case .success(let authorization):
+            guard let appleCredential = authorization.credential as? ASAuthorizationAppleIDCredential,
+                  let nonce = currentNonce,
+                  let appleIDToken = appleCredential.identityToken,
+                  let idTokenString = String(data: appleIDToken, encoding: .utf8) else {
+                self.error = "Failed to get Apple credentials"
+                return
+            }
+
+            let credential = OAuthProvider.appleCredential(
+                withIDToken: idTokenString,
+                rawNonce: nonce,
+                fullName: appleCredential.fullName
+            )
+
+            await signIn(with: credential, fullName: appleCredential.fullName)
+
+        case .failure(let error):
+            if (error as NSError).code != ASAuthorizationError.canceled.rawValue {
+                self.error = error.localizedDescription
+            }
+        }
+    }
+
+    func prepareSignInWithApple() -> String {
+        let nonce = randomNonceString()
+        currentNonce = nonce
+        return sha256(nonce)
+    }
+
+    // MARK: - Email Auth
+
+    func signIn(email: String, password: String) async {
+        isLoading = true
+        error = nil
+        do {
+            try await Auth.auth().signIn(withEmail: email, password: password)
+        } catch {
+            self.error = error.localizedDescription
+        }
+        isLoading = false
+    }
+
+    func createAccount(email: String, password: String, name: String) async {
+        isLoading = true
+        error = nil
+        do {
+            let result = try await Auth.auth().createUser(withEmail: email, password: password)
+            let profile = UserProfile(
+                id: result.user.uid,
+                name: name,
+                email: email,
+                joinDate: Date()
+            )
+            try await saveProfile(profile)
+        } catch {
+            self.error = error.localizedDescription
+        }
+        isLoading = false
+    }
+
+    // MARK: - Sign Out
+
+    func signOut() {
+        do {
+            try Auth.auth().signOut()
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+
+    // MARK: - Delete Account
+
+    func deleteAccount() async {
+        guard let user else { return }
+        isLoading = true
+        do {
+            try await db.collection("users").document(user.uid).delete()
+            try await user.delete()
+        } catch {
+            self.error = error.localizedDescription
+        }
+        isLoading = false
+    }
+
+    // MARK: - Profile
+
+    private func fetchProfile(for uid: String) async {
+        do {
+            let doc = try await db.collection("users").document(uid).getDocument()
+            if doc.exists {
+                self.userProfile = try doc.data(as: UserProfile.self)
+            } else if let user {
+                // First sign-in — create profile
+                let profile = UserProfile(
+                    id: uid,
+                    name: user.displayName ?? "Athlete",
+                    email: user.email,
+                    joinDate: Date()
+                )
+                try await saveProfile(profile)
+            }
+        } catch {
+            print("Profile fetch error: \(error)")
+        }
+    }
+
+    private func saveProfile(_ profile: UserProfile) async throws {
+        try db.collection("users").document(profile.id).setData(from: profile)
+        self.userProfile = profile
+    }
+
+    func updateName(_ name: String) async {
+        guard var profile = userProfile else { return }
+        profile.name = name
+        do {
+            try await saveProfile(profile)
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+
+    // MARK: - Private
+
+    private func signIn(with credential: AuthCredential, fullName: PersonNameComponents? = nil) async {
+        isLoading = true
+        error = nil
+        do {
+            let result = try await Auth.auth().signIn(with: credential)
+
+            // On first Apple sign-in, create profile with name
+            let doc = try await db.collection("users").document(result.user.uid).getDocument()
+            if !doc.exists {
+                let name = [fullName?.givenName, fullName?.familyName]
+                    .compactMap { $0 }
+                    .joined(separator: " ")
+                let profile = UserProfile(
+                    id: result.user.uid,
+                    name: name.isEmpty ? "Athlete" : name,
+                    email: result.user.email,
+                    joinDate: Date()
+                )
+                try await saveProfile(profile)
+            }
+        } catch {
+            self.error = error.localizedDescription
+        }
+        isLoading = false
+    }
+
+    private func randomNonceString(length: Int = 32) -> String {
+        precondition(length > 0)
+        var randomBytes = [UInt8](repeating: 0, count: length)
+        let errorCode = SecRandomCopyBytes(kSecRandomDefault, randomBytes.count, &randomBytes)
+        precondition(errorCode == errSecSuccess)
+        let charset: [Character] = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._")
+        return String(randomBytes.map { charset[Int($0) % charset.count] })
+    }
+
+    private func sha256(_ input: String) -> String {
+        let inputData = Data(input.utf8)
+        let hashedData = SHA256.hash(data: inputData)
+        return hashedData.compactMap { String(format: "%02x", $0) }.joined()
+    }
+}

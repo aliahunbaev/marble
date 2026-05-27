@@ -47,7 +47,9 @@ struct TrainView: View {
 
                 RadialGradient(
                     colors: [
-                        Color.white.opacity(colorScheme == .dark ? 0.12 : 0.7),
+                        colorScheme == .dark
+                            ? Color("marbleTertiary").opacity(0.5)
+                            : Color.white.opacity(0.6),
                         Color("marbleBackground").opacity(0)
                     ],
                     center: .top,
@@ -55,7 +57,6 @@ struct TrainView: View {
                     endRadius: 600
                 )
                 .ignoresSafeArea()
-                .blendMode(colorScheme == .dark ? .plusLighter : .normal)
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
