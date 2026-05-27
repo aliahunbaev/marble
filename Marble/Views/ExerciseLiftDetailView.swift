@@ -48,8 +48,10 @@ struct ExerciseLiftDetailView: View {
 
                 // Remove button
                 Button(role: .destructive) {
+                    let cloudID = trackedLift.cloudID
                     modelContext.delete(trackedLift)
                     try? modelContext.save()
+                    CloudSyncService.shared.deleteTrackedLift(cloudID: cloudID)
                     dismiss()
                 } label: {
                     Text("Remove from Tracking")
@@ -73,6 +75,10 @@ struct ExerciseLiftDetailView: View {
             manualEntryAlertContent
         } message: {
             Text("Enter value manually")
+        }
+        .onDisappear {
+            // Push any mutations made on this screen
+            CloudSyncService.shared.uploadTrackedLift(trackedLift)
         }
     }
 

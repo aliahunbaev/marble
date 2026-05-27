@@ -248,9 +248,13 @@ struct TemplateEditorView: View {
         if let existing = existingTemplate {
             existing.name = trimmedName
             existing.exercises = exercises
+            try? modelContext.save()
+            CloudSyncService.shared.uploadTemplate(existing)
         } else {
             let template = WorkoutTemplate(name: trimmedName, exercises: exercises)
             modelContext.insert(template)
+            try? modelContext.save()
+            CloudSyncService.shared.uploadTemplate(template)
         }
 
         dismiss()

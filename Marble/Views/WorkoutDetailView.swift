@@ -69,8 +69,10 @@ struct WorkoutDetailView: View {
         .alert("Delete this workout? This cannot be undone.", isPresented: $showingDeleteConfirmation) {
             Button("Cancel", role: .cancel) { }
             Button("Delete", role: .destructive) {
+                let cloudID = workout.cloudID
                 modelContext.delete(workout)
                 try? modelContext.save()
+                CloudSyncService.shared.deleteWorkout(cloudID: cloudID)
                 dismiss()
             }
         }

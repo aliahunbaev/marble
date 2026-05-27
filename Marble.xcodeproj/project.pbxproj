@@ -13,6 +13,7 @@
 		AA000030 /* UserProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000030 /* UserProfile.swift */; };
 		AA000031 /* AuthenticationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000031 /* AuthenticationService.swift */; };
 		AA000032 /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000032 /* SignInView.swift */; };
+		AA000033 /* CloudSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000033 /* CloudSyncService.swift */; };
 		AA000001 /* MarbleApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000001 /* MarbleApp.swift */; };
 		AA000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000002 /* ContentView.swift */; };
 		AA000003 /* Exercise.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000003 /* Exercise.swift */; };
@@ -46,6 +47,7 @@
 		AB000030 /* UserProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserProfile.swift; sourceTree = "<group>"; };
 		AB000031 /* AuthenticationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthenticationService.swift; sourceTree = "<group>"; };
 		AB000032 /* SignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInView.swift; sourceTree = "<group>"; };
+		AB000033 /* CloudSyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudSyncService.swift; sourceTree = "<group>"; };
 		AB000001 /* MarbleApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarbleApp.swift; sourceTree = "<group>"; };
 		AB000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		AB000003 /* Exercise.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Exercise.swift; sourceTree = "<group>"; };
@@ -153,6 +155,7 @@
 			isa = PBXGroup;
 			children = (
 				AB000031 /* AuthenticationService.swift */,
+				AB000033 /* CloudSyncService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -263,6 +266,7 @@
 				AA000030 /* UserProfile.swift in Sources */,
 				AA000031 /* AuthenticationService.swift in Sources */,
 				AA000032 /* SignInView.swift in Sources */,
+				AA000033 /* CloudSyncService.swift in Sources */,
 				AA000001 /* MarbleApp.swift in Sources */,
 				AA000002 /* ContentView.swift in Sources */,
 				AA000003 /* Exercise.swift in Sources */,

@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 import FirebaseAuth
 import FirebaseFirestore
 import AuthenticationServices
@@ -12,10 +13,12 @@ final class AuthenticationService: ObservableObject {
     @Published var error: String?
 
     var isAuthenticated: Bool { user != nil }
+    var modelContext: ModelContext?
 
     private var authStateListener: AuthStateDidChangeListenerHandle?
     private var currentNonce: String?
     private let db = Firestore.firestore()
+    private var didSyncForCurrentSession = false
 
     init() {
         authStateListener = Auth.auth().addStateDidChangeListener { [weak self] _, user in
@@ -23,11 +26,22 @@ final class AuthenticationService: ObservableObject {
                 self?.user = user
                 if let user {
                     await self?.fetchProfile(for: user.uid)
+                    await self?.performInitialSync()
                 } else {
                     self?.userProfile = nil
+                    self?.didSyncForCurrentSession = false
                 }
             }
         }
+    }
+
+    private func performInitialSync() async {
+        guard !didSyncForCurrentSession, let context = modelContext else { return }
+        didSyncForCurrentSession = true
+        // Pull cloud data into local
+        await CloudSyncService.shared.restoreFromCloud(into: context)
+        // Push any local-only data that existed before sign-in
+        CloudSyncService.shared.pushAllLocalToCloud(from: context)
     }
 
     deinit {
@@ -117,6 +131,7 @@ final class AuthenticationService: ObservableObject {
         guard let user else { return }
         isLoading = true
         do {
+            await CloudSyncService.shared.clearAllCloudData()
             try await db.collection("users").document(user.uid).delete()
             try await user.delete()
         } catch {

@@ -395,6 +395,7 @@ struct YouView: View {
         } catch {
             // Silently handle
         }
+        Task { await CloudSyncService.shared.clearAllCloudData() }
     }
 }
 

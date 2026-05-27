@@ -344,6 +344,7 @@ struct ActiveWorkoutView: View {
         )
         modelContext.insert(workout)
         try? modelContext.save()
+        CloudSyncService.shared.uploadWorkout(workout)
 
         completedWorkout = workout
         withAnimation {

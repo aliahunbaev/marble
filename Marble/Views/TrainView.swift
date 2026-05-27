@@ -198,11 +198,16 @@ struct TrainView: View {
                                     exercises: template.exercises
                                 )
                                 modelContext.insert(copy)
+                                try? modelContext.save()
+                                CloudSyncService.shared.uploadTemplate(copy)
                             } label: {
                                 Label("Duplicate", systemImage: "doc.on.doc")
                             }
                             Button(role: .destructive) {
+                                let cloudID = template.cloudID
                                 modelContext.delete(template)
+                                try? modelContext.save()
+                                CloudSyncService.shared.deleteTemplate(cloudID: cloudID)
                             } label: {
                                 Label("Delete", systemImage: "trash")
                             }

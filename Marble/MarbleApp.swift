@@ -30,6 +30,9 @@ struct MarbleApp: App {
         ]) { result in
             if case .success(let container) = result {
                 ExerciseSeed.seedIfNeeded(context: container.mainContext)
+                Task { @MainActor in
+                    auth.modelContext = container.mainContext
+                }
             }
         }
     }

@@ -40,8 +40,10 @@ struct TrackView: View {
                 }
                 Button("Delete", role: .destructive) {
                     if let workout = workoutToDelete {
+                        let cloudID = workout.cloudID
                         modelContext.delete(workout)
                         try? modelContext.save()
+                        CloudSyncService.shared.deleteWorkout(cloudID: cloudID)
                         workoutToDelete = nil
                     }
                 }
@@ -183,8 +185,10 @@ struct TrackView: View {
                             .buttonStyle(.plain)
                             .contextMenu {
                                 Button(role: .destructive) {
+                                    let cloudID = lift.cloudID
                                     modelContext.delete(lift)
                                     try? modelContext.save()
+                                    CloudSyncService.shared.deleteTrackedLift(cloudID: cloudID)
                                 } label: {
                                     Label("Remove", systemImage: "trash")
                                 }
@@ -535,12 +539,16 @@ private struct AddTrackedLiftSheet: View {
 
     private func toggleTracked(_ exercise: Exercise) {
         if let existing = trackedLifts.first(where: { $0.exercise?.persistentModelID == exercise.persistentModelID }) {
+            let cloudID = existing.cloudID
             modelContext.delete(existing)
+            try? modelContext.save()
+            CloudSyncService.shared.deleteTrackedLift(cloudID: cloudID)
         } else {
             let lift = TrackedLift(exercise: exercise, metricType: "bestWeight", displayOrder: trackedLifts.count)
             modelContext.insert(lift)
+            try? modelContext.save()
+            CloudSyncService.shared.uploadTrackedLift(lift)
         }
-        try? modelContext.save()
     }
 }
 
