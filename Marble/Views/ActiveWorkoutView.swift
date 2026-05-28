@@ -41,7 +41,10 @@ struct ActiveWorkoutView: View {
 
     var body: some View {
         if showingSummary, let workout = completedWorkout {
-            workoutSummaryView(workout: workout)
+            ClosingRitualView(workout: workout)
+                .onDisappear {
+                    dismiss()
+                }
         } else {
             workoutContentView
         }

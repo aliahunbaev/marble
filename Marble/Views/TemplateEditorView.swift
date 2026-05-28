@@ -433,30 +433,30 @@ struct SetRowView: View {
             }
 
             // Weight
-            TextField("—", text: $weight)
-                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 13).weight(.light))
-                .multilineTextAlignment(.center)
-                .keyboardType(.decimalPad)
-                .frame(width: 72, height: 32)
-                .background(
-                    isCompleted && showCheckmark
-                        ? Color.clear
-                        : Color("marbleFieldBackground")
-                )
-                .cornerRadius(4)
+            VStack(spacing: 2) {
+                TextField("—", text: $weight)
+                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 16).weight(.light))
+                    .foregroundStyle(weight.isEmpty ? Color("marbleSecondary").opacity(0.4) : Color("marblePrimary"))
+                    .multilineTextAlignment(.center)
+                    .keyboardType(.decimalPad)
+                    .frame(width: 72, height: 28)
+                Rectangle()
+                    .fill(Color("marblePrimary").opacity(weight.isEmpty ? 0.12 : 0.25))
+                    .frame(width: 56, height: 0.5)
+            }
 
             // Reps
-            TextField("—", text: $reps)
-                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 13).weight(.light))
-                .multilineTextAlignment(.center)
-                .keyboardType(.numberPad)
-                .frame(width: 72, height: 32)
-                .background(
-                    isCompleted && showCheckmark
-                        ? Color.clear
-                        : Color("marbleFieldBackground")
-                )
-                .cornerRadius(4)
+            VStack(spacing: 2) {
+                TextField("—", text: $reps)
+                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 16).weight(.light))
+                    .foregroundStyle(reps.isEmpty ? Color("marbleSecondary").opacity(0.4) : Color("marblePrimary"))
+                    .multilineTextAlignment(.center)
+                    .keyboardType(.numberPad)
+                    .frame(width: 72, height: 28)
+                Rectangle()
+                    .fill(Color("marblePrimary").opacity(reps.isEmpty ? 0.12 : 0.25))
+                    .frame(width: 56, height: 0.5)
+            }
 
             // Checkmark button
             if showCheckmark {

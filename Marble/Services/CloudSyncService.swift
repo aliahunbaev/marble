@@ -90,7 +90,7 @@ final class CloudSyncService {
             for doc in workoutSnap.documents {
                 guard let dto = try? doc.data(as: WorkoutDTO.self),
                       !existingWorkoutIDs.contains(dto.cloudID) else { continue }
-                let workout = Workout(name: dto.name, date: dto.date, duration: dto.duration)
+                let workout = Workout(name: dto.name, date: dto.date, duration: dto.duration, notes: dto.notes)
                 workout.cloudID = dto.cloudID
                 workout.exerciseLogs = dto.exerciseLogs.map { logDTO in
                     let log = ExerciseLog(exercise: exerciseByName[logDTO.exerciseName])
@@ -184,6 +184,7 @@ struct WorkoutDTO: Codable {
     var name: String
     var date: Date
     var duration: TimeInterval
+    var notes: String?
     var exerciseLogs: [ExerciseLogDTO]
 
     init(from workout: Workout) {
@@ -191,6 +192,7 @@ struct WorkoutDTO: Codable {
         self.name = workout.name
         self.date = workout.date
         self.duration = workout.duration
+        self.notes = workout.notes
         self.exerciseLogs = workout.exerciseLogs.map { ExerciseLogDTO(from: $0) }
     }
 }

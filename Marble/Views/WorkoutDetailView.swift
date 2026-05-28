@@ -31,6 +31,16 @@ struct WorkoutDetailView: View {
                 .padding(.top, 20)
                 .padding(.bottom, 28)
 
+                // Note (if exists)
+                if let note = workout.notes, !note.isEmpty {
+                    Text(note)
+                        .font(.custom("ABCFavoritVariable-Trial", size: 16).weight(.light))
+                        .foregroundStyle(Color("marblePrimary"))
+                        .lineSpacing(4)
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 28)
+                }
+
                 // Exercise logs
                 ForEach(Array(workout.exerciseLogs.enumerated()), id: \.element.id) { index, log in
                     exerciseSection(log: log)
