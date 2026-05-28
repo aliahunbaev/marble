@@ -3,6 +3,7 @@ import SwiftUI
 struct ContentView: View {
     @State private var selectedTab = 1
     @AppStorage("appTheme") private var appTheme: String = "system"
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
 
     private let tabs = ["TRACK", "TRAIN", "YOU"]
 
@@ -15,6 +16,19 @@ struct ContentView: View {
     }
 
     var body: some View {
+        Group {
+            if hasCompletedOnboarding {
+                mainAppView
+            } else {
+                NavigationStack {
+                    OnboardingFlow()
+                }
+            }
+        }
+        .preferredColorScheme(colorScheme)
+    }
+
+    private var mainAppView: some View {
         VStack(spacing: 0) {
             // Content
             Group {
@@ -60,7 +74,6 @@ struct ContentView: View {
             .background(Color("marbleBackground"))
         }
         .ignoresSafeArea(.keyboard)
-        .preferredColorScheme(colorScheme)
     }
 }
 
