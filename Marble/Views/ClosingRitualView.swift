@@ -15,73 +15,17 @@ struct ClosingRitualView: View {
     @State private var showingCamera = false
     @State private var showingLibrary = false
     @State private var libraryItem: PhotosPickerItem?
+    @State private var isRecorded: Bool = false
     @FocusState private var noteFocused: Bool
 
     var body: some View {
         ZStack {
             Color("marbleBackground").ignoresSafeArea()
 
-            VStack(spacing: 0) {
-                // Top bar with close
-                HStack {
-                    Spacer()
-                    Button {
-                        save(skipping: true)
-                    } label: {
-                        Text("Skip")
-                            .font(.custom("ABCFavoritVariable-Trial", size: 14).weight(.light))
-                            .foregroundStyle(Color("marbleSecondary"))
-                    }
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 12)
-
-                ScrollView {
-                    VStack(spacing: 32) {
-                        // Title
-                        VStack(spacing: 12) {
-                            Text("HOW DID IT FEEL?")
-                                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 11).weight(.medium))
-                                .tracking(2)
-                                .foregroundStyle(Color("marbleSecondary"))
-
-                            Text(formattedDuration)
-                                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 13).weight(.light))
-                                .tracking(1)
-                                .foregroundStyle(Color("marbleSecondary").opacity(0.6))
-                        }
-                        .padding(.top, 32)
-
-                        // Photo zone
-                        photoZone
-                            .padding(.horizontal, 20)
-
-                        // Note zone
-                        noteZone
-                            .padding(.horizontal, 20)
-                    }
-                    .padding(.bottom, 40)
-                }
-
-                Spacer(minLength: 0)
-
-                // Save button
-                Button {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    save(skipping: false)
-                } label: {
-                    Text("SAVE")
-                        .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 12).weight(.medium))
-                        .tracking(2)
-                        .foregroundStyle(Color("marbleBackground"))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(Color("marblePrimary"))
-                        .clipShape(Capsule())
-                }
-                .buttonStyle(.plain)
-                .padding(.horizontal, 20)
-                .padding(.bottom, 32)
+            if isRecorded {
+                recordedView
+            } else {
+                ritualView
             }
         }
         .sheet(isPresented: $showingCamera) {
@@ -104,6 +48,122 @@ struct ClosingRitualView: View {
         }
         .onTapGesture {
             noteFocused = false
+        }
+    }
+
+    // MARK: - Ritual (photo + note)
+
+    private var ritualView: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Spacer()
+                Button {
+                    save(skipping: true)
+                } label: {
+                    Text("Skip")
+                        .font(.custom("ABCFavoritVariable-Trial", size: 14).weight(.light))
+                        .foregroundStyle(Color("marbleSecondary"))
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 12)
+
+            ScrollView {
+                VStack(spacing: 28) {
+                    Text(formattedDuration)
+                        .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 12).weight(.light))
+                        .tracking(2)
+                        .foregroundStyle(Color("marbleSecondary"))
+                        .padding(.top, 24)
+
+                    photoZone
+                        .padding(.horizontal, 20)
+
+                    noteZone
+                        .padding(.horizontal, 20)
+                }
+                .padding(.bottom, 40)
+            }
+
+            Spacer(minLength: 0)
+
+            Button {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                save(skipping: false)
+            } label: {
+                Text("SAVE")
+                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 12).weight(.medium))
+                    .tracking(2)
+                    .foregroundStyle(Color("marbleBackground"))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(Color("marblePrimary"))
+                    .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 20)
+            .padding(.bottom, 32)
+        }
+    }
+
+    // MARK: - Recorded (final closing screen)
+
+    @State private var recordedOpacity: Double = 0
+
+    private var recordedView: some View {
+        VStack(spacing: 0) {
+            Spacer()
+
+            VStack(spacing: 24) {
+                Text("MARBLE")
+                    .font(.custom("ABCFavoritVariable-Trial", size: 16).weight(.light))
+                    .tracking(6)
+                    .foregroundStyle(Color("marblePrimary"))
+
+                Rectangle()
+                    .fill(Color("marblePrimary").opacity(0.2))
+                    .frame(width: 24, height: 0.5)
+
+                Text("Recorded.")
+                    .font(.custom("ABCFavoritVariable-Trial", size: 32).weight(.light))
+                    .foregroundStyle(Color("marblePrimary"))
+
+                Text(formattedDate)
+                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 11).weight(.light))
+                    .tracking(2)
+                    .foregroundStyle(Color("marbleSecondary"))
+            }
+            .opacity(recordedOpacity)
+
+            Spacer()
+
+            Button {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                dismiss()
+            } label: {
+                Text("DONE")
+                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 12).weight(.medium))
+                    .tracking(2)
+                    .foregroundStyle(Color("marblePrimary"))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .overlay(
+                        Capsule()
+                            .stroke(Color("marblePrimary").opacity(0.3), lineWidth: 0.5)
+                    )
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 20)
+            .padding(.bottom, 32)
+            .opacity(recordedOpacity)
+        }
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.8)) {
+                recordedOpacity = 1
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                UINotificationFeedbackGenerator().notificationOccurred(.success)
+            }
         }
     }
 
@@ -222,8 +282,15 @@ struct ClosingRitualView: View {
             try? modelContext.save()
             CloudSyncService.shared.uploadWorkout(workout)
         }
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
-        dismiss()
+        noteFocused = false
+        withAnimation(.easeInOut(duration: 0.5)) {
+            isRecorded = true
+        }
+    }
+
+    private var formattedDate: String {
+        workout.date.formatted(.dateTime.month(.wide).day().year())
+            .uppercased()
     }
 
     // MARK: - Helpers
