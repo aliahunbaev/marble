@@ -6,7 +6,13 @@ struct WorkoutDetailView: View {
     @Environment(\.dismiss) private var dismiss
     let workout: Workout
 
+    @Query(sort: \ProgressPhoto.date, order: .reverse) private var allPhotos: [ProgressPhoto]
     @State private var showingDeleteConfirmation = false
+    @State private var selectedPhoto: ProgressPhoto?
+
+    private var linkedPhotos: [ProgressPhoto] {
+        allPhotos.filter { $0.workoutCloudID == workout.cloudID }
+    }
 
     var body: some View {
         ScrollView {
@@ -30,6 +36,12 @@ struct WorkoutDetailView: View {
                 .padding(.horizontal, 20)
                 .padding(.top, 20)
                 .padding(.bottom, 28)
+
+                // Linked photos
+                if !linkedPhotos.isEmpty {
+                    photosStrip
+                        .padding(.bottom, 24)
+                }
 
                 // Note (if exists)
                 if let note = workout.notes, !note.isEmpty {
@@ -86,6 +98,49 @@ struct WorkoutDetailView: View {
                 dismiss()
             }
         }
+        .fullScreenCover(item: $selectedPhoto) { photo in
+            PhotoViewerView(
+                photo: photo,
+                workout: workout,
+                onDelete: {
+                    PhotoStorageService.shared.delete(photo, context: modelContext)
+                    selectedPhoto = nil
+                }
+            )
+        }
+    }
+
+    private var photosStrip: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                ForEach(linkedPhotos) { photo in
+                    Button {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        selectedPhoto = photo
+                    } label: {
+                        photoTile(photo: photo)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 20)
+        }
+    }
+
+    private func photoTile(photo: ProgressPhoto) -> some View {
+        Color.clear
+            .frame(width: 220, height: 280)
+            .overlay {
+                if let img = PhotoStorageService.shared.image(for: photo) {
+                    Image(uiImage: img)
+                        .resizable()
+                        .scaledToFill()
+                } else {
+                    Color("marbleFieldBackground")
+                }
+            }
+            .clipped()
+            .clipShape(RoundedRectangle(cornerRadius: 6))
     }
 
     private func exerciseSection(log: ExerciseLog) -> some View {

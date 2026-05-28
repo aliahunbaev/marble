@@ -172,11 +172,14 @@ struct ClosingRitualView: View {
     private var photoZone: some View {
         Group {
             if let img = capturedImage {
-                Image(uiImage: img)
-                    .resizable()
-                    .scaledToFill()
+                Color.clear
                     .frame(maxWidth: .infinity)
                     .frame(height: 280)
+                    .overlay {
+                        Image(uiImage: img)
+                            .resizable()
+                            .scaledToFill()
+                    }
                     .clipped()
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                     .overlay(alignment: .topTrailing) {
