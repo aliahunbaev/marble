@@ -40,8 +40,12 @@ final class AuthenticationService: ObservableObject {
         didSyncForCurrentSession = true
         // Pull cloud data into local
         await CloudSyncService.shared.restoreFromCloud(into: context)
+        // Restore photos
+        await PhotoStorageService.shared.restoreFromCloud(into: context)
         // Push any local-only data that existed before sign-in
         CloudSyncService.shared.pushAllLocalToCloud(from: context)
+        // Retry any photo uploads that were pending
+        await PhotoStorageService.shared.retryPendingUploads(context: context)
     }
 
     deinit {

@@ -16,6 +16,8 @@ struct ActiveWorkoutView: View {
     @State private var showingDiscardAlert = false
     @State private var completedWorkout: Workout?
     @State private var showingSummary = false
+    @State private var showingPhotoCapture = false
+    @State private var capturedPhoto: ProgressPhoto?
     @State private var draggingEntryID: UUID?
     @State private var lastSwapOffset: CGFloat = 0
 
@@ -401,23 +403,69 @@ struct ActiveWorkoutView: View {
 
             Spacer()
 
-            // Done button
-            Button {
-                dismiss()
-            } label: {
-                Text("DONE")
-                    .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 16).weight(.light))
-                    .foregroundStyle(Color("marbleBackground"))
+            // Capture / done buttons
+            VStack(spacing: 10) {
+                if capturedPhoto == nil {
+                    Button {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        showingPhotoCapture = true
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "camera")
+                                .font(.system(size: 14, weight: .light))
+                            Text("MARK IT")
+                                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 12).weight(.medium))
+                                .tracking(2)
+                        }
+                        .foregroundStyle(Color("marblePrimary"))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .overlay(
+                            Capsule()
+                                .stroke(Color("marblePrimary").opacity(0.3), lineWidth: 0.5)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    HStack(spacing: 8) {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 12, weight: .light))
+                        Text("MARKED")
+                            .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 12).weight(.medium))
+                            .tracking(2)
+                    }
+                    .foregroundStyle(Color("marbleSecondary"))
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(Color("marblePrimary"))
-                    .clipShape(Capsule())
+                    .padding(.vertical, 14)
+                }
+
+                Button {
+                    dismiss()
+                } label: {
+                    Text("DONE")
+                        .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 16).weight(.light))
+                        .foregroundStyle(Color("marbleBackground"))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(Color("marblePrimary"))
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
             .padding(.horizontal, 20)
             .padding(.bottom, 40)
         }
         .background(Color("marbleBackground"))
+        .sheet(isPresented: $showingPhotoCapture) {
+            PhotoCaptureSheet(
+                workoutCloudID: workout.cloudID,
+                onCaptured: { photo in
+                    capturedPhoto = photo
+                }
+            )
+            .presentationDetents([.medium])
+            .presentationDragIndicator(.hidden)
+        }
     }
 
     private func summaryStatView(label: String, value: String) -> some View {

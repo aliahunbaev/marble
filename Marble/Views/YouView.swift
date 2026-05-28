@@ -22,6 +22,7 @@ struct YouView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 32) {
                     profileSection
+                    GallerySection()
                     appIconSection
                     appearanceSection
                     preferencesSection

@@ -10,10 +10,15 @@
 		86B5C90D2FC7915200F756CA /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 86B5C90C2FC7915200F756CA /* GoogleService-Info.plist */; };
 		86B5C9102FC7923600F756CA /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 86B5C90F2FC7923600F756CA /* FirebaseAuth */; };
 		86B5C9122FC7923600F756CA /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 86B5C9112FC7923600F756CA /* FirebaseFirestore */; };
+		86B5C9132FC7923600F756CA /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 86B5C9142FC7923600F756CA /* FirebaseStorage */; };
 		AA000030 /* UserProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000030 /* UserProfile.swift */; };
 		AA000031 /* AuthenticationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000031 /* AuthenticationService.swift */; };
 		AA000032 /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000032 /* SignInView.swift */; };
 		AA000033 /* CloudSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000033 /* CloudSyncService.swift */; };
+		AA000034 /* ProgressPhoto.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000034 /* ProgressPhoto.swift */; };
+		AA000035 /* PhotoStorageService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000035 /* PhotoStorageService.swift */; };
+		AA000036 /* PhotoCaptureSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000036 /* PhotoCaptureSheet.swift */; };
+		AA000037 /* GallerySection.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000037 /* GallerySection.swift */; };
 		AA000001 /* MarbleApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000001 /* MarbleApp.swift */; };
 		AA000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000002 /* ContentView.swift */; };
 		AA000003 /* Exercise.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000003 /* Exercise.swift */; };
@@ -48,6 +53,10 @@
 		AB000031 /* AuthenticationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthenticationService.swift; sourceTree = "<group>"; };
 		AB000032 /* SignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInView.swift; sourceTree = "<group>"; };
 		AB000033 /* CloudSyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudSyncService.swift; sourceTree = "<group>"; };
+		AB000034 /* ProgressPhoto.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressPhoto.swift; sourceTree = "<group>"; };
+		AB000035 /* PhotoStorageService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoStorageService.swift; sourceTree = "<group>"; };
+		AB000036 /* PhotoCaptureSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoCaptureSheet.swift; sourceTree = "<group>"; };
+		AB000037 /* GallerySection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GallerySection.swift; sourceTree = "<group>"; };
 		AB000001 /* MarbleApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarbleApp.swift; sourceTree = "<group>"; };
 		AB000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		AB000003 /* Exercise.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Exercise.swift; sourceTree = "<group>"; };
@@ -85,6 +94,7 @@
 			files = (
 				86B5C9102FC7923600F756CA /* FirebaseAuth in Frameworks */,
 				86B5C9122FC7923600F756CA /* FirebaseFirestore in Frameworks */,
+				86B5C9132FC7923600F756CA /* FirebaseStorage in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -128,6 +138,7 @@
 				AB000021 /* PreviousPerformance.swift */,
 				AB000024 /* TrackedLift.swift */,
 				AB000030 /* UserProfile.swift */,
+				AB000034 /* ProgressPhoto.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -147,6 +158,8 @@
 				AB000023 /* WorkoutDetailView.swift */,
 				AB000025 /* ExerciseLiftDetailView.swift */,
 				AB000032 /* SignInView.swift */,
+				AB000036 /* PhotoCaptureSheet.swift */,
+				AB000037 /* GallerySection.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -156,6 +169,7 @@
 			children = (
 				AB000031 /* AuthenticationService.swift */,
 				AB000033 /* CloudSyncService.swift */,
+				AB000035 /* PhotoStorageService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -267,6 +281,10 @@
 				AA000031 /* AuthenticationService.swift in Sources */,
 				AA000032 /* SignInView.swift in Sources */,
 				AA000033 /* CloudSyncService.swift in Sources */,
+				AA000034 /* ProgressPhoto.swift in Sources */,
+				AA000035 /* PhotoStorageService.swift in Sources */,
+				AA000036 /* PhotoCaptureSheet.swift in Sources */,
+				AA000037 /* GallerySection.swift in Sources */,
 				AA000001 /* MarbleApp.swift in Sources */,
 				AA000002 /* ContentView.swift in Sources */,
 				AA000003 /* Exercise.swift in Sources */,
@@ -523,6 +541,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 86B5C90E2FC7923600F756CA /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseFirestore;
+		};
+		86B5C9142FC7923600F756CA /* FirebaseStorage */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 86B5C90E2FC7923600F756CA /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseStorage;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
