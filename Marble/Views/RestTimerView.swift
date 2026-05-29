@@ -18,12 +18,11 @@ class RestTimerState {
     }
 
     var formattedRemaining: String {
+        // Always M:SS so the pill width stays consistent during countdown
+        // ("0:25" instead of "25s"). All values use 4 characters.
         let m = remainingSeconds / 60
         let s = remainingSeconds % 60
-        if m > 0 {
-            return String(format: "%d:%02d", m, s)
-        }
-        return "\(s)s"
+        return String(format: "%d:%02d", m, s)
     }
 
     func start(duration: Int) {
