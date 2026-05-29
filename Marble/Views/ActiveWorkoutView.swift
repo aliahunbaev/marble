@@ -165,9 +165,10 @@ struct ActiveWorkoutView: View {
                         ZStack {
                             // Glass base (provides the blur/material quality)
                             Capsule().fill(.ultraThinMaterial)
-                            // Ink tint (provides the dark color on light mode,
-                            // light color on dark mode — adapts via marblePrimary)
-                            Capsule().fill(Color("marblePrimary").opacity(0.82))
+                            // Solid ink fill (matches the rest timer's full-
+                            // opacity fill). Adapts via marblePrimary — dark
+                            // on light mode, light on dark mode.
+                            Capsule().fill(Color("marblePrimary"))
                         }
                     }
                     .overlay(
