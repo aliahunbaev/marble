@@ -1,125 +1,103 @@
 import SwiftUI
 
-/// Three utility button archetypes. Apply as view modifiers on the inner Label
-/// of a Button so the parent Button handles tap state.
+/// Three utility button archetypes. One typography spec across all three —
+/// only color treatment differs by role.
 ///
-/// Usage:
-///     Button { ... } label: {
-///         Text("FINISH")
-///     }
-///     .buttonStyle(.plain)
-///     .modifier(MarblePrimaryButton())
+/// Universal spec:
+///     - Font: 13pt mono, regular weight, tracking 1
+///     - Padding: 14pt horizontal, 10pt vertical
+///     - Corner radius: 6pt (matches input fields)
 ///
-/// Or via the View extensions below:
-///     Button("FINISH") { ... }.marblePrimaryButton()
+/// Variants:
+///     - Primary   — warm-ink fill on bone foreground (FINISH, SAVE, DONE)
+///     - Secondary — tinted surface, ink foreground (+ SET, + EXERCISE, presets, ±10s)
+///     - Destructive — oxblood fill at 8% with oxblood foreground (DISCARD, SKIP)
+///
+/// Floating glass variants live in MarbleFloatingButton.swift for the iOS 26
+/// liquid-glass FINISH and rest timer at the top of the workout view.
 
-// MARK: - Primary (commit / finish)
+// MARK: - Universal spec
 
-/// Solid warm-ink background, bone foreground. The single most important
-/// button on a screen. Used for: FINISH, SAVE, DONE.
-/// Typography: 12pt mono with 1.2 tracking, uppercase by convention.
+private struct UtilitySpec {
+    static let font: Font = .marbleMono(13, weight: .regular)
+    static let tracking: CGFloat = 1
+    static let horizontalPadding: CGFloat = 14
+    static let verticalPadding: CGFloat = 10
+    static let cornerRadius: CGFloat = 6
+}
+
+// MARK: - Primary
+
 struct MarblePrimaryButton: ViewModifier {
-    var horizontalPadding: CGFloat = 16
-    var verticalPadding: CGFloat = 9
     var fullWidth: Bool = false
 
     func body(content: Content) -> some View {
         content
-            .font(.marbleMono(12, weight: .regular))
-            .tracking(1.2)
+            .font(UtilitySpec.font)
+            .tracking(UtilitySpec.tracking)
             .foregroundStyle(Color("marbleBackground"))
-            .padding(.horizontal, horizontalPadding)
-            .padding(.vertical, verticalPadding)
+            .padding(.horizontal, UtilitySpec.horizontalPadding)
+            .padding(.vertical, UtilitySpec.verticalPadding)
             .frame(maxWidth: fullWidth ? .infinity : nil)
             .background(Color.marbleInk)
-            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .clipShape(RoundedRectangle(cornerRadius: UtilitySpec.cornerRadius))
             .contentShape(Rectangle())
     }
 }
 
-// MARK: - Secondary (additive / adjustable)
+// MARK: - Secondary
 
-/// Tinted surface, ink foreground. Visually indistinguishable from input fields
-/// by treatment — same fill, same corner radius. Used for: + SET, + EXERCISE,
-/// rest presets, ±10s, rest timer toolbar (inactive).
 struct MarbleSecondaryButton: ViewModifier {
     var fullWidth: Bool = true
-    var compact: Bool = false
-    var horizontalPadding: CGFloat = 14
-    var verticalPadding: CGFloat = 12
 
     func body(content: Content) -> some View {
         content
-            .font(.marbleMono(compact ? 13 : 15))
+            .font(UtilitySpec.font)
+            .tracking(UtilitySpec.tracking)
             .foregroundStyle(Color("marblePrimary"))
-            .padding(.horizontal, horizontalPadding)
-            .padding(.vertical, verticalPadding)
+            .padding(.horizontal, UtilitySpec.horizontalPadding)
+            .padding(.vertical, UtilitySpec.verticalPadding)
             .frame(maxWidth: fullWidth ? .infinity : nil)
             .background(Color.marbleSurfaceTint)
-            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .clipShape(RoundedRectangle(cornerRadius: UtilitySpec.cornerRadius))
             .contentShape(Rectangle())
     }
 }
 
-// MARK: - Destructive (discard / skip / delete)
+// MARK: - Destructive
 
-/// Oxblood foreground on faint oxblood tint. Used for: DISCARD WORKOUT, SKIP,
-/// future destructive confirmations.
-/// Typography: 13pt mono with 1 tracking, uppercase by convention.
 struct MarbleDestructiveButton: ViewModifier {
     var fullWidth: Bool = true
-    var horizontalPadding: CGFloat = 14
-    var verticalPadding: CGFloat = 12
 
     func body(content: Content) -> some View {
         content
-            .font(.marbleMono(13))
-            .tracking(1)
+            .font(UtilitySpec.font)
+            .tracking(UtilitySpec.tracking)
             .foregroundStyle(Color.marbleDestructive)
-            .padding(.horizontal, horizontalPadding)
-            .padding(.vertical, verticalPadding)
+            .padding(.horizontal, UtilitySpec.horizontalPadding)
+            .padding(.vertical, UtilitySpec.verticalPadding)
             .frame(maxWidth: fullWidth ? .infinity : nil)
             .background(Color.marbleDestructiveTint)
-            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .clipShape(RoundedRectangle(cornerRadius: UtilitySpec.cornerRadius))
             .contentShape(Rectangle())
     }
 }
 
-// MARK: - View extensions for ergonomic call sites
+// MARK: - View extensions
 
 extension View {
-    /// Primary action button — solid warm-ink. One per screen.
-    func marblePrimaryButton(horizontalPadding: CGFloat = 16,
-                             verticalPadding: CGFloat = 9,
-                             fullWidth: Bool = false) -> some View {
-        modifier(MarblePrimaryButton(
-            horizontalPadding: horizontalPadding,
-            verticalPadding: verticalPadding,
-            fullWidth: fullWidth
-        ))
+    /// Primary action — solid warm-ink. One per screen (FINISH, SAVE).
+    func marblePrimaryButton(fullWidth: Bool = false) -> some View {
+        modifier(MarblePrimaryButton(fullWidth: fullWidth))
     }
 
-    /// Secondary additive button — tinted surface matching input fields.
-    func marbleSecondaryButton(fullWidth: Bool = true,
-                               compact: Bool = false,
-                               horizontalPadding: CGFloat = 14,
-                               verticalPadding: CGFloat = 12) -> some View {
-        modifier(MarbleSecondaryButton(
-            fullWidth: fullWidth,
-            compact: compact,
-            horizontalPadding: horizontalPadding,
-            verticalPadding: verticalPadding
-        ))
+    /// Secondary additive — tinted surface (+ SET, + EXERCISE, presets, ±10s).
+    func marbleSecondaryButton(fullWidth: Bool = true) -> some View {
+        modifier(MarbleSecondaryButton(fullWidth: fullWidth))
     }
 
-    /// Destructive button — oxblood on tinted oxblood.
-    func marbleDestructiveButton(fullWidth: Bool = true,
-                                 horizontalPadding: CGFloat = 14,
-                                 verticalPadding: CGFloat = 12) -> some View {
-        modifier(MarbleDestructiveButton(
-            fullWidth: fullWidth,
-            horizontalPadding: horizontalPadding,
-            verticalPadding: verticalPadding
-        ))
+    /// Destructive — oxblood (DISCARD, SKIP).
+    func marbleDestructiveButton(fullWidth: Bool = true) -> some View {
+        modifier(MarbleDestructiveButton(fullWidth: fullWidth))
     }
 }

@@ -51,19 +51,14 @@ struct ActiveWorkoutView: View {
     }
 
     private var workoutContentView: some View {
-        VStack(spacing: 0) {
-            workoutToolbar
-            Rectangle()
-                .fill(Color("marblePrimary").opacity(0.06))
-                .frame(height: 0.5)
-
+        ZStack(alignment: .top) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     TextField("Workout", text: $name)
                         .font(.marbleBody(32, weight: .regular))
                         .foregroundStyle(Color("marblePrimary"))
                         .padding(.horizontal, 20)
-                        .padding(.top, 20)
+                        .padding(.top, 64) // breathing room below floating buttons
                         .padding(.bottom, 6)
 
                     Text(formattedTime)
@@ -114,6 +109,9 @@ struct ActiveWorkoutView: View {
                         .padding(.bottom, 40)
                 }
             }
+
+            // Floating glass buttons over the workout content
+            floatingToolbar
         }
         .background(Color("marbleBackground"))
         .scrollDismissesKeyboard(.interactively)
@@ -146,11 +144,11 @@ struct ActiveWorkoutView: View {
         }
     }
 
-    // MARK: - Toolbar
+    // MARK: - Floating Toolbar (iOS-26 liquid glass)
 
-    private var workoutToolbar: some View {
+    private var floatingToolbar: some View {
         HStack {
-            RestTimerButton(state: restTimer) {
+            FloatingRestTimerButton(state: restTimer) {
                 showingRestTimer = true
             }
 
@@ -159,12 +157,23 @@ struct ActiveWorkoutView: View {
             Button {
                 finishWorkout()
             } label: {
-                Text("FINISH").marblePrimaryButton()
+                Text("FINISH")
+                    .font(.marbleMono(13, weight: .regular))
+                    .tracking(1)
+                    .foregroundStyle(Color("marblePrimary"))
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 12)
+                    .background(.ultraThinMaterial, in: Capsule())
+                    .overlay(
+                        Capsule()
+                            .stroke(Color("marblePrimary").opacity(0.08), lineWidth: 0.5)
+                    )
+                    .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
             }
             .buttonStyle(.plain)
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        .padding(.top, 8)
     }
 
     // MARK: - Shared Components

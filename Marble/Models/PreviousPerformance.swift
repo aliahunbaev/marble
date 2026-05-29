@@ -19,7 +19,9 @@ enum PreviousPerformance {
         return []
     }
 
-    /// Formatted string for a specific set index, e.g. "225lbs x 8"
+    /// Formatted string for a specific set index, e.g. "225 × 8". Unit is
+    /// already conveyed by the LBS column header — repeating it in every row
+    /// is noise.
     static func formattedPrevious(for exercise: Exercise, setIndex: Int, context: ModelContext) -> String? {
         let sets = previousSets(for: exercise, context: context)
         guard setIndex < sets.count else { return nil }
@@ -32,6 +34,6 @@ enum PreviousPerformance {
         } else {
             weightStr = String(format: "%.1f", set.weight)
         }
-        return "\(weightStr)lbs x \(set.reps)"
+        return "\(weightStr) × \(set.reps)"
     }
 }

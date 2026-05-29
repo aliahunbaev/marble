@@ -69,70 +69,60 @@ class RestTimerState {
     }
 }
 
-// MARK: - Rest Timer Button (toolbar pill)
+// MARK: - Floating Rest Timer Button (iOS-26 liquid glass)
+//
+// Morphs between a glass circle (idle, clock icon only) and a glass pill
+// (counting down). Uses .ultraThinMaterial for the glass effect with a
+// hairline stroke and quiet shadow. Animates smoothly between states.
 
-struct RestTimerButton: View {
+struct FloatingRestTimerButton: View {
     @Bindable var state: RestTimerState
     let onTap: () -> Void
 
     var body: some View {
         Button(action: onTap) {
             if state.isActive {
-                activeButton
+                activeView
             } else {
-                Image(systemName: "clock")
-                    .font(.system(size: 14, weight: .regular))
-                    .foregroundStyle(Color("marblePrimary"))
-                    .frame(width: 36, height: 36)
-                    .background(Color.marbleSurfaceTint)
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
-                    .contentShape(Rectangle())
+                idleView
             }
         }
         .buttonStyle(.plain)
+        .animation(.spring(response: 0.4, dampingFraction: 0.85), value: state.isActive)
     }
 
-    private var timerLabel: some View {
-        HStack(spacing: 4) {
-            Image(systemName: "clock")
-                .font(.system(size: 12, weight: .light))
-            Text(state.formattedRemaining)
-                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 12).weight(.light))
-        }
-        .frame(maxWidth: .infinity)
+    private var idleView: some View {
+        Image(systemName: "clock")
+            .font(.system(size: 14, weight: .regular))
+            .foregroundStyle(Color("marblePrimary"))
+            .frame(width: 44, height: 44)
+            .background(.ultraThinMaterial, in: Circle())
+            .overlay(
+                Circle()
+                    .stroke(Color("marblePrimary").opacity(0.08), lineWidth: 0.5)
+            )
+            .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
     }
 
-    private var activeButton: some View {
+    private var activeView: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { _ in
-            GeometryReader { geo in
-                let fillWidth = geo.size.width * state.progress
-                ZStack(alignment: .leading) {
-                    // Background
-                    Capsule()
-                        .fill(Color("marbleTertiary"))
-
-                    // Fill
-                    Capsule()
-                        .fill(Color.marbleInk)
-                        .frame(width: fillWidth)
-
-                    // Dark text (full width, visible over unfilled)
-                    timerLabel
-                        .foregroundStyle(Color("marblePrimary"))
-
-                    // Inverted text masked to filled region
-                    timerLabel
-                        .foregroundStyle(Color("marbleBackground"))
-                        .mask(
-                            HStack(spacing: 0) {
-                                Rectangle().frame(width: fillWidth)
-                                Spacer(minLength: 0)
-                            }
-                        )
-                }
+            HStack(spacing: 6) {
+                Image(systemName: "clock")
+                    .font(.system(size: 12, weight: .regular))
+                Text(state.formattedRemaining)
+                    .font(.marbleMono(13, weight: .regular))
+                    .tracking(1)
+                    .monospacedDigit()
             }
-            .frame(width: 90, height: 34)
-            .clipShape(Capsule())
+            .foregroundStyle(Color("marblePrimary"))
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(.ultraThinMaterial, in: Capsule())
+            .overlay(
+                Capsule()
+                    .stroke(Color("marblePrimary").opacity(0.08), lineWidth: 0.5)
+            )
+            .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
         }
     }
 
@@ -195,7 +185,7 @@ struct RestTimerModal: View {
                         state.start(duration: seconds)
                     } label: {
                         Text(formatPreset(seconds))
-                            .marbleSecondaryButton(verticalPadding: 16)
+                            .marbleSecondaryButton()
                     }
                     .buttonStyle(.plain)
                 }
@@ -236,8 +226,8 @@ struct RestTimerModal: View {
                 Button {
                     state.adjustBy(-10)
                 } label: {
-                    Text("−10S").tracking(1)
-                        .marbleSecondaryButton(fullWidth: false, horizontalPadding: 18, verticalPadding: 14)
+                    Text("−10S")
+                        .marbleSecondaryButton(fullWidth: false)
                 }
                 .buttonStyle(.plain)
 
@@ -247,15 +237,15 @@ struct RestTimerModal: View {
                     dismiss()
                 } label: {
                     Text("SKIP")
-                        .marbleDestructiveButton(fullWidth: false, horizontalPadding: 22, verticalPadding: 14)
+                        .marbleDestructiveButton(fullWidth: false)
                 }
                 .buttonStyle(.plain)
 
                 Button {
                     state.adjustBy(10)
                 } label: {
-                    Text("+10S").tracking(1)
-                        .marbleSecondaryButton(fullWidth: false, horizontalPadding: 18, verticalPadding: 14)
+                    Text("+10S")
+                        .marbleSecondaryButton(fullWidth: false)
                 }
                 .buttonStyle(.plain)
             }
@@ -281,8 +271,8 @@ struct RestTimerModal: View {
     }
 }
 
-#Preview("Button - Inactive") {
-    RestTimerButton(state: RestTimerState(), onTap: {})
+#Preview("Floating Button - Idle") {
+    FloatingRestTimerButton(state: RestTimerState(), onTap: {})
         .padding()
 }
 

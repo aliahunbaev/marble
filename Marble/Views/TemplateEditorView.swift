@@ -288,7 +288,7 @@ struct ExerciseSetTable: View {
                 }
 
                 Text(entry.exercise.name)
-                    .font(.marbleBody(15, weight: .regular))
+                    .font(.marbleBody(17, weight: .regular))
                     .foregroundStyle(Color("marblePrimary"))
 
                 Spacer()
@@ -369,7 +369,7 @@ struct ExerciseSetTable: View {
                     Text("+")
                     Text("SET").tracking(1)
                 }
-                .marbleSecondaryButton(verticalPadding: 10)
+                .marbleSecondaryButton()
             }
             .buttonStyle(.plain)
             .padding(.horizontal, 20)
