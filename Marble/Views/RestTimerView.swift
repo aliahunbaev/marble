@@ -130,11 +130,15 @@ struct FloatingRestTimerButton: View {
                     // passes. Using Color("marblePrimary") so the fill adapts
                     // to appearance — dark fill on light mode, light fill on
                     // dark mode (inverted both ways).
+                    //
+                    // Fill is a Rectangle (not Capsule) so the wiping edge is
+                    // a clean vertical line. The outer clipShape(Capsule)
+                    // still rounds the pill's outer left/right edges.
                     GeometryReader { geo in
                         ZStack(alignment: .leading) {
                             Capsule()
                                 .fill(.ultraThinMaterial)
-                            Capsule()
+                            Rectangle()
                                 .fill(Color("marblePrimary"))
                                 .frame(width: geo.size.width * state.progress)
                         }
