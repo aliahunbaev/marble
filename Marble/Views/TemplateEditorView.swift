@@ -270,6 +270,8 @@ struct ExerciseSetTable: View {
     var showPrevious: Bool = true
     var isWorkoutMode: Bool = false
     var onSetCompleted: (() -> Void)? = nil
+    var onStartRestTimer: (() -> Void)? = nil
+    var onReplaceExercise: (() -> Void)? = nil
     var dragHandle: Bool = false
     var onDragChanged: ((CGFloat) -> Void)? = nil
     var onDragEnded: (() -> Void)? = nil
@@ -300,15 +302,32 @@ struct ExerciseSetTable: View {
 
                 Spacer()
 
-                if let onRemove {
-                    Button {
-                        onRemove()
+                if onRemove != nil {
+                    Menu {
+                        if isWorkoutMode {
+                            Button {
+                                onStartRestTimer?()
+                            } label: {
+                                Label("Start rest timer", systemImage: "timer")
+                            }
+                            Button {
+                                onReplaceExercise?()
+                            } label: {
+                                Label("Replace exercise", systemImage: "arrow.triangle.2.circlepath")
+                            }
+                        }
+                        Button(role: .destructive) {
+                            onRemove?()
+                        } label: {
+                            Label("Remove", systemImage: "trash")
+                        }
                     } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 11, weight: .medium))
+                        Image(systemName: "ellipsis")
+                            .font(.system(size: 14, weight: .medium))
                             .foregroundStyle(Color("marbleSecondary"))
+                            .frame(width: 32, height: 32, alignment: .center)
+                            .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
                 }
             }
             .padding(.horizontal, 20)

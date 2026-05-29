@@ -60,17 +60,18 @@ struct ActiveWorkoutView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     TextField("Workout", text: $name)
-                        .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 26).weight(.light))
+                        .font(.marbleBody(32, weight: .regular))
                         .foregroundStyle(Color("marblePrimary"))
                         .padding(.horizontal, 20)
                         .padding(.top, 20)
-                        .padding(.bottom, 4)
+                        .padding(.bottom, 6)
 
                     Text(formattedTime)
-                        .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 14).weight(.light))
+                        .font(.marbleMono(13))
+                        .tracking(1)
                         .foregroundStyle(Color("marbleSecondary"))
                         .padding(.horizontal, 20)
-                        .padding(.bottom, 24)
+                        .padding(.bottom, 40)
 
                     if draggingEntryID != nil {
                         ForEach(entries) { entry in
@@ -88,6 +89,12 @@ struct ActiveWorkoutView: View {
                                 isWorkoutMode: true,
                                 onSetCompleted: {
                                     // Rest timer auto-start removed — manual only
+                                },
+                                onStartRestTimer: {
+                                    showingRestTimer = true
+                                },
+                                onReplaceExercise: {
+                                    showingLibrary = true
                                 },
                                 dragHandle: false
                             )
