@@ -110,20 +110,11 @@ struct ActiveWorkoutView: View {
         }
         .background(Color("marbleBackground"))
         .scrollDismissesKeyboard(.interactively)
-        .toolbar {
-            ToolbarItemGroup(placement: .keyboard) {
-                Spacer()
-                Button {
-                    UIApplication.shared.sendAction(
-                        #selector(UIResponder.resignFirstResponder),
-                        to: nil, from: nil, for: nil
-                    )
-                } label: {
-                    Text("DONE")
-                        .font(.marbleMono(11, weight: .medium))
-                        .tracking(2)
-                }
-            }
+        .onTapGesture {
+            UIApplication.shared.sendAction(
+                #selector(UIResponder.resignFirstResponder),
+                to: nil, from: nil, for: nil
+            )
         }
         .onAppear { startWorkoutTimer() }
         .onDisappear { stopWorkoutTimer(); restTimer.stop() }

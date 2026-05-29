@@ -381,7 +381,7 @@ struct ExerciseSetTable: View {
             Text("SET")
                 .frame(width: 28, alignment: .center)
             if showPrevious {
-                Text("PREVIOUS")
+                Text("LAST")
                     .frame(maxWidth: .infinity)
             } else {
                 Spacer()
@@ -391,11 +391,13 @@ struct ExerciseSetTable: View {
             Text("REPS")
                 .frame(width: 72, alignment: .center)
             if isWorkoutMode {
-                Spacer().frame(width: 32)
+                Image(systemName: "checkmark")
+                    .font(.system(size: 11, weight: .light))
+                    .frame(width: 36, alignment: .center)
             }
         }
-        .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 10).weight(.light))
-        .tracking(0.5)
+        .font(.marbleMono(13))
+        .tracking(1)
         .foregroundStyle(Color("marbleSecondary"))
     }
 }
@@ -412,19 +414,21 @@ struct SetRowView: View {
     var onComplete: (() -> Void)? = nil
 
     @State private var checkScale: CGFloat = 1.0
+    @State private var weightInvalid = false
+    @State private var repsInvalid = false
 
     var body: some View {
         HStack(spacing: 12) {
             // Set number
             Text("\(setNumber)")
-                .font(.marbleMono(14, weight: isCompleted ? .medium : .light))
-                .foregroundStyle(Color("marblePrimary").opacity(isCompleted ? 1.0 : 0.55))
+                .font(.marbleMono(13))
+                .foregroundStyle(Color("marblePrimary").opacity(isCompleted ? 0.9 : 0.55))
                 .frame(width: 28, height: 36, alignment: .center)
 
-            // Previous
+            // Last (previous performance)
             if showCheckmark || previousText != nil {
                 Text(previousText ?? "—")
-                    .font(.marbleMono(15))
+                    .font(.marbleMono(13))
                     .foregroundStyle(Color("marbleSecondary"))
                     .frame(height: 36)
                     .frame(maxWidth: .infinity)
@@ -433,66 +437,101 @@ struct SetRowView: View {
             }
 
             // Weight
-            fieldView(text: $weight, keyboard: .decimalPad)
+            fieldView(text: $weight, keyboard: .decimalPad, invalid: weightInvalid)
 
             // Reps
-            fieldView(text: $reps, keyboard: .numberPad)
+            fieldView(text: $reps, keyboard: .numberPad, invalid: repsInvalid)
 
-            // Checkmark button
+            // Checkmark button — square, same height as fields
             if showCheckmark {
                 Button {
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                    let wasCompleted = isCompleted
-                    withAnimation(.easeInOut(duration: 0.15)) {
-                        isCompleted.toggle()
-                    }
-                    if !wasCompleted {
-                        withAnimation(.spring(response: 0.2, dampingFraction: 0.5)) {
-                            checkScale = 1.3
-                        }
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                            withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) {
-                                checkScale = 1.0
-                            }
-                        }
-                        onComplete?()
-                    }
+                    handleComplete()
                 } label: {
-                    Image(systemName: isCompleted ? "checkmark.circle.fill" : "circle")
-                        .font(.system(size: 22, weight: .light))
-                        .foregroundStyle(isCompleted ? Color("marblePrimary") : Color("marblePrimary").opacity(0.25))
-                        .scaleEffect(checkScale)
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(isCompleted
+                                ? Color("marblePrimary")
+                                : Color("marblePrimary").opacity(0.06))
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(isCompleted
+                                ? Color("marbleBackground")
+                                : Color("marblePrimary").opacity(0.25))
+                    }
+                    .frame(width: 36, height: 36)
+                    .scaleEffect(checkScale)
                 }
                 .buttonStyle(.plain)
-                .frame(width: 32)
             }
         }
     }
 
-    /// Bordered field — present but quiet. Replaces the prior underline.
-    private func fieldView(text: Binding<String>, keyboard: UIKeyboardType) -> some View {
+    private func handleComplete() {
+        if isCompleted {
+            // Toggle off — always allowed
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isCompleted = false
+            }
+            return
+        }
+
+        // Validate
+        let weightEmpty = weight.trimmingCharacters(in: .whitespaces).isEmpty
+        let repsEmpty = reps.trimmingCharacters(in: .whitespaces).isEmpty
+        if weightEmpty || repsEmpty {
+            UINotificationFeedbackGenerator().notificationOccurred(.warning)
+            withAnimation(.easeInOut(duration: 0.2)) {
+                weightInvalid = weightEmpty
+                repsInvalid = repsEmpty
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    weightInvalid = false
+                    repsInvalid = false
+                }
+            }
+            return
+        }
+
+        // Complete
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        withAnimation(.easeInOut(duration: 0.15)) {
+            isCompleted = true
+        }
+        withAnimation(.spring(response: 0.2, dampingFraction: 0.5)) {
+            checkScale = 1.2
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) {
+                checkScale = 1.0
+            }
+        }
+        onComplete?()
+    }
+
+    /// Field — tinted background, no stroke, consistent weight, no transition glitch.
+    private func fieldView(text: Binding<String>, keyboard: UIKeyboardType, invalid: Bool) -> some View {
         TextField("", text: text)
-            .font(.marbleMono(17, weight: text.wrappedValue.isEmpty ? .light : .regular))
+            .font(.marbleMono(15))
             .foregroundStyle(Color("marblePrimary"))
             .multilineTextAlignment(.center)
             .keyboardType(keyboard)
             .frame(width: 72, height: 36)
             .background(
                 RoundedRectangle(cornerRadius: 6)
-                    .fill(isCompleted
-                        ? Color.clear
-                        : Color("marblePrimary").opacity(0.04))
+                    .fill(backgroundColor(invalid: invalid))
             )
-            .overlay(
-                RoundedRectangle(cornerRadius: 6)
-                    .stroke(
-                        isCompleted
-                            ? Color.clear
-                            : Color("marblePrimary").opacity(0.18),
-                        lineWidth: 0.5
-                    )
-            )
-            .animation(nil, value: text.wrappedValue)
+    }
+
+    private func backgroundColor(invalid: Bool) -> Color {
+        if invalid {
+            return Color.red.opacity(0.18)
+        }
+        if isCompleted {
+            return .clear
+        }
+        return Color("marblePrimary").opacity(0.06)
     }
 }
 
