@@ -104,41 +104,65 @@ struct FloatingRestTimerButton: View {
             .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
     }
 
+    /// Shared content layout for the active timer — icon in a 44pt leading
+    /// area to match the idle circle, text expanding to the right.
+    private var timerContent: some View {
+        HStack(spacing: 0) {
+            Image(systemName: "clock")
+                .font(.system(size: 14, weight: .regular))
+                .frame(width: 44, height: 44)
+
+            Text(state.formattedRemaining)
+                .font(.marbleMono(13, weight: .regular))
+                .tracking(1)
+                .monospacedDigit()
+                .padding(.trailing, 16)
+        }
+    }
+
     private var activeView: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { _ in
-            // Icon lives in a 44pt-wide leading area — identical to the idle
-            // circle. Text expands to the right; the pill grows with content.
-            HStack(spacing: 0) {
-                Image(systemName: "clock")
-                    .font(.system(size: 14, weight: .regular))
-                    .frame(width: 44, height: 44)
-
-                Text(state.formattedRemaining)
-                    .font(.marbleMono(13, weight: .regular))
-                    .tracking(1)
-                    .monospacedDigit()
-                    .padding(.trailing, 16)
-            }
-            .foregroundStyle(Color("marblePrimary"))
-            .background {
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        // Glass base
-                        Capsule()
-                            .fill(.ultraThinMaterial)
-                        // Progress wash — warm-ink fill recedes as time passes
-                        Capsule()
-                            .fill(Color.marbleInk.opacity(0.18))
-                            .frame(width: geo.size.width * state.progress)
+            // Default-color content (dark in light mode, light in dark mode).
+            // Visible in the UNFILLED (glass) portion of the pill.
+            timerContent
+                .foregroundStyle(Color("marblePrimary"))
+                .background {
+                    // Glass base + dramatic ink fill that recedes as time
+                    // passes. Using Color("marblePrimary") so the fill adapts
+                    // to appearance — dark fill on light mode, light fill on
+                    // dark mode (inverted both ways).
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+                            Capsule()
+                                .fill(.ultraThinMaterial)
+                            Capsule()
+                                .fill(Color("marblePrimary"))
+                                .frame(width: geo.size.width * state.progress)
+                        }
                     }
                 }
-            }
-            .clipShape(Capsule())
-            .overlay(
-                Capsule()
-                    .stroke(Color("marblePrimary").opacity(0.08), lineWidth: 0.5)
-            )
-            .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
+                .overlay {
+                    // Inverted-color content, masked to the FILLED region.
+                    // Sits on top of the dark fill so the text reads bone
+                    // where the fill is, ink where the fill isn't.
+                    GeometryReader { geo in
+                        timerContent
+                            .foregroundStyle(Color("marbleBackground"))
+                            .mask(
+                                HStack(spacing: 0) {
+                                    Rectangle()
+                                        .frame(width: geo.size.width * state.progress)
+                                    Spacer(minLength: 0)
+                                }
+                            )
+                    }
+                }
+                .clipShape(Capsule())
+                .overlay(
+                    Capsule()
+                        .stroke(Color("marblePrimary").opacity(0.08), lineWidth: 0.5)
+                )
+                .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
         }
     }
 
