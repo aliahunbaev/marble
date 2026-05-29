@@ -312,14 +312,7 @@ struct ExerciseSetTable: View {
                 }
             }
             .padding(.horizontal, 20)
-            .padding(.bottom, 10)
-
-            // Subtle hairline under exercise title
-            Rectangle()
-                .fill(Color("marblePrimary").opacity(0.08))
-                .frame(height: 0.5)
-                .padding(.horizontal, 20)
-                .padding(.bottom, 10)
+            .padding(.bottom, 14)
 
             // Column headers
             columnHeaders
