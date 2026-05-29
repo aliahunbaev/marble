@@ -42,6 +42,13 @@ class RestTimerState {
     func adjustBy(_ seconds: Int) {
         endDate = endDate.addingTimeInterval(Double(seconds))
         remainingSeconds = max(0, Int(ceil(endDate.timeIntervalSince(Date()))))
+        // If adding time pushes remaining past the original duration, treat
+        // the new remaining as the new 100% — so the ring/pill resets to full
+        // and depletes from there, instead of sitting clamped at full until
+        // the original duration is reached again.
+        if remainingSeconds > selectedDuration {
+            selectedDuration = remainingSeconds
+        }
         if remainingSeconds == 0 {
             stop()
         }
@@ -206,10 +213,11 @@ struct RestTimerModal: View {
                 presetPickerView
             }
         }
+        .frame(maxWidth: .infinity)
         .background(Color("marbleBackground"))
-        .presentationDetents([.height(320)])
+        .presentationDetents([.height(420)])
         .presentationDragIndicator(.hidden)
-        .presentationCornerRadius(12)
+        .presentationCornerRadius(20)
     }
 
     // MARK: - Preset Picker (inactive)
