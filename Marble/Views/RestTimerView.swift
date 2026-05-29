@@ -14,7 +14,9 @@ class RestTimerState {
     var progress: Double {
         guard selectedDuration > 0, isActive else { return 0 }
         let remaining = endDate.timeIntervalSince(Date())
-        return max(0, remaining / Double(selectedDuration))
+        // Clamp 0...1 so adjustBy(+x) past the original duration doesn't
+        // make the progress bar overflow its container.
+        return min(1, max(0, remaining / Double(selectedDuration)))
     }
 
     var formattedRemaining: String {
