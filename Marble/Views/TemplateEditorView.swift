@@ -122,16 +122,7 @@ struct TemplateEditorView: View {
             Button {
                 save()
             } label: {
-                Text("SAVE")
-                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 12).weight(.light))
-                    .tracking(1)
-                    .foregroundStyle(Color("marblePrimary"))
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 4)
-                            .stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5)
-                    )
+                Text("SAVE").marblePrimaryButton()
             }
             .buttonStyle(.plain)
             .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
@@ -297,7 +288,7 @@ struct ExerciseSetTable: View {
                 }
 
                 Text(entry.exercise.name)
-                    .font(.marbleBody(22))
+                    .font(.marbleBody(15, weight: .regular))
                     .foregroundStyle(Color("marblePrimary"))
 
                 Spacer()
@@ -374,20 +365,11 @@ struct ExerciseSetTable: View {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 entry.sets.append(EditableSet())
             } label: {
-                HStack(spacing: 4) {
+                HStack(spacing: 6) {
                     Text("+")
-                        .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 12).weight(.light))
-                    Text("SET")
-                        .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 10).weight(.light))
-                        .tracking(1)
+                    Text("SET").tracking(1)
                 }
-                .foregroundStyle(Color("marbleSecondary"))
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 4)
-                        .stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5)
-                )
+                .marbleSecondaryButton(verticalPadding: 10)
             }
             .buttonStyle(.plain)
             .padding(.horizontal, 20)

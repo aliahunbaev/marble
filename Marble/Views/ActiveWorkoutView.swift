@@ -159,14 +159,7 @@ struct ActiveWorkoutView: View {
             Button {
                 finishWorkout()
             } label: {
-                Text("FINISH")
-                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 12).weight(.light))
-                    .tracking(1)
-                    .foregroundStyle(Color("marbleBackground"))
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background(Color("marblePrimary"))
-                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                Text("FINISH").marblePrimaryButton()
             }
             .buttonStyle(.plain)
         }
@@ -190,15 +183,9 @@ struct ActiveWorkoutView: View {
         } label: {
             HStack(spacing: 6) {
                 Text("+")
-                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 14).weight(.light))
-                Text("EXERCISE")
-                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 12).weight(.light))
-                    .tracking(1)
+                Text("EXERCISE").tracking(1)
             }
-            .foregroundStyle(Color("marbleSecondary"))
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 14)
-            .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5))
+            .marbleSecondaryButton()
         }
         .buttonStyle(.plain)
     }
@@ -209,11 +196,8 @@ struct ActiveWorkoutView: View {
         Button {
             showingDiscardAlert = true
         } label: {
-            Text("Discard Workout")
-                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 13).weight(.light))
-                .foregroundStyle(.red)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
+            Text("DISCARD WORKOUT")
+                .marbleDestructiveButton()
         }
         .buttonStyle(.plain)
     }

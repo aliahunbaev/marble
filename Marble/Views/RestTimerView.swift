@@ -81,9 +81,12 @@ struct RestTimerButton: View {
                 activeButton
             } else {
                 Image(systemName: "clock")
-                    .font(.system(size: 16, weight: .light))
-                    .foregroundStyle(Color("marbleSecondary"))
+                    .font(.system(size: 14, weight: .regular))
+                    .foregroundStyle(Color("marblePrimary"))
                     .frame(width: 36, height: 36)
+                    .background(Color.marbleSurfaceTint)
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                    .contentShape(Rectangle())
             }
         }
         .buttonStyle(.plain)
@@ -110,7 +113,7 @@ struct RestTimerButton: View {
 
                     // Fill
                     Capsule()
-                        .fill(Color("marblePrimary"))
+                        .fill(Color.marbleInk)
                         .frame(width: fillWidth)
 
                     // Dark text (full width, visible over unfilled)
@@ -192,14 +195,7 @@ struct RestTimerModal: View {
                         state.start(duration: seconds)
                     } label: {
                         Text(formatPreset(seconds))
-                            .font(.marbleMono(16))
-                            .foregroundStyle(Color("marblePrimary"))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 4)
-                                    .stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5)
-                            )
+                            .marbleSecondaryButton(verticalPadding: 16)
                     }
                     .buttonStyle(.plain)
                 }
@@ -236,15 +232,12 @@ struct RestTimerModal: View {
             .padding(.horizontal, 24)
 
             // Controls
-            HStack(spacing: 20) {
+            HStack(spacing: 12) {
                 Button {
                     state.adjustBy(-10)
                 } label: {
-                    Text("-10s")
-                        .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 14).weight(.light))
-                        .foregroundStyle(Color("marblePrimary"))
-                        .frame(width: 72, height: 44)
-                        .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5))
+                    Text("−10S").tracking(1)
+                        .marbleSecondaryButton(fullWidth: false, horizontalPadding: 18, verticalPadding: 14)
                 }
                 .buttonStyle(.plain)
 
@@ -254,23 +247,15 @@ struct RestTimerModal: View {
                     dismiss()
                 } label: {
                     Text("SKIP")
-                        .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 12).weight(.light))
-                        .tracking(1)
-                        .foregroundStyle(Color("marbleBackground"))
-                        .frame(width: 80, height: 44)
-                        .background(Color(.systemRed).opacity(0.85))
-                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                        .marbleDestructiveButton(fullWidth: false, horizontalPadding: 22, verticalPadding: 14)
                 }
                 .buttonStyle(.plain)
 
                 Button {
                     state.adjustBy(10)
                 } label: {
-                    Text("+10s")
-                        .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 14).weight(.light))
-                        .foregroundStyle(Color("marblePrimary"))
-                        .frame(width: 72, height: 44)
-                        .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5))
+                    Text("+10S").tracking(1)
+                        .marbleSecondaryButton(fullWidth: false, horizontalPadding: 18, verticalPadding: 14)
                 }
                 .buttonStyle(.plain)
             }
