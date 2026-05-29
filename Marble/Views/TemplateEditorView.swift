@@ -417,57 +417,36 @@ struct SetRowView: View {
         HStack(spacing: 12) {
             // Set number
             Text("\(setNumber)")
-                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 13).weight(.light))
-                .foregroundStyle(Color("marbleSecondary"))
-                .frame(width: 28, height: 32, alignment: .center)
+                .font(.marbleMono(14, weight: isCompleted ? .medium : .light))
+                .foregroundStyle(Color("marblePrimary").opacity(isCompleted ? 1.0 : 0.55))
+                .frame(width: 28, height: 36, alignment: .center)
 
             // Previous
             if showCheckmark || previousText != nil {
                 Text(previousText ?? "—")
-                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 12).weight(.light))
+                    .font(.marbleMono(15))
                     .foregroundStyle(Color("marbleSecondary"))
-                    .frame(height: 32)
+                    .frame(height: 36)
                     .frame(maxWidth: .infinity)
             } else {
                 Spacer()
             }
 
             // Weight
-            VStack(spacing: 2) {
-                TextField("—", text: $weight)
-                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 16).weight(.light))
-                    .foregroundStyle(weight.isEmpty ? Color("marbleSecondary").opacity(0.4) : Color("marblePrimary"))
-                    .multilineTextAlignment(.center)
-                    .keyboardType(.decimalPad)
-                    .frame(width: 72, height: 28)
-                Rectangle()
-                    .fill(Color("marblePrimary").opacity(weight.isEmpty ? 0.12 : 0.25))
-                    .frame(width: 56, height: 0.5)
-            }
+            fieldView(text: $weight, keyboard: .decimalPad)
 
             // Reps
-            VStack(spacing: 2) {
-                TextField("—", text: $reps)
-                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 16).weight(.light))
-                    .foregroundStyle(reps.isEmpty ? Color("marbleSecondary").opacity(0.4) : Color("marblePrimary"))
-                    .multilineTextAlignment(.center)
-                    .keyboardType(.numberPad)
-                    .frame(width: 72, height: 28)
-                Rectangle()
-                    .fill(Color("marblePrimary").opacity(reps.isEmpty ? 0.12 : 0.25))
-                    .frame(width: 56, height: 0.5)
-            }
+            fieldView(text: $reps, keyboard: .numberPad)
 
             // Checkmark button
             if showCheckmark {
                 Button {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                     let wasCompleted = isCompleted
                     withAnimation(.easeInOut(duration: 0.15)) {
                         isCompleted.toggle()
                     }
                     if !wasCompleted {
-                        // Scale pulse animation
                         withAnimation(.spring(response: 0.2, dampingFraction: 0.5)) {
                             checkScale = 1.3
                         }
@@ -480,14 +459,40 @@ struct SetRowView: View {
                     }
                 } label: {
                     Image(systemName: isCompleted ? "checkmark.circle.fill" : "circle")
-                        .font(.system(size: 22))
-                        .foregroundStyle(isCompleted ? Color("marblePrimary") : Color("marbleTertiary"))
+                        .font(.system(size: 22, weight: .light))
+                        .foregroundStyle(isCompleted ? Color("marblePrimary") : Color("marblePrimary").opacity(0.25))
                         .scaleEffect(checkScale)
                 }
                 .buttonStyle(.plain)
                 .frame(width: 32)
             }
         }
+    }
+
+    /// Bordered field — present but quiet. Replaces the prior underline.
+    private func fieldView(text: Binding<String>, keyboard: UIKeyboardType) -> some View {
+        TextField("", text: text)
+            .font(.marbleMono(17, weight: text.wrappedValue.isEmpty ? .light : .regular))
+            .foregroundStyle(Color("marblePrimary"))
+            .multilineTextAlignment(.center)
+            .keyboardType(keyboard)
+            .frame(width: 72, height: 36)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(isCompleted
+                        ? Color.clear
+                        : Color("marblePrimary").opacity(0.04))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(
+                        isCompleted
+                            ? Color.clear
+                            : Color("marblePrimary").opacity(0.18),
+                        lineWidth: 0.5
+                    )
+            )
+            .animation(nil, value: text.wrappedValue)
     }
 }
 

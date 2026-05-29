@@ -21,6 +21,7 @@
 		AA000037 /* GallerySection.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000037 /* GallerySection.swift */; };
 		AA000038 /* OnboardingFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000038 /* OnboardingFlow.swift */; };
 		AA000039 /* ClosingRitualView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000039 /* ClosingRitualView.swift */; };
+		AA000040 /* MarbleFont.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000040 /* MarbleFont.swift */; };
 		AA000001 /* MarbleApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000001 /* MarbleApp.swift */; };
 		AA000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000002 /* ContentView.swift */; };
 		AA000003 /* Exercise.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000003 /* Exercise.swift */; };
@@ -61,6 +62,7 @@
 		AB000037 /* GallerySection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GallerySection.swift; sourceTree = "<group>"; };
 		AB000038 /* OnboardingFlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingFlow.swift; sourceTree = "<group>"; };
 		AB000039 /* ClosingRitualView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClosingRitualView.swift; sourceTree = "<group>"; };
+		AB000040 /* MarbleFont.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarbleFont.swift; sourceTree = "<group>"; };
 		AB000001 /* MarbleApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarbleApp.swift; sourceTree = "<group>"; };
 		AB000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		AB000003 /* Exercise.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Exercise.swift; sourceTree = "<group>"; };
@@ -121,6 +123,7 @@
 				AE000003 /* Models */,
 				AE000004 /* Views */,
 				AE000008 /* Services */,
+				AE000009 /* Theme */,
 				AE000007 /* Fonts */,
 				AB000011 /* Assets.xcassets */,
 				AB000028 /* Info.plist */,
@@ -128,6 +131,14 @@
 				86B5C90C2FC7915200F756CA /* GoogleService-Info.plist */,
 			);
 			path = Marble;
+			sourceTree = "<group>";
+		};
+		AE000009 /* Theme */ = {
+			isa = PBXGroup;
+			children = (
+				AB000040 /* MarbleFont.swift */,
+			);
+			path = Theme;
 			sourceTree = "<group>";
 		};
 		AE000003 /* Models */ = {
@@ -293,6 +304,7 @@
 				AA000037 /* GallerySection.swift in Sources */,
 				AA000038 /* OnboardingFlow.swift in Sources */,
 				AA000039 /* ClosingRitualView.swift in Sources */,
+				AA000040 /* MarbleFont.swift in Sources */,
 				AA000001 /* MarbleApp.swift in Sources */,
 				AA000002 /* ContentView.swift in Sources */,
 				AA000003 /* Exercise.swift in Sources */,

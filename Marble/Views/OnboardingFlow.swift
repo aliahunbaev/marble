@@ -65,7 +65,7 @@ struct OnboardingFlow: View {
             Spacer()
 
             Text("MARBLE")
-                .font(.custom("ABCFavoritVariable-Trial", size: 22).weight(.light))
+                .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 22).weight(.light))
                 .tracking(revealTracking)
                 .foregroundStyle(.white)
                 .opacity(revealOpacity)
@@ -101,7 +101,7 @@ struct OnboardingFlow: View {
 
             VStack(spacing: 32) {
                 Text("Man cannot remake himself\nwithout suffering, for he is\nboth the marble and the sculptor.")
-                    .font(.custom("ABCFavoritVariable-Trial", size: 22).weight(.light))
+                    .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 22).weight(.light))
                     .foregroundStyle(.white)
                     .multilineTextAlignment(.center)
                     .lineSpacing(8)
@@ -129,14 +129,14 @@ struct OnboardingFlow: View {
 
             VStack(spacing: 28) {
                 Text("This is your record.")
-                    .font(.custom("ABCFavoritVariable-Trial", size: 28).weight(.light))
+                    .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 28).weight(.light))
                     .foregroundStyle(.white)
 
                 VStack(spacing: 4) {
                     Text("No coaches. No notifications. No noise.")
                     Text("Just the work, and what you make of it.")
                 }
-                .font(.custom("ABCFavoritVariable-Trial", size: 15).weight(.light))
+                .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 15).weight(.light))
                 .foregroundStyle(.white.opacity(0.5))
                 .multilineTextAlignment(.center)
                 .lineSpacing(4)
@@ -160,11 +160,11 @@ struct OnboardingFlow: View {
 
             VStack(spacing: 28) {
                 Text("What should we call you?")
-                    .font(.custom("ABCFavoritVariable-Trial", size: 22).weight(.light))
+                    .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 22).weight(.light))
                     .foregroundStyle(Color("marblePrimary"))
 
                 TextField("", text: $name)
-                    .font(.custom("ABCFavoritVariable-Trial", size: 28).weight(.light))
+                    .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 28).weight(.light))
                     .foregroundStyle(Color("marblePrimary"))
                     .multilineTextAlignment(.center)
                     .focused($nameFieldFocused)
@@ -213,11 +213,11 @@ struct OnboardingFlow: View {
 
             VStack(spacing: 16) {
                 Text("Save your work.")
-                    .font(.custom("ABCFavoritVariable-Trial", size: 22).weight(.light))
+                    .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 22).weight(.light))
                     .foregroundStyle(Color("marblePrimary"))
 
                 Text("So your record is yours, forever.")
-                    .font(.custom("ABCFavoritVariable-Trial", size: 14).weight(.light))
+                    .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 14).weight(.light))
                     .foregroundStyle(Color("marbleSecondary"))
             }
 
@@ -243,7 +243,7 @@ struct OnboardingFlow: View {
                             .environmentObject(auth)
                     } label: {
                         Text("Sign in")
-                            .font(.custom("ABCFavoritVariable-Trial", size: 15).weight(.medium))
+                            .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 15).weight(.medium))
                             .foregroundStyle(Color("marbleBackground"))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 16)
@@ -256,7 +256,7 @@ struct OnboardingFlow: View {
                         finishOnboarding()
                     } label: {
                         Text("Skip for now")
-                            .font(.custom("ABCFavoritVariable-Trial", size: 14).weight(.light))
+                            .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 14).weight(.light))
                             .foregroundStyle(Color("marbleSecondary"))
                             .padding(.vertical, 12)
                     }

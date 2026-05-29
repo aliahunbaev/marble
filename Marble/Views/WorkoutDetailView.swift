@@ -46,7 +46,7 @@ struct WorkoutDetailView: View {
                 // Note (if exists)
                 if let note = workout.notes, !note.isEmpty {
                     Text(note)
-                        .font(.custom("ABCFavoritVariable-Trial", size: 16).weight(.light))
+                        .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 16).weight(.light))
                         .foregroundStyle(Color("marblePrimary"))
                         .lineSpacing(4)
                         .padding(.horizontal, 20)

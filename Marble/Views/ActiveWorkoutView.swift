@@ -87,20 +87,9 @@ struct ActiveWorkoutView: View {
                                 },
                                 isWorkoutMode: true,
                                 onSetCompleted: {
-                                    startRestTimerIfNeeded()
+                                    // Rest timer auto-start removed — manual only
                                 },
-                                dragHandle: true,
-                                onDragChanged: { translation in
-                                    withAnimation(.easeInOut(duration: 0.2)) {
-                                        handleDrag(entryID: entry.id, translation: translation)
-                                    }
-                                },
-                                onDragEnded: {
-                                    withAnimation(.easeInOut(duration: 0.25)) {
-                                        draggingEntryID = nil
-                                    }
-                                    lastSwapOffset = 0
-                                }
+                                dragHandle: false
                             )
                             if entry.id != entries.last?.id {
                                 exerciseDivider
@@ -120,6 +109,22 @@ struct ActiveWorkoutView: View {
             }
         }
         .background(Color("marbleBackground"))
+        .scrollDismissesKeyboard(.interactively)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button {
+                    UIApplication.shared.sendAction(
+                        #selector(UIResponder.resignFirstResponder),
+                        to: nil, from: nil, for: nil
+                    )
+                } label: {
+                    Text("DONE")
+                        .font(.marbleMono(11, weight: .medium))
+                        .tracking(2)
+                }
+            }
+        }
         .onAppear { startWorkoutTimer() }
         .onDisappear { stopWorkoutTimer(); restTimer.stop() }
         .sheet(isPresented: $showingLibrary) {

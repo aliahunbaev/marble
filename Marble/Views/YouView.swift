@@ -292,44 +292,6 @@ struct YouView: View {
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 12)
-
-                Rectangle()
-                    .fill(Color("marblePrimary").opacity(0.06))
-                    .frame(height: 0.5)
-                    .padding(.leading, 14)
-
-                // Rest Timer
-                HStack {
-                    Text("Rest Timer")
-                        .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 14).weight(.light))
-                        .foregroundStyle(Color("marblePrimary"))
-                    Spacer()
-                    Menu {
-                        ForEach(restTimerOptions, id: \.self) { seconds in
-                            Button {
-                                defaultRestTimer = seconds
-                            } label: {
-                                HStack {
-                                    Text(formatRestTimer(seconds))
-                                    if seconds == defaultRestTimer {
-                                        Image(systemName: "checkmark")
-                                    }
-                                }
-                            }
-                        }
-                    } label: {
-                        HStack(spacing: 4) {
-                            Text(formatRestTimer(defaultRestTimer))
-                                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 13).weight(.light))
-                                .foregroundStyle(Color("marbleSecondary"))
-                            Image(systemName: "chevron.up.chevron.down")
-                                .font(.system(size: 10, weight: .light))
-                                .foregroundStyle(Color("marbleSecondary"))
-                        }
-                    }
-                }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 12)
             }
         }
     }

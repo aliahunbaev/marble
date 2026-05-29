@@ -17,7 +17,7 @@ struct SignInView: View {
 
             // Logo
             Text("MARBLE")
-                .font(.custom("ABCFavoritVariable-Trial", size: 13).weight(.medium))
+                .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 13).weight(.medium))
                 .tracking(6)
                 .foregroundStyle(Color("marblePrimary"))
 
@@ -35,7 +35,7 @@ struct SignInView: View {
 
             if let error = auth.error {
                 Text(error)
-                    .font(.custom("ABCFavoritVariable-Trial", size: 13))
+                    .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 13))
                     .foregroundStyle(.red.opacity(0.8))
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 40)
@@ -69,7 +69,7 @@ struct SignInView: View {
                 }
             } label: {
                 Text("Continue with email")
-                    .font(.custom("ABCFavoritVariable-Trial", size: 15).weight(.regular))
+                    .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 15).weight(.regular))
                     .foregroundStyle(Color("marblePrimary"))
                     .frame(maxWidth: .infinity)
                     .frame(height: 52)
@@ -121,7 +121,7 @@ struct SignInView: View {
                             .tint(Color("marbleBackground"))
                     } else {
                         Text(isCreateAccount ? "Create Account" : "Sign In")
-                            .font(.custom("ABCFavoritVariable-Trial", size: 15).weight(.medium))
+                            .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 15).weight(.medium))
                     }
                 }
                 .foregroundStyle(Color("marbleBackground"))
@@ -135,7 +135,7 @@ struct SignInView: View {
 
             HStack(spacing: 4) {
                 Text(isCreateAccount ? "Have an account?" : "No account?")
-                    .font(.custom("ABCFavoritVariable-Trial", size: 13))
+                    .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 13))
                     .foregroundStyle(Color("marbleSecondary"))
 
                 Button(isCreateAccount ? "Sign in" : "Create one") {
@@ -144,7 +144,7 @@ struct SignInView: View {
                         auth.error = nil
                     }
                 }
-                .font(.custom("ABCFavoritVariable-Trial", size: 13).weight(.medium))
+                .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 13).weight(.medium))
                 .foregroundStyle(Color("marblePrimary"))
             }
 
@@ -154,7 +154,7 @@ struct SignInView: View {
                     auth.error = nil
                 }
             }
-            .font(.custom("ABCFavoritVariable-Trial", size: 13))
+            .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 13))
             .foregroundStyle(Color("marbleSecondary"))
             .padding(.top, 4)
         }
@@ -167,7 +167,7 @@ struct SignInView: View {
 struct MarbleTextFieldStyle: TextFieldStyle {
     func _body(configuration: TextField<Self._Label>) -> some View {
         configuration
-            .font(.custom("ABCFavoritVariable-Trial", size: 15))
+            .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 15))
             .padding(.horizontal, 16)
             .frame(height: 52)
             .background(Color("marbleFieldBackground"))

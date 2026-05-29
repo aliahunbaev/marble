@@ -55,19 +55,6 @@ struct ClosingRitualView: View {
 
     private var ritualView: some View {
         VStack(spacing: 0) {
-            HStack {
-                Spacer()
-                Button {
-                    save(skipping: true)
-                } label: {
-                    Text("Skip")
-                        .font(.custom("ABCFavoritVariable-Trial", size: 14).weight(.light))
-                        .foregroundStyle(Color("marbleSecondary"))
-                }
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 12)
-
             ScrollView {
                 VStack(spacing: 28) {
                     Text(formattedDuration)
@@ -116,7 +103,7 @@ struct ClosingRitualView: View {
 
             VStack(spacing: 24) {
                 Text("MARBLE")
-                    .font(.custom("ABCFavoritVariable-Trial", size: 16).weight(.light))
+                    .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 16).weight(.light))
                     .tracking(6)
                     .foregroundStyle(Color("marblePrimary"))
 
@@ -125,7 +112,7 @@ struct ClosingRitualView: View {
                     .frame(width: 24, height: 0.5)
 
                 Text("Recorded.")
-                    .font(.custom("ABCFavoritVariable-Trial", size: 32).weight(.light))
+                    .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 32).weight(.light))
                     .foregroundStyle(Color("marblePrimary"))
 
                 Text(formattedDate)
@@ -248,13 +235,13 @@ struct ClosingRitualView: View {
             ZStack(alignment: .topLeading) {
                 if noteText.isEmpty {
                     Text("A line about today.")
-                        .font(.custom("ABCFavoritVariable-Trial", size: 16).weight(.light))
+                        .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 16).weight(.light))
                         .foregroundStyle(Color("marbleSecondary").opacity(0.4))
                         .padding(.top, 8)
                         .padding(.leading, 4)
                 }
                 TextEditor(text: $noteText)
-                    .font(.custom("ABCFavoritVariable-Trial", size: 16).weight(.light))
+                    .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 16).weight(.light))
                     .foregroundStyle(Color("marblePrimary"))
                     .focused($noteFocused)
                     .scrollContentBackground(.hidden)
