@@ -106,9 +106,11 @@ struct FloatingRestTimerButton: View {
     }
 
     /// Shared content layout for the active timer — icon in a 44pt leading
-    /// area to match the idle circle, text expanding to the right.
+    /// area to match the idle circle, text expanding to the right. Negative
+    /// spacing pulls the text closer to the icon visually without moving the
+    /// icon (so the morph from circle stays clean).
     private var timerContent: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: -10) {
             Image(systemName: "clock")
                 .font(.system(size: 14, weight: .regular))
                 .frame(width: 44, height: 44)
@@ -245,26 +247,30 @@ struct RestTimerModal: View {
 
     private var activeTimerView: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { _ in
-        VStack(spacing: 28) {
-            // Big remaining time
-            Text(formattedBig)
-                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 48).weight(.light))
-                .foregroundStyle(Color("marblePrimary"))
-                .monospacedDigit()
+        VStack(spacing: 36) {
+            // Countdown ring — the number is the artifact, the ring is its
+            // depleting clockface around it. Counter-clockwise depletion: the
+            // ring shortens from its end (right of 12 o'clock) back toward
+            // its start as time passes.
+            ZStack {
+                Circle()
+                    .stroke(Color("marblePrimary").opacity(0.1), lineWidth: 4)
 
-            // Progress bar
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(Color("marbleTertiary"))
-                        .frame(height: 6)
-                    Capsule()
-                        .fill(Color("marblePrimary"))
-                        .frame(width: geo.size.width * state.progress, height: 6)
-                }
+                Circle()
+                    .trim(from: 0, to: state.progress)
+                    .stroke(
+                        Color("marblePrimary"),
+                        style: StrokeStyle(lineWidth: 4, lineCap: .round)
+                    )
+                    .rotationEffect(.degrees(-90))
+
+                Text(formattedBig)
+                    .font(.marbleMono(48))
+                    .foregroundStyle(Color("marblePrimary"))
+                    .monospacedDigit()
             }
-            .frame(height: 6)
-            .padding(.horizontal, 24)
+            .frame(width: 220, height: 220)
+            .padding(.top, 8)
 
             // Controls
             HStack(spacing: 12) {
