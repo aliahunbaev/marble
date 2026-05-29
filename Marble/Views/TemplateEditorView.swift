@@ -295,7 +295,7 @@ struct ExerciseSetTable: View {
                 }
 
                 Text(entry.exercise.name)
-                    .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 18).weight(.light))
+                    .font(.marbleBody(22))
                     .foregroundStyle(Color("marblePrimary"))
 
                 Spacer()
@@ -312,7 +312,14 @@ struct ExerciseSetTable: View {
                 }
             }
             .padding(.horizontal, 20)
-            .padding(.bottom, 12)
+            .padding(.bottom, 10)
+
+            // Subtle hairline under exercise title
+            Rectangle()
+                .fill(Color("marblePrimary").opacity(0.08))
+                .frame(height: 0.5)
+                .padding(.horizontal, 20)
+                .padding(.bottom, 10)
 
             // Column headers
             columnHeaders
@@ -425,10 +432,10 @@ struct SetRowView: View {
                 .foregroundStyle(Color("marblePrimary").opacity(isCompleted ? 0.9 : 0.55))
                 .frame(width: 28, height: 36, alignment: .center)
 
-            // Last (previous performance)
+            // Last (previous performance) — matches input typography
             if showCheckmark || previousText != nil {
                 Text(previousText ?? "—")
-                    .font(.marbleMono(13))
+                    .font(.marbleMono(15))
                     .foregroundStyle(Color("marbleSecondary"))
                     .frame(height: 36)
                     .frame(maxWidth: .infinity)
@@ -442,7 +449,7 @@ struct SetRowView: View {
             // Reps
             fieldView(text: $reps, keyboard: .numberPad, invalid: repsInvalid)
 
-            // Checkmark button — square, same height as fields
+            // Checkmark button — bleeds into row when completed, no harsh fill
             if showCheckmark {
                 Button {
                     handleComplete()
@@ -450,13 +457,13 @@ struct SetRowView: View {
                     ZStack {
                         RoundedRectangle(cornerRadius: 6)
                             .fill(isCompleted
-                                ? Color("marblePrimary")
+                                ? Color.clear
                                 : Color("marblePrimary").opacity(0.06))
                         Image(systemName: "checkmark")
-                            .font(.system(size: 13, weight: .medium))
+                            .font(.system(size: 14, weight: .medium))
                             .foregroundStyle(isCompleted
-                                ? Color("marbleBackground")
-                                : Color("marblePrimary").opacity(0.25))
+                                ? Color("marblePrimary")
+                                : Color("marblePrimary").opacity(0.22))
                     }
                     .frame(width: 36, height: 36)
                     .scaleEffect(checkScale)
