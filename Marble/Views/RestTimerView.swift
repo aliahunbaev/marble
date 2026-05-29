@@ -106,32 +106,33 @@ struct FloatingRestTimerButton: View {
 
     private var activeView: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { _ in
-            GeometryReader { geo in
-                let fillWidth = geo.size.width * state.progress
-                ZStack(alignment: .leading) {
-                    // Glass base
-                    Capsule()
-                        .fill(.ultraThinMaterial)
+            // Icon lives in a 44pt-wide leading area — identical to the idle
+            // circle. Text expands to the right; the pill grows with content.
+            HStack(spacing: 0) {
+                Image(systemName: "clock")
+                    .font(.system(size: 14, weight: .regular))
+                    .frame(width: 44, height: 44)
 
-                    // Progress wash — soft warm-ink fill that recedes as time passes
-                    Capsule()
-                        .fill(Color.marbleInk.opacity(0.18))
-                        .frame(width: fillWidth)
-
-                    // Content
-                    HStack(spacing: 6) {
-                        Image(systemName: "clock")
-                            .font(.system(size: 12, weight: .regular))
-                        Text(state.formattedRemaining)
-                            .font(.marbleMono(13, weight: .regular))
-                            .tracking(1)
-                            .monospacedDigit()
+                Text(state.formattedRemaining)
+                    .font(.marbleMono(13, weight: .regular))
+                    .tracking(1)
+                    .monospacedDigit()
+                    .padding(.trailing, 16)
+            }
+            .foregroundStyle(Color("marblePrimary"))
+            .background {
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        // Glass base
+                        Capsule()
+                            .fill(.ultraThinMaterial)
+                        // Progress wash — warm-ink fill recedes as time passes
+                        Capsule()
+                            .fill(Color.marbleInk.opacity(0.18))
+                            .frame(width: geo.size.width * state.progress)
                     }
-                    .foregroundStyle(Color("marblePrimary"))
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
-            .frame(width: 96, height: 44)
             .clipShape(Capsule())
             .overlay(
                 Capsule()
