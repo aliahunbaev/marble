@@ -93,14 +93,12 @@ struct ActiveWorkoutView: View {
                                 },
                                 dragHandle: false
                             )
-                            if entry.id != entries.last?.id {
-                                exerciseDivider
-                            }
+                            exerciseDivider
                         }
                     }
 
                     addExerciseButton
-                        .padding(.top, entries.isEmpty ? 0 : 24)
+                        .padding(.top, entries.isEmpty ? 0 : 4)
                         .padding(.horizontal, 20)
 
                     discardButton

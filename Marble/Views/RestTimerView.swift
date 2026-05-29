@@ -106,18 +106,33 @@ struct FloatingRestTimerButton: View {
 
     private var activeView: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { _ in
-            HStack(spacing: 6) {
-                Image(systemName: "clock")
-                    .font(.system(size: 12, weight: .regular))
-                Text(state.formattedRemaining)
-                    .font(.marbleMono(13, weight: .regular))
-                    .tracking(1)
-                    .monospacedDigit()
+            GeometryReader { geo in
+                let fillWidth = geo.size.width * state.progress
+                ZStack(alignment: .leading) {
+                    // Glass base
+                    Capsule()
+                        .fill(.ultraThinMaterial)
+
+                    // Progress wash — soft warm-ink fill that recedes as time passes
+                    Capsule()
+                        .fill(Color.marbleInk.opacity(0.18))
+                        .frame(width: fillWidth)
+
+                    // Content
+                    HStack(spacing: 6) {
+                        Image(systemName: "clock")
+                            .font(.system(size: 12, weight: .regular))
+                        Text(state.formattedRemaining)
+                            .font(.marbleMono(13, weight: .regular))
+                            .tracking(1)
+                            .monospacedDigit()
+                    }
+                    .foregroundStyle(Color("marblePrimary"))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
             }
-            .foregroundStyle(Color("marblePrimary"))
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .background(.ultraThinMaterial, in: Capsule())
+            .frame(width: 96, height: 44)
+            .clipShape(Capsule())
             .overlay(
                 Capsule()
                     .stroke(Color("marblePrimary").opacity(0.08), lineWidth: 0.5)
