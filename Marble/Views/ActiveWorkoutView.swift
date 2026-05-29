@@ -158,15 +158,23 @@ struct ActiveWorkoutView: View {
                 Text("FINISH")
                     .font(.marbleMono(13, weight: .regular))
                     .tracking(1)
-                    .foregroundStyle(Color("marblePrimary"))
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 12)
-                    .background(.ultraThinMaterial, in: Capsule())
+                    .foregroundStyle(Color("marbleBackground"))
+                    .padding(.horizontal, 20)
+                    .frame(height: 44)
+                    .background {
+                        ZStack {
+                            // Glass base (provides the blur/material quality)
+                            Capsule().fill(.ultraThinMaterial)
+                            // Ink tint (provides the dark color on light mode,
+                            // light color on dark mode — adapts via marblePrimary)
+                            Capsule().fill(Color("marblePrimary").opacity(0.82))
+                        }
+                    }
                     .overlay(
                         Capsule()
-                            .stroke(Color("marblePrimary").opacity(0.08), lineWidth: 0.5)
+                            .stroke(Color("marblePrimary").opacity(0.15), lineWidth: 0.5)
                     )
-                    .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
+                    .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 2)
             }
             .buttonStyle(.plain)
         }
