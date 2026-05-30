@@ -4,18 +4,13 @@ import SwiftData
 struct YouView: View {
     @EnvironmentObject private var auth: AuthenticationService
     @Environment(\.modelContext) private var modelContext
-    @AppStorage("appTheme") private var appTheme: String = "system"
-    @AppStorage("weightUnit") private var weightUnit: String = "lbs"
-    @AppStorage("defaultRestTimer") private var defaultRestTimer: Int = 90
-    @AppStorage("appIcon") private var appIcon: String = "light"
-    @State private var showingClearConfirmation = false
+
     @State private var showingSignIn = false
     @State private var showingSignOutConfirmation = false
     @State private var showingDeleteConfirmation = false
+    @State private var showingSettings = false
     @State private var isEditingName = false
     @State private var editedName = ""
-
-    private let restTimerOptions = [30, 60, 90, 120, 180, 300]
 
     var body: some View {
         NavigationStack {
@@ -23,10 +18,6 @@ struct YouView: View {
                 VStack(alignment: .leading, spacing: 32) {
                     profileSection
                     GallerySection()
-                    appIconSection
-                    appearanceSection
-                    preferencesSection
-                    dataSection
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 8)
@@ -34,13 +25,19 @@ struct YouView: View {
             }
             .background(Color("marbleBackground"))
             .navigationBarTitleDisplayMode(.inline)
-            .alert("Clear All Data", isPresented: $showingClearConfirmation) {
-                Button("Cancel", role: .cancel) { }
-                Button("Clear", role: .destructive) {
-                    clearAllData()
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showingSettings = true
+                    } label: {
+                        Image(systemName: "gearshape")
+                            .font(.system(size: 16, weight: .regular))
+                            .foregroundStyle(Color("marblePrimary"))
+                    }
                 }
-            } message: {
-                Text("This will delete all workouts, templates, and exercise data. This cannot be undone.")
+            }
+            .sheet(isPresented: $showingSettings) {
+                SettingsView()
             }
         }
     }
@@ -57,7 +54,7 @@ struct YouView: View {
                     HStack {
                         if isEditingName {
                             TextField("Name", text: $editedName)
-                                .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 14).weight(.light))
+                                .font(.marbleBody(14))
                                 .foregroundStyle(Color("marblePrimary"))
                                 .onSubmit {
                                     Task {
@@ -67,7 +64,7 @@ struct YouView: View {
                                 }
                         } else {
                             Text(profile.name)
-                                .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 14).weight(.light))
+                                .font(.marbleBody(14))
                                 .foregroundStyle(Color("marblePrimary"))
                         }
                         Spacer()
@@ -82,7 +79,7 @@ struct YouView: View {
                                 isEditingName = true
                             }
                         }
-                        .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 11).weight(.light))
+                        .font(.marbleMono(11))
                         .foregroundStyle(Color("marbleSecondary"))
                     }
                     .padding(.horizontal, 14)
@@ -96,7 +93,7 @@ struct YouView: View {
 
                         HStack {
                             Text(email)
-                                .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 14).weight(.light))
+                                .font(.marbleBody(14))
                                 .foregroundStyle(Color("marbleSecondary"))
                             Spacer()
                         }
@@ -110,7 +107,7 @@ struct YouView: View {
                     showingSignOutConfirmation = true
                 } label: {
                     Text("Sign Out")
-                        .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 13).weight(.light))
+                        .font(.marbleMono(13))
                         .foregroundStyle(Color("marblePrimary"))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
@@ -130,7 +127,7 @@ struct YouView: View {
                     showingDeleteConfirmation = true
                 } label: {
                     Text("Delete Account")
-                        .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 13).weight(.light))
+                        .font(.marbleMono(13))
                         .foregroundStyle(.red.opacity(0.7))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
@@ -156,7 +153,7 @@ struct YouView: View {
                         Image(systemName: "person.crop.circle")
                             .font(.system(size: 16, weight: .light))
                         Text("Sign in to save your profile")
-                            .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 14).weight(.light))
+                            .font(.marbleBody(14))
                         Spacer()
                         Image(systemName: "chevron.right")
                             .font(.system(size: 12, weight: .light))
@@ -176,189 +173,6 @@ struct YouView: View {
                 }
             }
         }
-    }
-
-    // MARK: - App Icon
-
-    private var appIconSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: "APP ICON")
-
-            HStack(spacing: 12) {
-                iconOption(label: "Light", value: "light", imageName: "icon-preview-light")
-                iconOption(label: "Dark", value: "dark", imageName: "icon-preview-dark")
-            }
-        }
-    }
-
-    private func iconOption(label: String, value: String, imageName: String) -> some View {
-        let isSelected = appIcon == value
-        return Button {
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            appIcon = value
-            let iconName: String? = value == "light" ? nil : "AppIcon-Dark"
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                UIApplication.shared.setAlternateIconName(iconName) { error in
-                    if let error {
-                        print("Icon change error: \(error)")
-                    }
-                }
-            }
-        } label: {
-            VStack(spacing: 8) {
-                Image(imageName)
-                    .resizable()
-                    .frame(width: 60, height: 60)
-                    .clipShape(RoundedRectangle(cornerRadius: 14))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14)
-                            .stroke(
-                                isSelected ? Color("marblePrimary") : Color("marblePrimary").opacity(0.12),
-                                lineWidth: isSelected ? 1.5 : 0.5
-                            )
-                    )
-                Text(label)
-                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 11).weight(.light))
-                    .foregroundStyle(isSelected ? Color("marblePrimary") : Color("marbleSecondary"))
-                    .tracking(0.5)
-            }
-        }
-        .buttonStyle(.plain)
-    }
-
-    // MARK: - Appearance
-
-    private var appearanceSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: "APPEARANCE")
-
-            HStack(spacing: 0) {
-                themeOption(label: "Light", value: "light", icon: "sun.max")
-                themeOption(label: "Dark", value: "dark", icon: "moon")
-                themeOption(label: "System", value: "system", icon: "circle.lefthalf.filled")
-            }
-        }
-    }
-
-    private func themeOption(label: String, value: String, icon: String) -> some View {
-        let isSelected = appTheme == value
-        return Button {
-            withAnimation(.easeInOut(duration: 0.15)) {
-                appTheme = value
-            }
-        } label: {
-            VStack(spacing: 8) {
-                Image(systemName: icon)
-                    .font(.system(size: 16, weight: .light))
-                Text(label)
-                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 11).weight(.light))
-                    .tracking(0.5)
-            }
-            .foregroundStyle(isSelected ? Color("marblePrimary") : Color("marbleSecondary"))
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 14)
-            .overlay(
-                RoundedRectangle(cornerRadius: 4)
-                    .stroke(
-                        isSelected ? Color("marblePrimary") : Color("marblePrimary").opacity(0.12),
-                        lineWidth: isSelected ? 1 : 0.5
-                    )
-            )
-        }
-        .buttonStyle(.plain)
-    }
-
-    // MARK: - Preferences
-
-    private var preferencesSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: "PREFERENCES")
-
-            VStack(spacing: 0) {
-                // Weight Unit
-                HStack {
-                    Text("Weight Unit")
-                        .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 14).weight(.light))
-                        .foregroundStyle(Color("marblePrimary"))
-                    Spacer()
-                    HStack(spacing: 0) {
-                        unitOption(label: "lbs", isSelected: weightUnit == "lbs") {
-                            weightUnit = "lbs"
-                        }
-                        unitOption(label: "kg", isSelected: weightUnit == "kg") {
-                            weightUnit = "kg"
-                        }
-                    }
-                }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 12)
-            }
-        }
-    }
-
-    private func unitOption(label: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(label)
-                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 13).weight(.light))
-                .foregroundStyle(isSelected ? Color("marblePrimary") : Color("marbleSecondary"))
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 4)
-                        .stroke(
-                            isSelected ? Color("marblePrimary") : Color("marblePrimary").opacity(0.12),
-                            lineWidth: isSelected ? 1 : 0.5
-                        )
-                )
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func formatRestTimer(_ seconds: Int) -> String {
-        if seconds >= 60 {
-            let m = seconds / 60
-            let s = seconds % 60
-            return s > 0 ? "\(m):\(String(format: "%02d", s))m" : "\(m)m"
-        }
-        return "\(seconds)s"
-    }
-
-    // MARK: - Data
-
-    private var dataSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: "DATA")
-
-            Button {
-                showingClearConfirmation = true
-            } label: {
-                Text("Clear All Data")
-                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 13).weight(.light))
-                    .foregroundStyle(.red)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 4)
-                            .stroke(Color.red.opacity(0.3), lineWidth: 0.5)
-                    )
-            }
-            .buttonStyle(.plain)
-        }
-    }
-
-    private func clearAllData() {
-        do {
-            try modelContext.delete(model: TrackedLift.self)
-            try modelContext.delete(model: Workout.self)
-            try modelContext.delete(model: ExerciseLog.self)
-            try modelContext.delete(model: WorkoutSet.self)
-            try modelContext.delete(model: WorkoutTemplate.self)
-            try modelContext.delete(model: Exercise.self)
-            try modelContext.save()
-        } catch {
-            // Silently handle
-        }
-        Task { await CloudSyncService.shared.clearAllCloudData() }
     }
 }
 
