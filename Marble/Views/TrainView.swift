@@ -114,7 +114,7 @@ struct TrainView: View {
             // Date
             Text(formattedDate)
                 .font(.marbleMono(11))
-                .tracking(1.5)
+                .tracking(1)
                 .foregroundStyle(Color("marbleSecondary"))
                 .padding(.top, 12)
 
@@ -128,9 +128,9 @@ struct TrainView: View {
                 .padding(.top, 56)
                 .padding(.bottom, 56)
 
-            // Start workout — solid capsule, light body type (the Train tab
-            // is a contemplative surface; utility-button treatment from the
-            // workout view doesn't translate here)
+            // Start workout — body type for the contemplative register of
+            // the Train tab, with a tinted glass treatment matching the
+            // workout view's FINISH button (glass under solid warm-ink fill)
             Button {
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 showingEmptyWorkout = true
@@ -140,8 +140,17 @@ struct TrainView: View {
                     .foregroundStyle(Color("marbleBackground"))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
-                    .background(Color("marblePrimary"))
-                    .clipShape(Capsule())
+                    .background {
+                        ZStack {
+                            Capsule().fill(.ultraThinMaterial)
+                            Capsule().fill(Color("marblePrimary"))
+                        }
+                    }
+                    .overlay(
+                        Capsule()
+                            .stroke(Color("marblePrimary").opacity(0.15), lineWidth: 0.5)
+                    )
+                    .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 2)
             }
             .buttonStyle(.plain)
         }
@@ -244,7 +253,7 @@ struct TrainView: View {
 
                     Text(templateMetadata(template))
                         .font(.marbleMono(10))
-                        .tracking(0.5)
+                        .tracking(1)
                         .foregroundStyle(Color("marbleSecondary"))
                 }
                 Spacer(minLength: 20)
