@@ -68,6 +68,11 @@ struct SettingsView: View {
             }
         }
         .preferredColorScheme(colorScheme)
+        // Sheets cache the forced color scheme — when you go from .light or
+        // .dark back to nil (system), iOS doesn't unwind cleanly and parts
+        // of the chrome stay at the old value. Re-id'ing on appTheme forces
+        // the sheet's view tree to rebuild, which makes the transition clean.
+        .id(appTheme)
     }
 
     // MARK: - App Icon
