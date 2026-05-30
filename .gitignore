@@ -11,3 +11,5 @@ xcuserdata/
 
 # Claude
 .claude/
+downloads_*.txt
+safe_to_delete_*.txt
