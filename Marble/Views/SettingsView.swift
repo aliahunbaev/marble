@@ -15,15 +15,25 @@ struct SettingsView: View {
 
     @State private var showingClearConfirmation = false
 
-    /// Sheets present in their own window context and don't inherit the
-    /// parent's preferredColorScheme. Re-apply it here so theme changes made
-    /// inside Settings update Settings itself live, not just on dismiss.
-    private var colorScheme: ColorScheme? {
+    /// The sheet's color scheme. We ALWAYS resolve to an explicit .light or
+    /// .dark and never pass nil — passing nil to .preferredColorScheme on a
+    /// sheet doesn't unwind a previously forced scheme cleanly. For "system",
+    /// we read the actual device color scheme from the active window scene.
+    private var resolvedScheme: ColorScheme {
         switch appTheme {
         case "light": return .light
         case "dark": return .dark
-        default: return nil
+        default: return systemColorScheme
         }
+    }
+
+    private var systemColorScheme: ColorScheme {
+        let scenes = UIApplication.shared.connectedScenes
+        if let scene = scenes.first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
+           let window = scene.windows.first {
+            return window.traitCollection.userInterfaceStyle == .dark ? .dark : .light
+        }
+        return .light
     }
 
     var body: some View {
@@ -67,12 +77,7 @@ struct SettingsView: View {
                 Text("This will delete all workouts, templates, and exercise data. This cannot be undone.")
             }
         }
-        .preferredColorScheme(colorScheme)
-        // Sheets cache the forced color scheme — when you go from .light or
-        // .dark back to nil (system), iOS doesn't unwind cleanly and parts
-        // of the chrome stay at the old value. Re-id'ing on appTheme forces
-        // the sheet's view tree to rebuild, which makes the transition clean.
-        .id(appTheme)
+        .preferredColorScheme(resolvedScheme)
     }
 
     // MARK: - App Icon
