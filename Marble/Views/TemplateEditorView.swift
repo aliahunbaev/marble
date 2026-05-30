@@ -45,7 +45,7 @@ struct TemplateEditorView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     TextField("Template", text: $name)
-                        .font(.marbleBody(32, weight: .regular))
+                        .font(.marbleBody(32))
                         .foregroundStyle(Color("marblePrimary"))
                         .padding(.horizontal, 20)
                         .padding(.top, 64) // breathing room under floating buttons
@@ -271,6 +271,39 @@ struct TemplateEditorView: View {
 
 // MARK: - Exercise Set Table (Reusable)
 
+// MARK: - Reorder Gesture (invisible long-press + drag)
+
+/// Attaches a long-press-then-drag reorder gesture to a view, but only when
+/// `enabled` is true. Lets the template editor support reorder without a
+/// visible drag handle icon — the user just presses-and-holds the exercise
+/// name area, then drags.
+struct ReorderGestureModifier: ViewModifier {
+    let enabled: Bool
+    let onChanged: ((CGFloat) -> Void)?
+    let onEnded: (() -> Void)?
+
+    func body(content: Content) -> some View {
+        if enabled {
+            content
+                .contentShape(Rectangle())
+                .gesture(
+                    LongPressGesture(minimumDuration: 0.3)
+                        .sequenced(before: DragGesture(minimumDistance: 0))
+                        .onChanged { value in
+                            if case .second(true, let drag?) = value {
+                                onChanged?(drag.translation.height)
+                            }
+                        }
+                        .onEnded { _ in
+                            onEnded?()
+                        }
+                )
+        } else {
+            content
+        }
+    }
+}
+
 struct ExerciseSetTable: View {
     @Environment(\.modelContext) private var modelContext
     @Binding var entry: ExerciseEntry
@@ -288,24 +321,8 @@ struct ExerciseSetTable: View {
         VStack(alignment: .leading, spacing: 0) {
             // Exercise name header
             HStack {
-                if dragHandle {
-                    Image(systemName: "line.3.horizontal")
-                        .font(.system(size: 12, weight: .light))
-                        .foregroundStyle(Color("marbleTertiary"))
-                        .padding(.trailing, 6)
-                        .gesture(
-                            DragGesture(minimumDistance: 0)
-                                .onChanged { value in
-                                    onDragChanged?(value.translation.height)
-                                }
-                                .onEnded { _ in
-                                    onDragEnded?()
-                                }
-                        )
-                }
-
                 Text(entry.exercise.name)
-                    .font(.marbleBody(17, weight: .regular))
+                    .font(.marbleBody(17))
                     .foregroundStyle(Color("marblePrimary"))
 
                 Spacer()
@@ -340,6 +357,13 @@ struct ExerciseSetTable: View {
             }
             .padding(.horizontal, 20)
             .padding(.bottom, 14)
+            // Invisible reorder gesture — long-press the exercise name area
+            // to enter reorder mode, then drag to move. No visible handle.
+            .modifier(ReorderGestureModifier(
+                enabled: dragHandle,
+                onChanged: onDragChanged,
+                onEnded: onDragEnded
+            ))
 
             // Column headers
             columnHeaders

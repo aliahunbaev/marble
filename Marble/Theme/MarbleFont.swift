@@ -6,28 +6,29 @@ import SwiftUI
 ///
 /// Marble uses **only Light and Regular** weights. No Medium, no Bold.
 ///
-/// Editorial books (Penguin Classics, Phaidon monographs) don't use heavy bold
-/// for chapter titles — they use size + space + slight weight shifts to create
-/// hierarchy. Bold reads as sport-bro / hustle-culture and breaks the editorial
-/// register Marble has been built to occupy.
+/// **Light is the default for body type.** Editorial books (Penguin Classics,
+/// Phaidon monographs) lean light for titles and body alike — they use size,
+/// space, and ink color to create hierarchy, not weight. Bold reads as sport-
+/// bro / hustle-culture and breaks the editorial register Marble was built to
+/// occupy. Regular is reserved for utility surfaces (button labels, current
+/// data values) where the type doubles as an action affordance.
 ///
-/// Use **Light** for whispered context: column headers, LAST/previous values,
-/// section labels (PROGRAMS), set numbers, secondary text.
+/// Use **Light** for: titles, headings, body type, quotes, column headers,
+/// previous values, section labels, set numbers — basically everything that
+/// belongs to the reading surface.
 ///
-/// Use **Regular** for things that need presence: workout titles, exercise
-/// names, current values typed by the user, action button labels, quote text
-/// when it should land with weight.
-///
-/// (Single exception worth considering: future PR callouts could use Medium
-/// for a single line. Don't go further than that without good reason.)
+/// Use **Regular** for: utility button labels (FINISH, +SET, etc.), current
+/// values typed by the user mid-workout. Anything that needs to read as
+/// "active" or "tappable."
 ///
 /// ## Reference hierarchy
 ///
 ///     | Element                        | Size | Weight  |
 ///     | ------------------------------ | ---- | ------- |
-///     | Workout title                  | 32pt | Regular |
+///     | Workout / Template title       | 32pt | Light   |
 ///     | Quote (Train tab)              | 22pt | Light   |
-///     | Exercise name                  | 17pt | Regular |
+///     | Template name (Train list)     | 24pt | Light   |
+///     | Exercise name (in workout)     | 17pt | Light   |
 ///     | Set value (typed number)       | 15pt | Regular |
 ///     | LAST / previous value          | 15pt | Light   |
 ///     | Set number                     | 13pt | Light   |

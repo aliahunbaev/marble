@@ -55,7 +55,7 @@ struct ActiveWorkoutView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     TextField("Workout", text: $name)
-                        .font(.marbleBody(32, weight: .regular))
+                        .font(.marbleBody(32))
                         .foregroundStyle(Color("marblePrimary"))
                         .padding(.horizontal, 20)
                         .padding(.top, 64) // breathing room below floating buttons
