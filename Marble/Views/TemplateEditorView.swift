@@ -41,20 +41,15 @@ struct TemplateEditorView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            editorToolbar
-            Rectangle()
-                .fill(Color("marblePrimary").opacity(0.06))
-                .frame(height: 0.5)
-
+        ZStack(alignment: .top) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     TextField("Template", text: $name)
-                        .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 26).weight(.light))
+                        .font(.marbleBody(32, weight: .regular))
                         .foregroundStyle(Color("marblePrimary"))
                         .padding(.horizontal, 20)
-                        .padding(.top, 20)
-                        .padding(.bottom, 24)
+                        .padding(.top, 64) // breathing room under floating buttons
+                        .padding(.bottom, 40)
 
                     if draggingEntryID != nil {
                         ForEach(entries) { entry in
@@ -83,20 +78,22 @@ struct TemplateEditorView: View {
                                     lastSwapOffset = 0
                                 }
                             )
-                            if entry.id != entries.last?.id {
-                                exerciseDivider
-                            }
+                            exerciseDivider
                         }
                     }
 
                     addExerciseButton
-                        .padding(.top, entries.isEmpty ? 0 : 24)
+                        .padding(.top, entries.isEmpty ? 0 : 4)
                         .padding(.horizontal, 20)
                         .padding(.bottom, 40)
                 }
             }
+
+            // Floating glass toolbar (matches ActiveWorkoutView)
+            floatingToolbar
         }
         .background(Color("marbleBackground"))
+        .scrollDismissesKeyboard(.interactively)
         .sheet(isPresented: $showingLibrary) {
             let selectedExercises = entries.map(\.exercise)
             ExerciseLibraryView(selectedExercises: selectedExercises) { exercise in
@@ -105,31 +102,57 @@ struct TemplateEditorView: View {
         }
     }
 
-    private var editorToolbar: some View {
+    // MARK: - Floating Toolbar (matches ActiveWorkoutView)
+
+    private var floatingToolbar: some View {
         HStack {
+            // Close — glass circle, mirrors the FloatingRestTimerButton
             Button {
                 dismiss()
             } label: {
                 Image(systemName: "xmark")
-                    .font(.system(size: 14, weight: .medium))
+                    .font(.system(size: 14, weight: .regular))
                     .foregroundStyle(Color("marblePrimary"))
-                    .frame(width: 36, height: 36)
+                    .frame(width: 44, height: 44)
+                    .background(.ultraThinMaterial, in: Circle())
+                    .overlay(
+                        Circle()
+                            .stroke(Color("marblePrimary").opacity(0.08), lineWidth: 0.5)
+                    )
+                    .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
             }
             .buttonStyle(.plain)
 
             Spacer()
 
+            // SAVE — tinted glass capsule, mirrors the FINISH button
             Button {
                 save()
             } label: {
-                Text("SAVE").marblePrimaryButton()
+                Text("SAVE")
+                    .font(.marbleMono(13, weight: .regular))
+                    .tracking(1)
+                    .foregroundStyle(Color("marbleBackground"))
+                    .padding(.horizontal, 20)
+                    .frame(height: 44)
+                    .background {
+                        ZStack {
+                            Capsule().fill(.ultraThinMaterial)
+                            Capsule().fill(Color("marblePrimary"))
+                        }
+                    }
+                    .overlay(
+                        Capsule()
+                            .stroke(Color("marblePrimary").opacity(0.15), lineWidth: 0.5)
+                    )
+                    .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 2)
             }
             .buttonStyle(.plain)
             .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
             .opacity(name.trimmingCharacters(in: .whitespaces).isEmpty ? 0.3 : 1)
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        .padding(.top, 8)
     }
 
     private var exerciseDivider: some View {
@@ -146,15 +169,9 @@ struct TemplateEditorView: View {
         } label: {
             HStack(spacing: 6) {
                 Text("+")
-                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 14).weight(.light))
-                Text("EXERCISE")
-                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 12).weight(.light))
-                    .tracking(1)
+                Text("EXERCISE").tracking(1)
             }
-            .foregroundStyle(Color("marbleSecondary"))
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 14)
-            .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5))
+            .marbleSecondaryButton()
         }
         .buttonStyle(.plain)
     }
