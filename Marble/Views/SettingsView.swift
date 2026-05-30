@@ -6,6 +6,7 @@ import SwiftData
 /// preferences, and destructive data actions. Burying these one tap deeper
 /// frees the You tab to be an identity surface (profile + workout feed).
 struct SettingsView: View {
+    @EnvironmentObject private var auth: AuthenticationService
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
@@ -14,6 +15,8 @@ struct SettingsView: View {
     @AppStorage("appIcon") private var appIcon: String = "light"
 
     @State private var showingClearConfirmation = false
+    @State private var showingSignOutConfirmation = false
+    @State private var showingDeleteConfirmation = false
 
     /// The sheet's color scheme. We ALWAYS resolve to an explicit .light or
     /// .dark and never pass nil — passing nil to .preferredColorScheme on a
@@ -44,6 +47,9 @@ struct SettingsView: View {
                     appearanceSection
                     preferencesSection
                     dataSection
+                    if auth.isAuthenticated {
+                        accountSection
+                    }
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 8)
@@ -236,6 +242,64 @@ struct SettingsView: View {
                     )
             }
             .buttonStyle(.plain)
+        }
+    }
+
+    // MARK: - Account
+
+    private var accountSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionHeader(title: "ACCOUNT")
+
+            // Sign Out
+            Button {
+                showingSignOutConfirmation = true
+            } label: {
+                Text("Sign Out")
+                    .font(.marbleMono(13))
+                    .foregroundStyle(Color("marblePrimary"))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5)
+                    )
+            }
+            .buttonStyle(.plain)
+            .confirmationDialog("Sign Out", isPresented: $showingSignOutConfirmation) {
+                Button("Sign Out") {
+                    auth.signOut()
+                    dismiss()
+                }
+                Button("Cancel", role: .cancel) { }
+            }
+
+            // Delete Account
+            Button {
+                showingDeleteConfirmation = true
+            } label: {
+                Text("Delete Account")
+                    .font(.marbleMono(13))
+                    .foregroundStyle(.red.opacity(0.7))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke(Color.red.opacity(0.2), lineWidth: 0.5)
+                    )
+            }
+            .buttonStyle(.plain)
+            .alert("Delete Account", isPresented: $showingDeleteConfirmation) {
+                Button("Cancel", role: .cancel) { }
+                Button("Delete", role: .destructive) {
+                    Task {
+                        await auth.deleteAccount()
+                        dismiss()
+                    }
+                }
+            } message: {
+                Text("This will permanently delete your account and profile. Your local workout data will remain on this device.")
+            }
         }
     }
 
