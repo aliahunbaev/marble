@@ -15,6 +15,17 @@ struct SettingsView: View {
 
     @State private var showingClearConfirmation = false
 
+    /// Sheets present in their own window context and don't inherit the
+    /// parent's preferredColorScheme. Re-apply it here so theme changes made
+    /// inside Settings update Settings itself live, not just on dismiss.
+    private var colorScheme: ColorScheme? {
+        switch appTheme {
+        case "light": return .light
+        case "dark": return .dark
+        default: return nil
+        }
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -29,9 +40,14 @@ struct SettingsView: View {
                 .padding(.bottom, 40)
             }
             .background(Color("marbleBackground"))
-            .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("SETTINGS")
+                        .font(.marbleMono(11))
+                        .tracking(2)
+                        .foregroundStyle(Color("marblePrimary"))
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         dismiss()
@@ -51,6 +67,7 @@ struct SettingsView: View {
                 Text("This will delete all workouts, templates, and exercise data. This cannot be undone.")
             }
         }
+        .preferredColorScheme(colorScheme)
     }
 
     // MARK: - App Icon
