@@ -128,13 +128,20 @@ struct TrainView: View {
                 .padding(.top, 56)
                 .padding(.bottom, 56)
 
-            // Start workout — primary action, matches FINISH treatment
+            // Start workout — solid capsule, light body type (the Train tab
+            // is a contemplative surface; utility-button treatment from the
+            // workout view doesn't translate here)
             Button {
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 showingEmptyWorkout = true
             } label: {
                 Text("Start Workout")
-                    .marblePrimaryButton(fullWidth: true)
+                    .font(.marbleBody(16))
+                    .foregroundStyle(Color("marbleBackground"))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(Color("marblePrimary"))
+                    .clipShape(Capsule())
             }
             .buttonStyle(.plain)
         }
@@ -154,12 +161,13 @@ struct TrainView: View {
                     showingTemplateEditor = true
                 } label: {
                     Image(systemName: "plus")
-                        .font(.system(size: 13, weight: .regular))
-                        .foregroundStyle(Color("marblePrimary"))
-                        .frame(width: 32, height: 32)
-                        .background(Color.marbleSurfaceTint)
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                        .contentShape(Rectangle())
+                        .font(.system(size: 13, weight: .light))
+                        .foregroundStyle(Color("marbleSecondary"))
+                        .frame(width: 30, height: 30)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 4)
+                                .stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5)
+                        )
                 }
                 .buttonStyle(.plain)
             }
@@ -231,12 +239,12 @@ struct TrainView: View {
             HStack(alignment: .center, spacing: 0) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(template.name)
-                        .font(.marbleBody(24, weight: .regular))
+                        .font(.marbleBody(24))
                         .foregroundStyle(Color("marblePrimary"))
 
                     Text(templateMetadata(template))
-                        .font(.marbleMono(11))
-                        .tracking(1)
+                        .font(.marbleMono(10))
+                        .tracking(0.5)
                         .foregroundStyle(Color("marbleSecondary"))
                 }
                 Spacer(minLength: 20)
