@@ -110,40 +110,31 @@ struct TrainView: View {
     }
 
     private var heroSection: some View {
-        VStack(spacing: 0) {
+        VStack(alignment: .leading, spacing: 0) {
             // Date
             Text(formattedDate)
-                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 11).weight(.light))
-                .foregroundStyle(Color("marbleSecondary"))
+                .font(.marbleMono(11))
                 .tracking(1.5)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .foregroundStyle(Color("marbleSecondary"))
                 .padding(.top, 12)
 
-            // Quote — vertically centered in fixed zone
-            VStack {
-                Spacer()
-                Text(dailyQuote)
-                    .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 22).weight(.light))
-                    .foregroundStyle(Color("marblePrimary"))
-                    .lineSpacing(4)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                Spacer()
-            }
-            .frame(height: 200)
+            // Quote — intrinsic sizing with deliberate breathing room
+            Text(dailyQuote)
+                .font(.marbleBody(22))
+                .foregroundStyle(Color("marblePrimary"))
+                .lineSpacing(4)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 56)
+                .padding(.bottom, 56)
 
-            // Start workout
+            // Start workout — primary action, matches FINISH treatment
             Button {
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 showingEmptyWorkout = true
             } label: {
                 Text("Start Workout")
-                    .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 16).weight(.light))
-                    .foregroundStyle(Color("marbleBackground"))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(Color("marblePrimary"))
-                    .clipShape(Capsule())
+                    .marblePrimaryButton(fullWidth: true)
             }
             .buttonStyle(.plain)
         }
@@ -163,13 +154,12 @@ struct TrainView: View {
                     showingTemplateEditor = true
                 } label: {
                     Image(systemName: "plus")
-                        .font(.system(size: 13, weight: .light))
-                        .foregroundStyle(Color("marbleSecondary"))
-                        .frame(width: 30, height: 30)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 4)
-                                .stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5)
-                        )
+                        .font(.system(size: 13, weight: .regular))
+                        .foregroundStyle(Color("marblePrimary"))
+                        .frame(width: 32, height: 32)
+                        .background(Color.marbleSurfaceTint)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
@@ -241,13 +231,13 @@ struct TrainView: View {
             HStack(alignment: .center, spacing: 0) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(template.name)
-                        .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 24).weight(.light))
+                        .font(.marbleBody(24, weight: .regular))
                         .foregroundStyle(Color("marblePrimary"))
 
                     Text(templateMetadata(template))
-                        .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 10).weight(.light))
+                        .font(.marbleMono(11))
+                        .tracking(1)
                         .foregroundStyle(Color("marbleSecondary"))
-                        .tracking(0.5)
                 }
                 Spacer(minLength: 20)
             }
