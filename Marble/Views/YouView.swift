@@ -4,6 +4,7 @@ import SwiftData
 struct YouView: View {
     @EnvironmentObject private var auth: AuthenticationService
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.colorScheme) private var colorSchemeForGradient
 
     @Query(sort: \Workout.date, order: .reverse) private var workouts: [Workout]
     @Query(sort: \ProgressPhoto.date, order: .reverse) private var allPhotos: [ProgressPhoto]
@@ -13,34 +14,51 @@ struct YouView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 0) {
-                    profileHeader
-                        .padding(.horizontal, 20)
-                        .padding(.top, 12)
-                        .padding(.bottom, 28)
+            ZStack {
+                // Warm radial gradient — same atmospheric treatment as Train tab,
+                // gives the cards something to float over
+                Color("marbleBackground")
+                    .ignoresSafeArea()
+                RadialGradient(
+                    colors: [
+                        colorSchemeForGradient == .dark
+                            ? Color("marbleTertiary").opacity(0.45)
+                            : Color.white.opacity(0.55),
+                        Color("marbleBackground").opacity(0)
+                    ],
+                    center: .top,
+                    startRadius: 0,
+                    endRadius: 700
+                )
+                .ignoresSafeArea()
 
-                    if workouts.isEmpty {
-                        emptyFeed
-                    } else {
-                        feedDivider
-                        ForEach(workouts) { workout in
-                            NavigationLink {
-                                WorkoutDetailView(workout: workout)
-                            } label: {
-                                WorkoutFeedCard(
-                                    workout: workout,
-                                    photos: photosFor(workout)
-                                )
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 16) {
+                        profileHeader
+                            .padding(.horizontal, 20)
+                            .padding(.top, 12)
+                            .padding(.bottom, 12)
+
+                        if workouts.isEmpty {
+                            emptyFeed
+                        } else {
+                            ForEach(workouts) { workout in
+                                NavigationLink {
+                                    WorkoutDetailView(workout: workout)
+                                } label: {
+                                    WorkoutFeedCard(
+                                        workout: workout,
+                                        photos: photosFor(workout)
+                                    )
+                                    .padding(.horizontal, 16)
+                                }
+                                .buttonStyle(.plain)
                             }
-                            .buttonStyle(.plain)
-                            feedDivider
                         }
                     }
+                    .padding(.bottom, 40)
                 }
-                .padding(.bottom, 40)
             }
-            .background(Color("marbleBackground"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -112,13 +130,6 @@ struct YouView: View {
 
     // MARK: - Feed
 
-    private var feedDivider: some View {
-        Rectangle()
-            .fill(Color("marblePrimary").opacity(0.06))
-            .frame(height: 0.5)
-            .padding(.horizontal, 20)
-    }
-
     private var emptyFeed: some View {
         VStack {
             Spacer(minLength: 80)
@@ -174,52 +185,97 @@ struct AvatarCircle: View {
 
 // MARK: - Workout Feed Card
 
-/// Composed card for the You-tab workout feed. Date · name · stats · note ·
-/// photos. Tap opens the full WorkoutDetailView. The card is the same
-/// artifact that would be shareable later (when share-as-image ships).
+/// Glass card for the You-tab workout feed. Floats over the warm gradient
+/// background. When the workout has photos, the first photo becomes the
+/// hero at the top of the card (full bleed of the card's width, 4:5
+/// portrait aspect). Text composition sits below in clean editorial layout.
+/// No italic — the note reads as regular body type.
 struct WorkoutFeedCard: View {
     let workout: Workout
     let photos: [ProgressPhoto]
 
+    private let cornerRadius: CGFloat = 18
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            // Date
-            Text(dateString)
-                .font(.marbleMono(11))
-                .tracking(1)
-                .foregroundStyle(Color("marbleSecondary"))
-
-            // Workout name
-            Text(workout.name)
-                .font(.marbleBody(22))
-                .foregroundStyle(Color("marblePrimary"))
-
-            // Stats
-            Text(statsString)
-                .font(.marbleMono(11))
-                .tracking(1)
-                .foregroundStyle(Color("marbleSecondary"))
-
-            // Note (if exists) — italic journal voice
-            if let note = workout.notes?.trimmingCharacters(in: .whitespaces),
-               !note.isEmpty {
-                Text(note)
-                    .font(.marbleBody(15).italic())
-                    .foregroundStyle(Color("marblePrimary"))
-                    .lineSpacing(2)
-                    .padding(.top, 2)
+        VStack(alignment: .leading, spacing: 0) {
+            // Photo hero (only when a photo exists) — fills card width,
+            // 4:5 portrait aspect so most mirror selfies show full-frame
+            if let hero = photos.first {
+                photoHero(hero)
             }
 
-            // Photos (if exist) — edge to edge of card width
-            if !photos.isEmpty {
-                photoStrip
-                    .padding(.top, 4)
+            // Text composition
+            VStack(alignment: .leading, spacing: 10) {
+                Text(dateString)
+                    .font(.marbleMono(11))
+                    .tracking(1)
+                    .foregroundStyle(Color("marbleSecondary"))
+
+                Text(workout.name)
+                    .font(.marbleBody(24))
+                    .foregroundStyle(Color("marblePrimary"))
+
+                if !statsString.isEmpty {
+                    Text(statsString)
+                        .font(.marbleMono(11))
+                        .tracking(1)
+                        .foregroundStyle(Color("marbleSecondary"))
+                }
+
+                if let note = workout.notes?.trimmingCharacters(in: .whitespaces),
+                   !note.isEmpty {
+                    Text(note)
+                        .font(.marbleBody(15))
+                        .foregroundStyle(Color("marblePrimary"))
+                        .lineSpacing(3)
+                        .padding(.top, 6)
+                }
+            }
+            .padding(20)
+        }
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+        .overlay(
+            RoundedRectangle(cornerRadius: cornerRadius)
+                .stroke(Color("marblePrimary").opacity(0.06), lineWidth: 0.5)
+        )
+        .shadow(color: .black.opacity(0.04), radius: 12, x: 0, y: 4)
+        .contentShape(RoundedRectangle(cornerRadius: cornerRadius))
+    }
+
+    // MARK: - Photo Hero
+
+    @ViewBuilder
+    private func photoHero(_ photo: ProgressPhoto) -> some View {
+        GeometryReader { geo in
+            Group {
+                if let img = PhotoStorageService.shared.image(for: photo) {
+                    Image(uiImage: img)
+                        .resizable()
+                        .scaledToFill()
+                } else {
+                    Color("marbleFieldBackground")
+                }
+            }
+            .frame(width: geo.size.width, height: geo.size.width * 1.25)
+            .clipped()
+            .overlay(alignment: .topTrailing) {
+                if photos.count > 1 {
+                    Text("\(photos.count)")
+                        .font(.marbleMono(11))
+                        .tracking(1)
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(.black.opacity(0.4), in: Capsule())
+                        .padding(12)
+                }
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 24)
-        .contentShape(Rectangle())
+        .aspectRatio(4.0 / 5.0, contentMode: .fit)
     }
+
+    // MARK: - Strings
 
     private var dateString: String {
         let formatter = DateFormatter()
@@ -252,53 +308,6 @@ struct WorkoutFeedCard: View {
             return "\(hours)H \(minutes)M"
         }
         return "\(minutes)M"
-    }
-
-    @ViewBuilder
-    private var photoStrip: some View {
-        if photos.count == 1, let photo = photos.first {
-            singlePhoto(photo)
-        } else {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
-                    ForEach(photos) { photo in
-                        thumbnail(photo)
-                    }
-                }
-            }
-        }
-    }
-
-    private func singlePhoto(_ photo: ProgressPhoto) -> some View {
-        Color.clear
-            .frame(height: 260)
-            .overlay {
-                if let img = PhotoStorageService.shared.image(for: photo) {
-                    Image(uiImage: img)
-                        .resizable()
-                        .scaledToFill()
-                } else {
-                    Color("marbleFieldBackground")
-                }
-            }
-            .clipped()
-            .clipShape(RoundedRectangle(cornerRadius: 6))
-    }
-
-    private func thumbnail(_ photo: ProgressPhoto) -> some View {
-        Color.clear
-            .frame(width: 200, height: 260)
-            .overlay {
-                if let img = PhotoStorageService.shared.image(for: photo) {
-                    Image(uiImage: img)
-                        .resizable()
-                        .scaledToFill()
-                } else {
-                    Color("marbleFieldBackground")
-                }
-            }
-            .clipped()
-            .clipShape(RoundedRectangle(cornerRadius: 6))
     }
 }
 
