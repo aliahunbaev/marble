@@ -15,20 +15,29 @@ struct YouView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                // Warm radial gradient at the top — same atmospheric treatment
-                // as Train tab. Gives the editorial layout some softness.
+                // Tonal-only vertical gradient — stays in the bone/warm-neutral
+                // family with no hue introduction. The glass cards pick up
+                // subtle warm→cool shift as you scroll, which preserves the
+                // "real glass" feel, but the variation is low-contrast enough
+                // that no part of it fogs content. No radial accents — those
+                // created focal hotspots that bled through cards as a color wash.
                 Color("marbleBackground")
                     .ignoresSafeArea()
-                RadialGradient(
-                    colors: [
-                        colorSchemeForGradient == .dark
-                            ? Color("marbleTertiary").opacity(0.4)
-                            : Color.white.opacity(0.5),
-                        Color("marbleBackground").opacity(0)
-                    ],
-                    center: .top,
-                    startRadius: 0,
-                    endRadius: 700
+
+                LinearGradient(
+                    colors: colorSchemeForGradient == .dark
+                        ? [
+                            Color(red: 0.13, green: 0.12, blue: 0.11),
+                            Color("marbleBackground"),
+                            Color(red: 0.10, green: 0.10, blue: 0.11)
+                          ]
+                        : [
+                            Color(red: 0.97, green: 0.95, blue: 0.92),
+                            Color("marbleBackground"),
+                            Color(red: 0.94, green: 0.94, blue: 0.95)
+                          ],
+                    startPoint: .top,
+                    endPoint: .bottom
                 )
                 .ignoresSafeArea()
 
@@ -165,6 +174,31 @@ struct YouView: View {
     }
 }
 
+// MARK: - Liquid Glass Card
+
+/// Applies iOS 26's Liquid Glass treatment when available — real refraction,
+/// bright edge highlights, the "written on glass" look. Falls back to the
+/// older .ultraThinMaterial treatment on iOS 17–25 so users on those versions
+/// still get a translucent surface, just without the refractive shine.
+private struct LiquidGlassCardModifier: ViewModifier {
+    let cornerRadius: CGFloat
+
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content
+                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: cornerRadius))
+        } else {
+            content
+                .background(.ultraThinMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+                .overlay(
+                    RoundedRectangle(cornerRadius: cornerRadius)
+                        .stroke(Color("marblePrimary").opacity(0.06), lineWidth: 0.5)
+                )
+        }
+    }
+}
+
 // MARK: - Avatar Circle
 
 struct AvatarCircle: View {
@@ -258,12 +292,8 @@ struct WorkoutEntry: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.ultraThinMaterial)
         .clipShape(RoundedRectangle(cornerRadius: cardCornerRadius))
-        .overlay(
-            RoundedRectangle(cornerRadius: cardCornerRadius)
-                .stroke(Color("marblePrimary").opacity(0.06), lineWidth: 0.5)
-        )
+        .modifier(LiquidGlassCardModifier(cornerRadius: cardCornerRadius))
         .shadow(color: .black.opacity(0.04), radius: 12, x: 0, y: 4)
         .contentShape(RoundedRectangle(cornerRadius: cardCornerRadius))
     }
@@ -301,18 +331,21 @@ struct WorkoutEntry: View {
         .aspectRatio(4.0 / 5.0, contentMode: .fit)
     }
 
-    // MARK: - Stat value helpers (placeholders for missing values)
+    // MARK: - Stat value helpers (0 for empty, never dashes)
 
     private var setsValue: String {
-        totalSets > 0 ? "\(totalSets)" : "—"
+        "\(totalSets)"
     }
 
     private var timeValue: String {
-        Int(workout.duration) / 60 >= 1 ? formattedDuration : "—"
+        if Int(workout.duration) / 60 >= 1 {
+            return formattedDuration
+        }
+        return "0m"
     }
 
     private var volumeValue: String {
-        totalVolume > 0 ? formattedVolume : "—"
+        totalVolume > 0 ? formattedVolume : "0 lb"
     }
 
     // MARK: - Stats Row (Strava-style, always 3 columns)
