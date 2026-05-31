@@ -45,18 +45,30 @@ struct TemplateDetailSheet: View {
                     }
                 }
 
-                // Start Workout button
+                // Start Workout — tinted glass primary, same archetype as
+                // FINISH and SAVE so every "go" moment shares language.
                 Button {
                     onStartWorkout()
                 } label: {
                     Text("Start Workout")
-                        .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 16))
-                        .fontWeight(.light)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(Color("marblePrimary"))
+                        .font(.marbleBody(16))
                         .foregroundStyle(Color("marbleBackground"))
-                        .clipShape(Capsule())
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 52)
+                        .background {
+                            if #available(iOS 26.0, *) {
+                                Capsule()
+                                    .fill(Color.clear)
+                                    .glassEffect(.regular.tint(Color("marblePrimary")), in: Capsule())
+                            } else {
+                                ZStack {
+                                    Capsule().fill(.ultraThinMaterial)
+                                    Capsule().fill(Color("marblePrimary"))
+                                }
+                            }
+                        }
+                        .contentShape(Capsule())
+                        .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 2)
                 }
                 .buttonStyle(.plain)
                 .padding(.horizontal, 24)
@@ -64,18 +76,13 @@ struct TemplateDetailSheet: View {
                 .padding(.top, 12)
             }
 
-            // Close button
+            // Close — glass capsule, same as template editor X
             Button {
                 dismiss()
             } label: {
                 Image(systemName: "xmark")
-                    .font(.system(size: 11, weight: .light))
-                    .foregroundStyle(Color("marbleSecondary"))
-                    .frame(width: 30, height: 30)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 4)
-                            .stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5)
-                    )
+                    .font(.system(size: 12, weight: .regular))
+                    .marbleGlassCapsule(size: 32)
             }
             .buttonStyle(.plain)
             .padding(.top, 16)
@@ -83,8 +90,8 @@ struct TemplateDetailSheet: View {
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.hidden)
-        .presentationCornerRadius(12)
-        .presentationBackground(Color("marbleBackground"))
+        .presentationCornerRadius(20)
+        .presentationBackground(.ultraThinMaterial)
     }
 }
 

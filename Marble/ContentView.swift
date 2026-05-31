@@ -41,62 +41,50 @@ struct ContentView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            // Custom tab bar — Liquid Glass that actually refracts content
-            // scrolling beneath (iOS 26). On older iOS, falls back to
-            // .ultraThinMaterial. Hairline above to separate it from the feed.
-            VStack(spacing: 0) {
-                Rectangle()
-                    .fill(Color("marblePrimary").opacity(0.08))
-                    .frame(height: 0.5)
-                HStack(spacing: 0) {
-                    ForEach(0..<tabs.count, id: \.self) { index in
-                        Button {
-                            withAnimation(.easeInOut(duration: 0.15)) {
-                                selectedTab = index
-                            }
-                        } label: {
-                            VStack(spacing: 6) {
-                                Text(tabs[index])
-                                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 11).weight(.medium))
-                                    .tracking(1)
-                                    .foregroundStyle(selectedTab == index ? Color("marblePrimary") : Color("marbleSecondary"))
-
-                                Circle()
-                                    .fill(selectedTab == index ? Color("marblePrimary") : Color.clear)
-                                    .frame(width: 4, height: 4)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.top, 12)
-                            .padding(.bottom, 8)
-                            .contentShape(Rectangle())
+            // Custom tab bar — no material, no hairline, just a soft vertical
+            // fade from transparent into the background color. The labels
+            // float on the fade. Most editorial / least chrome — content
+            // scrolls naturally under the labels without a defined "bar."
+            HStack(spacing: 0) {
+                ForEach(0..<tabs.count, id: \.self) { index in
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            selectedTab = index
                         }
-                        .buttonStyle(.plain)
+                    } label: {
+                        VStack(spacing: 6) {
+                            Text(tabs[index])
+                                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 11).weight(.medium))
+                                .tracking(1)
+                                .foregroundStyle(selectedTab == index ? Color("marblePrimary") : Color("marbleSecondary"))
+
+                            Circle()
+                                .fill(selectedTab == index ? Color("marblePrimary") : Color.clear)
+                                .frame(width: 4, height: 4)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 28)
+                        .padding(.bottom, 8)
+                        .contentShape(Rectangle())
                     }
+                    .buttonStyle(.plain)
                 }
-                .padding(.bottom, 16)
             }
-            .modifier(TabBarGlassModifier())
+            .padding(.bottom, 16)
+            .background(
+                LinearGradient(
+                    colors: [
+                        Color("marbleBackground").opacity(0),
+                        Color("marbleBackground").opacity(0.85),
+                        Color("marbleBackground")
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .allowsHitTesting(false)
+            )
         }
         .ignoresSafeArea(.keyboard)
-    }
-}
-
-/// Applies real Liquid Glass to the tab bar on iOS 26+ (proper refraction
-/// of scrolling content) and falls back to .ultraThinMaterial on iOS 17-25.
-private struct TabBarGlassModifier: ViewModifier {
-    func body(content: Content) -> some View {
-        if #available(iOS 26.0, *) {
-            content
-                .background {
-                    Rectangle()
-                        .fill(Color.clear)
-                        .glassEffect(.regular, in: Rectangle())
-                        .ignoresSafeArea(edges: .bottom)
-                }
-        } else {
-            content
-                .background(.ultraThinMaterial)
-        }
     }
 }
 
