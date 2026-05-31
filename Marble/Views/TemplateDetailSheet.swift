@@ -90,8 +90,18 @@ struct TemplateDetailSheet: View {
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.hidden)
-        .presentationCornerRadius(20)
-        .presentationBackground(.ultraThinMaterial)
+        .presentationCornerRadius(28)
+        .presentationBackground {
+            if #available(iOS 26.0, *) {
+                // Real Liquid Glass background — refracts the content
+                // behind the sheet, picks up the bright edge highlights
+                // around the corner radius.
+                Color.clear
+                    .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+            } else {
+                Color("marbleBackground")
+            }
+        }
     }
 }
 

@@ -41,10 +41,9 @@ struct ContentView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            // Custom tab bar — no material, no hairline, just a soft vertical
-            // fade from transparent into the background color. The labels
-            // float on the fade. Most editorial / least chrome — content
-            // scrolls naturally under the labels without a defined "bar."
+            // Custom tab bar — real iOS 26 Liquid Glass that refracts
+            // content scrolling beneath. On iOS 17-25, falls back to
+            // .ultraThinMaterial which is the closest available equivalent.
             HStack(spacing: 0) {
                 ForEach(0..<tabs.count, id: \.self) { index in
                     Button {
@@ -63,7 +62,7 @@ struct ContentView: View {
                                 .frame(width: 4, height: 4)
                         }
                         .frame(maxWidth: .infinity)
-                        .padding(.top, 28)
+                        .padding(.top, 14)
                         .padding(.bottom, 8)
                         .contentShape(Rectangle())
                     }
@@ -71,20 +70,24 @@ struct ContentView: View {
                 }
             }
             .padding(.bottom, 16)
-            .background(
-                LinearGradient(
-                    colors: [
-                        Color("marbleBackground").opacity(0),
-                        Color("marbleBackground").opacity(0.85),
-                        Color("marbleBackground")
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .allowsHitTesting(false)
-            )
+            .modifier(TabBarGlassModifier())
         }
         .ignoresSafeArea(.keyboard)
+    }
+}
+
+/// Applies real Liquid Glass to the tab bar on iOS 26+ via .glassEffect
+/// directly on the bar (proper refraction, edge highlight). Falls back to
+/// .ultraThinMaterial on iOS 17-25.
+private struct TabBarGlassModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content
+                .glassEffect(.regular, in: Rectangle())
+        } else {
+            content
+                .background(.ultraThinMaterial)
+        }
     }
 }
 
