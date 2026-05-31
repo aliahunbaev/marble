@@ -14,8 +14,11 @@ struct TrackView: View {
     @Environment(\.colorScheme) private var colorSchemeForGradient
     @Query(sort: \Workout.date, order: .reverse) private var workouts: [Workout]
     @Query(sort: \TrackedLift.displayOrder) private var trackedLifts: [TrackedLift]
+    @Query(sort: \BodyweightEntry.date, order: .reverse) private var bodyweightEntries: [BodyweightEntry]
+    @AppStorage("weightUnit") private var weightUnit: String = "lbs"
 
     @State private var showingAddLift = false
+    @State private var showingLogBodyweight = false
 
     var body: some View {
         NavigationStack {
@@ -44,12 +47,20 @@ struct TrackView: View {
                 .ignoresSafeArea()
 
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 40) {
+                    VStack(alignment: .leading, spacing: 32) {
                         TheMonthHero(workouts: workouts)
                             .padding(.top, 16)
 
                         myLiftsSection
                             .padding(.horizontal, 20)
+
+                        bodyweightCard
+                            .padding(.horizontal, 20)
+
+                        if let observation = topTrackObservation {
+                            TrackObservationCard(observation: observation)
+                                .padding(.horizontal, 20)
+                        }
                     }
                     .padding(.bottom, 140) // breathing room above the tab bar glass
                 }
@@ -58,6 +69,159 @@ struct TrackView: View {
             .sheet(isPresented: $showingAddLift) {
                 AddTrackedLiftSheet(trackedLifts: trackedLifts)
             }
+            .sheet(isPresented: $showingLogBodyweight) {
+                LogBodyweightSheet()
+            }
+        }
+    }
+
+    // MARK: - Bodyweight Card
+
+    /// Full-width glass card. Title left, current weight + unit hero, small
+    /// sparkline showing trend across the last 90 days. Tap → log sheet.
+    /// Bodyweight is a trend metric (trajectory matters more than any single
+    /// value), unlike lifts which are PR metrics — hence the sparkline.
+    private var bodyweightCard: some View {
+        Button {
+            showingLogBodyweight = true
+        } label: {
+            VStack(alignment: .leading, spacing: 0) {
+                Text("BODYWEIGHT")
+                    .font(.marbleMono(11))
+                    .tracking(1.5)
+                    .foregroundStyle(Color("marbleSecondary"))
+
+                Spacer(minLength: 8)
+
+                if let latest = bodyweightEntries.first {
+                    let displayWeight = weightUnit == "kg" ? latest.weight / 2.20462 : latest.weight
+                    let formattedWeight = displayWeight == floor(displayWeight)
+                        ? "\(Int(displayWeight))"
+                        : String(format: "%.1f", displayWeight)
+                    let unit = weightUnit == "kg" ? "KG" : "LB"
+
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text(formattedWeight)
+                            .font(.marbleBody(40))
+                            .foregroundStyle(Color("marblePrimary"))
+                        Text(unit)
+                            .font(.marbleMono(13))
+                            .tracking(1.5)
+                            .foregroundStyle(Color("marbleSecondary"))
+                        Spacer()
+                        BodyweightSparkline(entries: bodyweightEntriesForChart)
+                            .frame(width: 110, height: 36)
+                    }
+                } else {
+                    // Empty — invite to log
+                    Text("TAP TO LOG")
+                        .font(.marbleMono(13))
+                        .tracking(1.5)
+                        .foregroundStyle(Color("marbleSecondary"))
+                }
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(height: 110)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .marbleLiquidGlassCard(cornerRadius: 16)
+            .shadow(color: .black.opacity(0.04), radius: 12, x: 0, y: 4)
+            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// Last 90 days of entries for the sparkline, oldest-first so the line
+    /// reads left-to-right as old → new.
+    private var bodyweightEntriesForChart: [BodyweightEntry] {
+        let cutoff = Calendar.current.date(byAdding: .day, value: -90, to: Date()) ?? Date()
+        return bodyweightEntries
+            .filter { $0.date >= cutoff }
+            .sorted { $0.date < $1.date }
+    }
+
+    // MARK: - TrackObservation (auto-detected)
+
+    /// Computes the most-notable movement this month vs last month and
+    /// returns it as an TrackObservation. Returns nil if there's no movement
+    /// worth noting (new user, flat data, no comparable history).
+    ///
+    /// Priority: largest positive % delta across tracked lifts (using each
+    /// lift's configured metric type). Falls back to bodyweight delta if
+    /// no positive lift movement exists.
+    private var topTrackObservation: TrackObservation? {
+        let calendar = Calendar(identifier: .iso8601)
+        let now = Date()
+        guard let thisMonthStart = calendar.date(
+            from: calendar.dateComponents([.year, .month], from: now)
+        ) else { return nil }
+        guard let lastMonthStart = calendar.date(byAdding: .month, value: -1, to: thisMonthStart) else { return nil }
+
+        // Best positive % delta across tracked lifts
+        var bestLiftDelta: (title: String, pct: Double)?
+        for lift in trackedLifts {
+            guard let exercise = lift.exercise else { continue }
+            let thisMonthBest = bestMetric(for: exercise, lift: lift, in: thisMonthStart..<now)
+            let lastMonthBest = bestMetric(for: exercise, lift: lift, in: lastMonthStart..<thisMonthStart)
+            guard thisMonthBest > 0, lastMonthBest > 0 else { continue }
+            let pct = ((thisMonthBest - lastMonthBest) / lastMonthBest) * 100
+            guard pct >= 1 else { continue } // ignore noise under 1%
+            if bestLiftDelta == nil || pct > bestLiftDelta!.pct {
+                bestLiftDelta = (exercise.name.uppercased(), pct)
+            }
+        }
+
+        if let lift = bestLiftDelta {
+            return TrackObservation(
+                title: lift.title,
+                delta: "+\(Int(round(lift.pct)))%",
+                period: "THIS MONTH"
+            )
+        }
+
+        // Fallback: bodyweight % delta (sign preserved — show ± for body)
+        let thisMonthBody = bodyweightEntries
+            .filter { $0.date >= thisMonthStart && $0.date < now }
+            .last?.weight
+        let lastMonthBody = bodyweightEntries
+            .filter { $0.date >= lastMonthStart && $0.date < thisMonthStart }
+            .last?.weight
+        if let now = thisMonthBody, let prev = lastMonthBody, prev > 0 {
+            let pct = ((now - prev) / prev) * 100
+            if abs(pct) >= 0.5 {
+                let sign = pct > 0 ? "+" : ""
+                return TrackObservation(
+                    title: "BODYWEIGHT",
+                    delta: "\(sign)\(String(format: "%.1f", pct))%",
+                    period: "THIS MONTH"
+                )
+            }
+        }
+
+        return nil
+    }
+
+    /// Best metric value for a given lift within a date range, using the
+    /// lift's configured metric type (bestWeight / oneRepMax / maxVolume).
+    private func bestMetric(for exercise: Exercise, lift: TrackedLift, in range: Range<Date>) -> Double {
+        let exerciseID = exercise.persistentModelID
+        let sets: [(weight: Double, reps: Int)] = workouts
+            .filter { range.contains($0.date) }
+            .flatMap { workout -> [(weight: Double, reps: Int)] in
+                workout.exerciseLogs
+                    .filter { $0.exercise?.persistentModelID == exerciseID }
+                    .flatMap { $0.sets.filter { $0.isCompleted && $0.weight > 0 } }
+                    .map { (weight: $0.weight, reps: $0.reps) }
+            }
+        guard !sets.isEmpty else { return 0 }
+
+        switch lift.metricType {
+        case "oneRepMax":
+            return sets.map { $0.weight * (1.0 + Double($0.reps) / 30.0) }.max() ?? 0
+        case "maxVolume":
+            return sets.map { $0.weight * Double($0.reps) }.max() ?? 0
+        default:
+            return sets.map(\.weight).max() ?? 0
         }
     }
 
@@ -371,6 +535,204 @@ private struct LiftCardView: View {
         case "maxVolume": return metrics.maxVolumeFormatted
         default: return metrics.bestWeightFormatted
         }
+    }
+}
+
+// MARK: - TrackObservation
+
+/// A single auto-detected movement worth reporting back to the user.
+/// Stocks-style: title + delta + period. No goals, no setup, no streaks —
+/// just "your training, observed."
+struct TrackObservation {
+    let title: String   // e.g. "BENCH PRESS"
+    let delta: String   // e.g. "+12%"
+    let period: String  // e.g. "THIS MONTH"
+}
+
+/// Full-width card showing one observation. Hidden entirely (not rendered)
+/// when there's nothing worth saying — no empty-state apology, no
+/// philosophical filler. Same glass treatment + height bracket as the
+/// bodyweight card so the two read as siblings.
+private struct TrackObservationCard: View {
+    let observation: TrackObservation
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("OBSERVATION")
+                .font(.marbleMono(11))
+                .tracking(1.5)
+                .foregroundStyle(Color("marbleSecondary"))
+
+            Spacer(minLength: 8)
+
+            // Delta as hero. Stocks-style.
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                Text(observation.delta)
+                    .font(.marbleBody(40))
+                    .foregroundStyle(Color("marblePrimary"))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(observation.title)
+                        .font(.marbleMono(11))
+                        .tracking(1.5)
+                        .foregroundStyle(Color("marblePrimary"))
+                    Text(observation.period)
+                        .font(.marbleMono(10))
+                        .tracking(1)
+                        .foregroundStyle(Color("marbleSecondary"))
+                }
+                Spacer()
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(height: 110)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .marbleLiquidGlassCard(cornerRadius: 16)
+        .shadow(color: .black.opacity(0.04), radius: 12, x: 0, y: 4)
+    }
+}
+
+// MARK: - Bodyweight Sparkline
+
+/// Minimal line chart of bodyweight entries. No axes, no labels — just the
+/// shape of the trend. Editorial restraint over data-dashboard density.
+private struct BodyweightSparkline: View {
+    let entries: [BodyweightEntry]
+
+    var body: some View {
+        GeometryReader { geo in
+            if entries.count >= 2 {
+                let weights = entries.map(\.weight)
+                let minW = weights.min() ?? 0
+                let maxW = weights.max() ?? 1
+                let range = max(maxW - minW, 1)
+                let stepX = geo.size.width / CGFloat(max(entries.count - 1, 1))
+
+                let points: [CGPoint] = entries.enumerated().map { i, entry in
+                    let x = CGFloat(i) * stepX
+                    let normalized = (entry.weight - minW) / range
+                    let y = geo.size.height * (1 - CGFloat(normalized))
+                    return CGPoint(x: x, y: y)
+                }
+
+                ZStack {
+                    Path { path in
+                        guard let first = points.first else { return }
+                        path.move(to: first)
+                        for point in points.dropFirst() {
+                            path.addLine(to: point)
+                        }
+                    }
+                    .stroke(Color("marblePrimary").opacity(0.6), lineWidth: 1.2)
+
+                    if let last = points.last {
+                        Circle()
+                            .fill(Color("marblePrimary"))
+                            .frame(width: 4, height: 4)
+                            .position(last)
+                    }
+                }
+            } else if entries.count == 1 {
+                // Single value — flat dashed line so the area isn't empty.
+                Path { path in
+                    path.move(to: CGPoint(x: 0, y: geo.size.height / 2))
+                    path.addLine(to: CGPoint(x: geo.size.width, y: geo.size.height / 2))
+                }
+                .stroke(Color("marblePrimary").opacity(0.25), style: StrokeStyle(lineWidth: 1, dash: [2, 3]))
+            }
+        }
+    }
+}
+
+// MARK: - Log Bodyweight Sheet
+
+/// Modal for logging a new bodyweight entry. Single number input,
+/// decimal keyboard, today's date implicit. Lives in TrackView because
+/// bodyweight is one of the things you track.
+private struct LogBodyweightSheet: View {
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
+    @AppStorage("weightUnit") private var weightUnit: String = "lbs"
+
+    @State private var weightText: String = ""
+    @FocusState private var fieldFocused: Bool
+
+    private var parsedWeight: Double? {
+        Double(weightText.trimmingCharacters(in: .whitespaces))
+    }
+
+    private var unitLabel: String { weightUnit == "kg" ? "KG" : "LB" }
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                Spacer()
+
+                VStack(spacing: 8) {
+                    Text("LOG BODYWEIGHT")
+                        .font(.marbleMono(11))
+                        .tracking(2)
+                        .foregroundStyle(Color("marbleSecondary"))
+
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        TextField("0", text: $weightText)
+                            .font(.marbleBody(56))
+                            .foregroundStyle(Color("marblePrimary"))
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.center)
+                            .focused($fieldFocused)
+                            .fixedSize()
+                        Text(unitLabel)
+                            .font(.marbleMono(15))
+                            .tracking(1.5)
+                            .foregroundStyle(Color("marbleSecondary"))
+                    }
+                }
+
+                Spacer()
+
+                Button {
+                    save()
+                } label: {
+                    Text("SAVE")
+                        .marbleGlassPrimaryCapsule()
+                }
+                .buttonStyle(.plain)
+                .disabled(parsedWeight == nil || (parsedWeight ?? 0) <= 0)
+                .opacity((parsedWeight ?? 0) > 0 ? 1 : 0.3)
+                .padding(.bottom, 32)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 14, weight: .regular))
+                            .foregroundStyle(Color("marblePrimary"))
+                    }
+                }
+            }
+            .onAppear { fieldFocused = true }
+            .presentationDetents([.medium])
+            .presentationDragIndicator(.hidden)
+            .presentationCornerRadius(28)
+        }
+    }
+
+    private func save() {
+        guard let weight = parsedWeight, weight > 0 else { return }
+        let weightInLbs = weightUnit == "kg" ? weight * 2.20462 : weight
+        let entry = BodyweightEntry(weight: weightInLbs)
+        modelContext.insert(entry)
+        try? modelContext.save()
+        CloudSyncService.shared.uploadBodyweightEntry(entry)
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        dismiss()
     }
 }
 
