@@ -5,6 +5,12 @@ import UIKit
 
 struct ClosingRitualView: View {
     let workout: Workout
+    /// Optional escape hatch — back to the active workout. When provided,
+    /// renders a chevron in the top-left of the ritualView. The caller
+    /// is responsible for undoing the just-saved workout and resuming
+    /// the timer state. Not called from the recordedView (that flow is
+    /// already irreversibly "done").
+    var onBack: (() -> Void)? = nil
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
@@ -53,37 +59,57 @@ struct ClosingRitualView: View {
     // MARK: - Ritual (photo + note)
 
     private var ritualView: some View {
-        VStack(spacing: 0) {
-            ScrollView {
-                VStack(spacing: 28) {
-                    Text(formattedDuration)
-                        .font(.marbleMono(12))
-                        .tracking(2)
-                        .foregroundStyle(Color("marbleSecondary"))
-                        .padding(.top, 24)
+        ZStack(alignment: .topLeading) {
+            VStack(spacing: 0) {
+                ScrollView {
+                    VStack(spacing: 28) {
+                        Text(formattedDuration)
+                            .font(.marbleMono(12))
+                            .tracking(2)
+                            .foregroundStyle(Color("marbleSecondary"))
+                            .padding(.top, 24)
 
-                    photoZone
-                        .padding(.horizontal, 20)
+                        photoZone
+                            .padding(.horizontal, 20)
 
-                    noteZone
-                        .padding(.horizontal, 20)
+                        noteZone
+                            .padding(.horizontal, 20)
+                    }
+                    .padding(.bottom, 40)
                 }
-                .padding(.bottom, 40)
+
+                Spacer(minLength: 0)
+
+                Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    save(skipping: false)
+                } label: {
+                    Text("SAVE")
+                        .marbleGlassPrimaryCapsule(horizontalPadding: 24, height: 52)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 20)
+                .padding(.bottom, 32)
             }
 
-            Spacer(minLength: 0)
-
-            Button {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                save(skipping: false)
-            } label: {
-                Text("SAVE")
-                    .marbleGlassPrimaryCapsule(horizontalPadding: 24, height: 52)
-                    .frame(maxWidth: .infinity)
+            // Back chevron — escape hatch to the active workout. Only
+            // rendered when the caller provided an onBack closure (which
+            // handles undoing the just-saved workout and resuming the
+            // timer). Glass capsule matching the rest of the chrome.
+            if let onBack {
+                Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    onBack()
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 15, weight: .medium))
+                        .marbleGlassCapsule(size: 44)
+                }
+                .buttonStyle(.plain)
+                .padding(.leading, 16)
+                .padding(.top, 8)
             }
-            .buttonStyle(.plain)
-            .padding(.horizontal, 20)
-            .padding(.bottom, 32)
         }
     }
 

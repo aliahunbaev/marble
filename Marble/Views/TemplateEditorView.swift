@@ -297,22 +297,15 @@ struct ExerciseSetTable: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Exercise name header
+            // Exercise name header — the name itself is the menu trigger.
+            // Standalone ⋯ button removed (cleaner row); "Start rest timer"
+            // item dropped (useless — the floating timer button is one tap
+            // away, and per-set rest customization would be a real feature
+            // beyond just opening the modal).
             HStack {
-                Text(entry.exercise.name)
-                    .font(.marbleBody(17))
-                    .foregroundStyle(Color("marblePrimary"))
-
-                Spacer()
-
                 if onRemove != nil {
                     Menu {
                         if isWorkoutMode {
-                            Button {
-                                onStartRestTimer?()
-                            } label: {
-                                Label("Start rest timer", systemImage: "timer")
-                            }
                             Button {
                                 onReplaceExercise?()
                             } label: {
@@ -325,18 +318,26 @@ struct ExerciseSetTable: View {
                             Label("Remove", systemImage: "trash")
                         }
                     } label: {
-                        Image(systemName: "ellipsis")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundStyle(Color("marbleSecondary"))
-                            .frame(width: 32, height: 32, alignment: .center)
+                        Text(entry.exercise.name)
+                            .font(.marbleBody(17))
+                            .foregroundStyle(Color("marblePrimary"))
                             .contentShape(Rectangle())
                     }
+                    .buttonStyle(.plain)
+                } else {
+                    Text(entry.exercise.name)
+                        .font(.marbleBody(17))
+                        .foregroundStyle(Color("marblePrimary"))
                 }
+
+                Spacer()
             }
             .padding(.horizontal, 20)
             .padding(.bottom, 14)
             // Invisible reorder gesture — long-press the exercise name area
             // to enter reorder mode, then drag to move. No visible handle.
+            // Long-press is distinct from the Menu's tap trigger, so both
+            // gestures coexist on the same name.
             .modifier(ReorderGestureModifier(
                 enabled: dragHandle,
                 onChanged: onDragChanged,
@@ -456,6 +457,11 @@ struct SetRowView: View {
     @State private var checkScale: CGFloat = 1.0
     @State private var weightInvalid = false
     @State private var repsInvalid = false
+    /// Brief flash when a set is completed — momentary scale-up that
+    /// settles back. The persistent completed state stays clean (no
+    /// glow/tint), but the moment of completion gets a felt micro-
+    /// satisfaction beyond the haptic + checkmark spring.
+    @State private var completionFlash: Bool = false
     @FocusState private var weightFocused: Bool
     @FocusState private var repsFocused: Bool
 
@@ -513,6 +519,7 @@ struct SetRowView: View {
                 .buttonStyle(.plain)
             }
         }
+        .scaleEffect(completionFlash ? 1.015 : 1.0)
     }
 
     private func handleComplete() {
@@ -565,9 +572,16 @@ struct SetRowView: View {
         withAnimation(.spring(response: 0.2, dampingFraction: 0.5)) {
             checkScale = 1.2
         }
+        // Brief row "settle" flash — momentary scale up that springs back.
+        // Felt, not seen — the row settles into place rather than just
+        // changing state. Persistent state stays clean.
+        withAnimation(.spring(response: 0.25, dampingFraction: 0.55)) {
+            completionFlash = true
+        }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-            withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                 checkScale = 1.0
+                completionFlash = false
             }
         }
         onComplete?()

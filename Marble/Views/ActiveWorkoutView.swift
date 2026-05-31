@@ -42,13 +42,36 @@ struct ActiveWorkoutView: View {
 
     var body: some View {
         if showingSummary, let workout = completedWorkout {
-            ClosingRitualView(workout: workout)
+            ClosingRitualView(workout: workout, onBack: { undoFinish(workout: workout) })
                 .onDisappear {
                     dismiss()
                 }
         } else {
             workoutContentView
         }
+    }
+
+    /// Undo the finish: delete the just-saved workout from the model
+    /// context, resume the timer (preserving the original startDate so
+    /// elapsed time keeps accumulating), and drop back to the workout
+    /// content view. The user's exercise entries are still in memory
+    /// (they were never cleared), so they reappear intact.
+    private func undoFinish(workout: Workout) {
+        let cloudID = workout.cloudID
+        modelContext.delete(workout)
+        try? modelContext.save()
+        CloudSyncService.shared.deleteWorkout(cloudID: cloudID)
+
+        // Resume timer without resetting startDate — startWorkoutTimer
+        // would reset it, breaking elapsed time. Schedule a fresh timer
+        // that ticks against the existing startDate.
+        workoutTimer?.invalidate()
+        workoutTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
+            elapsedSeconds = Int(Date().timeIntervalSince(startDate))
+        }
+
+        completedWorkout = nil
+        withAnimation { showingSummary = false }
     }
 
     private var workoutContentView: some View {
