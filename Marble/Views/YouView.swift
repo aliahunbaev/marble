@@ -42,7 +42,7 @@ struct YouView: View {
                         if workouts.isEmpty {
                             emptyFeed
                         } else {
-                            ForEach(Array(workouts.enumerated()), id: \.element.id) { index, workout in
+                            ForEach(workouts) { workout in
                                 NavigationLink {
                                     WorkoutDetailView(workout: workout)
                                 } label: {
@@ -52,10 +52,6 @@ struct YouView: View {
                                     )
                                 }
                                 .buttonStyle(.plain)
-
-                                if index < workouts.count - 1 {
-                                    entryDivider
-                                }
                             }
                         }
                     }
@@ -191,170 +187,56 @@ struct AvatarCircle: View {
     }
 }
 
-// MARK: - Workout Entry (editorial layout, no card)
+// MARK: - Workout Entry (poster tile, tap to expand)
 
-/// Editorial workout entry — magazine-style composition instead of a card.
-/// Each entry: date, name, Strava-style stats row, handwritten note,
-/// typographic composition of exercises + weights, photo (if attached).
-/// Hairline dividers between entries (provided by parent).
+/// Each workout is a small tile — like a poster or movie still. Tap to open
+/// the full detail view. Two visual variants:
+///   - With photo: photo fills the tile, text overlay at bottom with a
+///     subtle gradient scrim for readability
+///   - Without photo: typographic composition — workout name as the hero
+///     on a quiet tinted surface, date + stats around it
+/// Both variants share a 4:5 portrait aspect so the feed has consistent
+/// rhythm. Note (if attached) appears below the tile as a caption.
 struct WorkoutEntry: View {
     let workout: Workout
     let photos: [ProgressPhoto]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            // Date masthead
-            Text(dateString)
-                .font(.marbleMono(11))
-                .tracking(1.5)
-                .foregroundStyle(Color("marbleSecondary"))
+        VStack(alignment: .leading, spacing: 12) {
+            tile
 
-            // Workout name
-            Text(workout.name)
-                .font(.marbleBody(28))
-                .foregroundStyle(Color("marblePrimary"))
-
-            // Stats row — Strava-style with bold-ish numbers under quiet labels
-            if !statItems.isEmpty {
-                HStack(alignment: .top, spacing: 36) {
-                    ForEach(statItems, id: \.label) { item in
-                        statColumn(label: item.label, value: item.value)
-                    }
-                    Spacer(minLength: 0)
-                }
-            }
-
-            // Note in handwritten font — feels like a journal entry
             if let note = workout.notes?.trimmingCharacters(in: .whitespaces),
                !note.isEmpty {
                 Text(note)
-                    .font(.marbleScript(20))
+                    .font(.marbleBody(15))
                     .foregroundStyle(Color("marblePrimary"))
-                    .lineSpacing(4)
-                    .padding(.top, 4)
-            }
-
-            // Typographic composition of exercises + weights
-            // The "map equivalent" — the work itself as visual content
-            if !workout.exerciseLogs.isEmpty {
-                exerciseComposition
-                    .padding(.top, 8)
-            }
-
-            // Photo (if attached) — full-bleed below the composition
-            if let hero = photos.first {
-                photoView(hero)
-                    .padding(.top, 8)
+                    .lineSpacing(3)
+                    .padding(.horizontal, 4)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 32)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 18)
         .contentShape(Rectangle())
     }
 
-    // MARK: - Stats Row
+    // MARK: - Tile
 
-    private struct StatItem { let label: String; let value: String }
-
-    private var statItems: [StatItem] {
-        var items: [StatItem] = []
-        if totalSets > 0 {
-            items.append(StatItem(label: "SETS", value: "\(totalSets)"))
-        }
-        if Int(workout.duration) / 60 >= 1 {
-            items.append(StatItem(label: "TIME", value: formattedDuration))
-        }
-        if totalVolume > 0 {
-            items.append(StatItem(label: "VOLUME", value: formattedVolume))
-        }
-        return items
-    }
-
-    private func statColumn(label: String, value: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(label)
-                .font(.marbleMono(10))
-                .tracking(1.5)
-                .foregroundStyle(Color("marbleSecondary"))
-            Text(value)
-                .font(.marbleBody(20))
-                .foregroundStyle(Color("marblePrimary"))
+    @ViewBuilder
+    private var tile: some View {
+        if let hero = photos.first {
+            photoTile(hero)
+        } else {
+            typographicTile
         }
     }
 
-    // MARK: - Exercise Composition
-
-    private var exerciseComposition: some View {
-        VStack(spacing: 10) {
-            // Top hairline
-            Rectangle()
-                .fill(Color("marblePrimary").opacity(0.15))
-                .frame(width: 32, height: 0.5)
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-            VStack(alignment: .leading, spacing: 8) {
-                ForEach(workout.exerciseLogs) { log in
-                    exerciseRow(log)
-                }
-            }
-
-            // Bottom hairline
-            Rectangle()
-                .fill(Color("marblePrimary").opacity(0.15))
-                .frame(width: 32, height: 0.5)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .padding(.vertical, 4)
-    }
-
-    private func exerciseRow(_ log: ExerciseLog) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Text(log.exercise?.name ?? "—")
-                .font(.marbleScript(19))
-                .foregroundStyle(Color("marblePrimary"))
-                .lineLimit(1)
-
-            Spacer(minLength: 12)
-
-            Text(setsString(log.sets))
-                .font(.marbleMono(13))
-                .tracking(0.5)
-                .foregroundStyle(Color("marblePrimary").opacity(0.75))
-        }
-    }
-
-    /// Compact set summary. "225 × 5, 5, 3" — same-weight reps collapsed,
-    /// different weights separated by ' | '. Reads like a scorecard.
-    private func setsString(_ sets: [WorkoutSet]) -> String {
-        let completed = sets.filter(\.isCompleted)
-        guard !completed.isEmpty else { return "—" }
-
-        var groups: [(weight: Double, reps: [Int])] = []
-        for set in completed {
-            if let lastIdx = groups.indices.last, groups[lastIdx].weight == set.weight {
-                groups[lastIdx].reps.append(set.reps)
-            } else {
-                groups.append((weight: set.weight, reps: [set.reps]))
-            }
-        }
-
-        return groups.map { group in
-            let weightStr = group.weight == floor(group.weight)
-                ? "\(Int(group.weight))"
-                : String(format: "%.1f", group.weight)
-            let repsStr = group.reps.map(String.init).joined(separator: ", ")
-            return "\(weightStr) × \(repsStr)"
-        }.joined(separator: " | ")
-    }
-
-    // MARK: - Photo
-
-    private func photoView(_ photo: ProgressPhoto) -> some View {
+    /// Photo tile — photo is the visual, text overlay at bottom.
+    private func photoTile(_ photo: ProgressPhoto) -> some View {
         GeometryReader { geo in
-            Color.clear
-                .frame(width: geo.size.width, height: geo.size.width * 1.25)
-                .overlay {
+            ZStack(alignment: .bottomLeading) {
+                // Photo
+                Group {
                     if let img = PhotoStorageService.shared.image(for: photo) {
                         Image(uiImage: img)
                             .resizable()
@@ -363,30 +245,148 @@ struct WorkoutEntry: View {
                         Color("marbleFieldBackground")
                     }
                 }
+                .frame(width: geo.size.width, height: geo.size.width * 1.25)
                 .clipped()
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .overlay(alignment: .topTrailing) {
-                    if photos.count > 1 {
-                        Text("\(photos.count)")
-                            .font(.marbleMono(11))
-                            .tracking(1)
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(.black.opacity(0.4), in: Capsule())
-                            .padding(12)
-                    }
+
+                // Gradient scrim — transparent → dark, bottom half only
+                LinearGradient(
+                    colors: [.black.opacity(0), .black.opacity(0.7)],
+                    startPoint: .center,
+                    endPoint: .bottom
+                )
+                .frame(width: geo.size.width, height: geo.size.width * 1.25)
+                .allowsHitTesting(false)
+
+                // Text overlay
+                tileText(textColor: .white, dimColor: .white.opacity(0.75))
+                    .padding(20)
+            }
+            .frame(width: geo.size.width, height: geo.size.width * 1.25)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .overlay(alignment: .topTrailing) {
+                if photos.count > 1 {
+                    Text("\(photos.count)")
+                        .font(.marbleMono(10))
+                        .tracking(1)
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(.black.opacity(0.45), in: Capsule())
+                        .padding(12)
                 }
+            }
         }
         .aspectRatio(4.0 / 5.0, contentMode: .fit)
     }
 
-    // MARK: - Computed values
+    /// Typographic tile — when no photo, the workout name becomes the visual.
+    /// Composed like a museum object label or magazine chapter title.
+    private var typographicTile: some View {
+        GeometryReader { geo in
+            ZStack(alignment: .topLeading) {
+                // Subtle tinted background — gives the tile presence without
+                // the chrome of a full card
+                Color.marbleSurfaceTint
+
+                // Subtle inner warm radial — adds atmospheric depth so the
+                // tile doesn't read as flat
+                RadialGradient(
+                    colors: [
+                        Color.white.opacity(0.25),
+                        Color.clear
+                    ],
+                    center: .topTrailing,
+                    startRadius: 0,
+                    endRadius: geo.size.width * 0.9
+                )
+                .allowsHitTesting(false)
+
+                // Big workout name — hero of the tile
+                VStack(alignment: .leading, spacing: 0) {
+                    Spacer()
+                    Text(workout.name)
+                        .font(.marbleBody(min(geo.size.width * 0.16, 48)))
+                        .foregroundStyle(Color("marblePrimary"))
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                    Spacer()
+                }
+                .padding(.horizontal, 24)
+
+                // Date top-left, stats bottom-left — anchors the composition
+                VStack(alignment: .leading) {
+                    Text(dateString)
+                        .font(.marbleMono(10))
+                        .tracking(1.5)
+                        .foregroundStyle(Color("marbleSecondary"))
+                    Spacer()
+                    Rectangle()
+                        .fill(Color("marblePrimary").opacity(0.2))
+                        .frame(width: 24, height: 0.5)
+                        .padding(.bottom, 8)
+                    if !statsString.isEmpty {
+                        Text(statsString)
+                            .font(.marbleMono(10))
+                            .tracking(1)
+                            .foregroundStyle(Color("marbleSecondary"))
+                    }
+                }
+                .padding(20)
+            }
+            .frame(width: geo.size.width, height: geo.size.width * 1.25)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color("marblePrimary").opacity(0.06), lineWidth: 0.5)
+            )
+        }
+        .aspectRatio(4.0 / 5.0, contentMode: .fit)
+    }
+
+    /// Shared text composition for photo tile overlay
+    private func tileText(textColor: Color, dimColor: Color) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(dateString)
+                .font(.marbleMono(10))
+                .tracking(1.5)
+                .foregroundStyle(dimColor)
+
+            Text(workout.name)
+                .font(.marbleBody(26))
+                .foregroundStyle(textColor)
+                .lineLimit(1)
+
+            if !statsString.isEmpty {
+                Text(statsString)
+                    .font(.marbleMono(10))
+                    .tracking(1)
+                    .foregroundStyle(dimColor)
+                    .padding(.top, 2)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    // MARK: - Computed strings
 
     private var dateString: String {
         let formatter = DateFormatter()
         formatter.dateFormat = "EEEE · MMMM d"
         return formatter.string(from: workout.date).uppercased()
+    }
+
+    private var statsString: String {
+        var parts: [String] = []
+        if totalSets > 0 {
+            parts.append("\(totalSets) SETS")
+        }
+        if Int(workout.duration) / 60 >= 1 {
+            parts.append(formattedDuration)
+        }
+        if totalVolume > 0 {
+            parts.append(formattedVolume)
+        }
+        return parts.joined(separator: " · ")
     }
 
     private var totalSets: Int {
@@ -405,10 +405,9 @@ struct WorkoutEntry: View {
 
     private var formattedVolume: String {
         if totalVolume >= 1000 {
-            let k = totalVolume / 1000
-            return String(format: "%.1fK lb", k)
+            return String(format: "%.1fK LB", totalVolume / 1000)
         }
-        return "\(Int(totalVolume)) lb"
+        return "\(Int(totalVolume)) LB"
     }
 
     private var formattedDuration: String {
@@ -416,9 +415,9 @@ struct WorkoutEntry: View {
         let hours = totalMinutes / 60
         let minutes = totalMinutes % 60
         if hours > 0 {
-            return "\(hours)h \(minutes)m"
+            return "\(hours)H \(minutes)M"
         }
-        return "\(minutes)m"
+        return "\(minutes)M"
     }
 }
 
