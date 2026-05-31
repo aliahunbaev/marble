@@ -102,14 +102,7 @@ struct FloatingRestTimerButton: View {
     private var idleView: some View {
         Image(systemName: "clock")
             .font(.system(size: 14, weight: .regular))
-            .foregroundStyle(Color("marblePrimary"))
-            .frame(width: 44, height: 44)
-            .background(.ultraThinMaterial, in: Circle())
-            .overlay(
-                Circle()
-                    .stroke(Color("marblePrimary").opacity(0.08), lineWidth: 0.5)
-            )
-            .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
+            .marbleGlassCapsule(size: 44)
     }
 
     /// Shared content layout for the active timer — icon in a 44pt leading
@@ -137,9 +130,9 @@ struct FloatingRestTimerButton: View {
             timerContent
                 .foregroundStyle(Color("marblePrimary"))
                 .background {
-                    // Glass base + dramatic ink fill that recedes as time
-                    // passes. Using Color("marblePrimary") so the fill adapts
-                    // to appearance — dark fill on light mode, light fill on
+                    // Glass base + ink fill that recedes as time passes.
+                    // Uses Color("marblePrimary") so the fill adapts to
+                    // appearance — dark fill on light mode, light fill on
                     // dark mode (inverted both ways).
                     //
                     // Fill is a Rectangle (not Capsule) so the wiping edge is
@@ -147,8 +140,7 @@ struct FloatingRestTimerButton: View {
                     // still rounds the pill's outer left/right edges.
                     GeometryReader { geo in
                         ZStack(alignment: .leading) {
-                            Capsule()
-                                .fill(.ultraThinMaterial)
+                            glassBase
                             Rectangle()
                                 .fill(Color("marblePrimary"))
                                 .frame(width: geo.size.width * state.progress)
@@ -172,11 +164,27 @@ struct FloatingRestTimerButton: View {
                     }
                 }
                 .clipShape(Capsule())
-                .overlay(
-                    Capsule()
-                        .stroke(Color("marblePrimary").opacity(0.08), lineWidth: 0.5)
-                )
                 .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
+        }
+    }
+
+    /// Glass base for the active countdown pill — Liquid Glass on iOS 26+,
+    /// material with a hairline stroke as a fallback. Kept as a computed view
+    /// rather than calling .marbleGlassCapsule so the shape stays a Capsule
+    /// (vs the circle the capsule helper uses).
+    @ViewBuilder
+    private var glassBase: some View {
+        if #available(iOS 26.0, *) {
+            Capsule()
+                .fill(Color.clear)
+                .glassEffect(.regular, in: Capsule())
+        } else {
+            ZStack {
+                Capsule()
+                    .fill(.ultraThinMaterial)
+                Capsule()
+                    .stroke(Color("marblePrimary").opacity(0.08), lineWidth: 0.5)
+            }
         }
     }
 

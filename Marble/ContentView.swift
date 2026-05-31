@@ -41,37 +41,42 @@ struct ContentView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            // Custom tab bar
-            Rectangle()
-                .fill(Color("marblePrimary").opacity(0.06))
-                .frame(height: 0.5)
-            HStack(spacing: 0) {
-                ForEach(0..<tabs.count, id: \.self) { index in
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.15)) {
-                            selectedTab = index
-                        }
-                    } label: {
-                        VStack(spacing: 6) {
-                            Text(tabs[index])
-                                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 11).weight(.medium))
-                                .tracking(1)
-                                .foregroundStyle(selectedTab == index ? Color("marblePrimary") : Color("marbleSecondary"))
+            // Custom tab bar — glass that blurs scrolling content beneath,
+            // with a hairline above to separate it from the feed. The
+            // background opted out of solid color so the glass picks up
+            // whatever scrolls past (cards, gradient, photos).
+            VStack(spacing: 0) {
+                Rectangle()
+                    .fill(Color("marblePrimary").opacity(0.08))
+                    .frame(height: 0.5)
+                HStack(spacing: 0) {
+                    ForEach(0..<tabs.count, id: \.self) { index in
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.15)) {
+                                selectedTab = index
+                            }
+                        } label: {
+                            VStack(spacing: 6) {
+                                Text(tabs[index])
+                                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 11).weight(.medium))
+                                    .tracking(1)
+                                    .foregroundStyle(selectedTab == index ? Color("marblePrimary") : Color("marbleSecondary"))
 
-                            Circle()
-                                .fill(selectedTab == index ? Color("marblePrimary") : Color.clear)
-                                .frame(width: 4, height: 4)
+                                Circle()
+                                    .fill(selectedTab == index ? Color("marblePrimary") : Color.clear)
+                                    .frame(width: 4, height: 4)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, 12)
+                            .padding(.bottom, 8)
+                            .contentShape(Rectangle())
                         }
-                        .frame(maxWidth: .infinity)
-                        .padding(.top, 12)
-                        .padding(.bottom, 8)
-                        .contentShape(Rectangle())
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
+                .padding(.bottom, 16)
             }
-            .padding(.bottom, 16)
-            .background(Color("marbleBackground"))
+            .background(.ultraThinMaterial)
         }
         .ignoresSafeArea(.keyboard)
     }

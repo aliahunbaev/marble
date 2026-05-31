@@ -106,20 +106,13 @@ struct TemplateEditorView: View {
 
     private var floatingToolbar: some View {
         HStack {
-            // Close — glass circle, mirrors the FloatingRestTimerButton
+            // Close — glass circle, mirrors FloatingRestTimerButton idle state
             Button {
                 dismiss()
             } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 14, weight: .regular))
-                    .foregroundStyle(Color("marblePrimary"))
-                    .frame(width: 44, height: 44)
-                    .background(.ultraThinMaterial, in: Circle())
-                    .overlay(
-                        Circle()
-                            .stroke(Color("marblePrimary").opacity(0.08), lineWidth: 0.5)
-                    )
-                    .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
+                    .marbleGlassCapsule(size: 44)
             }
             .buttonStyle(.plain)
 
@@ -130,22 +123,7 @@ struct TemplateEditorView: View {
                 save()
             } label: {
                 Text("SAVE")
-                    .font(.marbleMono(13, weight: .regular))
-                    .tracking(1)
-                    .foregroundStyle(Color("marbleBackground"))
-                    .padding(.horizontal, 20)
-                    .frame(height: 44)
-                    .background {
-                        ZStack {
-                            Capsule().fill(.ultraThinMaterial)
-                            Capsule().fill(Color("marblePrimary"))
-                        }
-                    }
-                    .overlay(
-                        Capsule()
-                            .stroke(Color("marblePrimary").opacity(0.15), lineWidth: 0.5)
-                    )
-                    .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 2)
+                    .marbleGlassPrimaryCapsule()
             }
             .buttonStyle(.plain)
             .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)

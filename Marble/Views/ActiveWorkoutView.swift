@@ -156,26 +156,7 @@ struct ActiveWorkoutView: View {
                 finishWorkout()
             } label: {
                 Text("FINISH")
-                    .font(.marbleMono(13, weight: .regular))
-                    .tracking(1)
-                    .foregroundStyle(Color("marbleBackground"))
-                    .padding(.horizontal, 20)
-                    .frame(height: 44)
-                    .background {
-                        ZStack {
-                            // Glass base (provides the blur/material quality)
-                            Capsule().fill(.ultraThinMaterial)
-                            // Solid ink fill (matches the rest timer's full-
-                            // opacity fill). Adapts via marblePrimary — dark
-                            // on light mode, light on dark mode.
-                            Capsule().fill(Color("marblePrimary"))
-                        }
-                    }
-                    .overlay(
-                        Capsule()
-                            .stroke(Color("marblePrimary").opacity(0.15), lineWidth: 0.5)
-                    )
-                    .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 2)
+                    .marbleGlassPrimaryCapsule()
             }
             .buttonStyle(.plain)
         }

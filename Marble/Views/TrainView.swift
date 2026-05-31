@@ -128,9 +128,9 @@ struct TrainView: View {
                 .padding(.top, 56)
                 .padding(.bottom, 56)
 
-            // Start workout — body type for the contemplative register of
-            // the Train tab, with a tinted glass treatment matching the
-            // workout view's FINISH button (glass under solid warm-ink fill)
+            // Start workout — tinted glass primary capsule. Same archetype
+            // as FINISH and SAVE so the commit language is consistent across
+            // every "go" moment in the app.
             Button {
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 showingEmptyWorkout = true
@@ -139,17 +139,19 @@ struct TrainView: View {
                     .font(.marbleBody(16))
                     .foregroundStyle(Color("marbleBackground"))
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
+                    .frame(height: 52)
                     .background {
-                        ZStack {
-                            Capsule().fill(.ultraThinMaterial)
-                            Capsule().fill(Color("marblePrimary"))
+                        if #available(iOS 26.0, *) {
+                            Capsule()
+                                .fill(Color.clear)
+                                .glassEffect(.regular.tint(Color("marblePrimary")), in: Capsule())
+                        } else {
+                            ZStack {
+                                Capsule().fill(.ultraThinMaterial)
+                                Capsule().fill(Color("marblePrimary"))
+                            }
                         }
                     }
-                    .overlay(
-                        Capsule()
-                            .stroke(Color("marblePrimary").opacity(0.15), lineWidth: 0.5)
-                    )
                     .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 2)
             }
             .buttonStyle(.plain)
@@ -170,13 +172,8 @@ struct TrainView: View {
                     showingTemplateEditor = true
                 } label: {
                     Image(systemName: "plus")
-                        .font(.system(size: 13, weight: .light))
-                        .foregroundStyle(Color("marbleSecondary"))
-                        .frame(width: 30, height: 30)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 4)
-                                .stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5)
-                        )
+                        .font(.system(size: 14, weight: .regular))
+                        .marbleGlassCapsule(size: 32)
                 }
                 .buttonStyle(.plain)
             }
@@ -184,8 +181,10 @@ struct TrainView: View {
             if templates.isEmpty {
                 emptyProgramsPlaceholder
             } else {
-                VStack(spacing: 0) {
-                    ForEach(Array(templates.enumerated()), id: \.element.id) { index, template in
+                // Glass cards — same archetype as the YOU feed. Drops the
+                // inline hairlines in favor of card-to-card spacing.
+                VStack(spacing: 12) {
+                    ForEach(templates) { template in
                         Button {
                             selectedTemplate = template
                         } label: {
@@ -219,12 +218,6 @@ struct TrainView: View {
                                 Label("Delete", systemImage: "trash")
                             }
                         }
-
-                        if index < templates.count - 1 {
-                            Rectangle()
-                                .fill(Color("marblePrimary").opacity(0.06))
-                                .frame(height: 0.5)
-                        }
                     }
                 }
             }
@@ -233,12 +226,14 @@ struct TrainView: View {
 
     private func templateRow(_ template: WorkoutTemplate) -> some View {
         ZStack(alignment: .trailing) {
-            // Handwritten watermark — ghost layer, right-aligned
+            // Handwritten watermark — ghost layer, right-aligned. Lower
+            // opacity than before since the glass card already provides
+            // visual texture and the ghost would compete otherwise.
             VStack(alignment: .trailing, spacing: 1) {
                 ForEach(template.exercises) { exercise in
                     Text(exercise.name)
                         .font(.custom("Nothing You Could Do", size: 15))
-                        .foregroundStyle(Color("marblePrimary").opacity(0.12))
+                        .foregroundStyle(Color("marblePrimary").opacity(0.10))
                         .lineLimit(1)
                 }
             }
@@ -259,8 +254,13 @@ struct TrainView: View {
                 Spacer(minLength: 20)
             }
         }
-        .padding(.vertical, 24)
-        .contentShape(Rectangle())
+        .padding(.horizontal, 20)
+        .padding(.vertical, 20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .clipShape(RoundedRectangle(cornerRadius: 18))
+        .marbleLiquidGlassCard(cornerRadius: 18)
+        .shadow(color: .black.opacity(0.04), radius: 12, x: 0, y: 4)
+        .contentShape(RoundedRectangle(cornerRadius: 18))
     }
 
     private func templateMetadata(_ template: WorkoutTemplate) -> String {

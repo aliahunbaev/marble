@@ -76,8 +76,8 @@ struct YouView: View {
                     Button {
                         showingSettings = true
                     } label: {
-                        Image(systemName: "gearshape")
-                            .font(.system(size: 16, weight: .regular))
+                        Image(systemName: "ellipsis")
+                            .font(.system(size: 15, weight: .medium))
                             .foregroundStyle(Color("marblePrimary"))
                     }
                 }
@@ -171,31 +171,6 @@ struct YouView: View {
 
     private func photosFor(_ workout: Workout) -> [ProgressPhoto] {
         allPhotos.filter { $0.workoutCloudID == workout.cloudID }
-    }
-}
-
-// MARK: - Liquid Glass Card
-
-/// Applies iOS 26's Liquid Glass treatment when available — real refraction,
-/// bright edge highlights, the "written on glass" look. Falls back to the
-/// older .ultraThinMaterial treatment on iOS 17–25 so users on those versions
-/// still get a translucent surface, just without the refractive shine.
-private struct LiquidGlassCardModifier: ViewModifier {
-    let cornerRadius: CGFloat
-
-    func body(content: Content) -> some View {
-        if #available(iOS 26.0, *) {
-            content
-                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: cornerRadius))
-        } else {
-            content
-                .background(.ultraThinMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
-                .overlay(
-                    RoundedRectangle(cornerRadius: cornerRadius)
-                        .stroke(Color("marblePrimary").opacity(0.06), lineWidth: 0.5)
-                )
-        }
     }
 }
 
