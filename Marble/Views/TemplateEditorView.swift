@@ -457,11 +457,12 @@ struct SetRowView: View {
     @State private var checkScale: CGFloat = 1.0
     @State private var weightInvalid = false
     @State private var repsInvalid = false
-    /// Brief flash when a set is completed — momentary scale-up that
-    /// settles back. The persistent completed state stays clean (no
-    /// glow/tint), but the moment of completion gets a felt micro-
-    /// satisfaction beyond the haptic + checkmark spring.
+    /// Brief scale flash on completion — felt micro-settle.
     @State private var completionFlash: Bool = false
+    /// Shimmer sweep position. -1.5 = off-screen left, 1.5 = off-screen
+    /// right. Animated on completion to sweep a soft light gradient
+    /// across the row, like polished marble briefly catching light.
+    @State private var shimmerProgress: CGFloat = -1.5
     @FocusState private var weightFocused: Bool
     @FocusState private var repsFocused: Bool
 
@@ -520,6 +521,28 @@ struct SetRowView: View {
             }
         }
         .scaleEffect(completionFlash ? 1.015 : 1.0)
+        // Shimmer sweep — soft gradient passes across the row on
+        // completion. Polished marble catching light. Restrained
+        // (low opacity) and brief (~0.6s total) so it stays editorial,
+        // not gamified.
+        .overlay(
+            GeometryReader { geo in
+                LinearGradient(
+                    colors: [
+                        .clear,
+                        Color("marblePrimary").opacity(0.18),
+                        .clear
+                    ],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+                .frame(width: geo.size.width * 0.5)
+                .offset(x: shimmerProgress * geo.size.width)
+                .allowsHitTesting(false)
+            }
+            .mask(Rectangle())
+            .allowsHitTesting(false)
+        )
     }
 
     private func handleComplete() {
@@ -573,10 +596,14 @@ struct SetRowView: View {
             checkScale = 1.2
         }
         // Brief row "settle" flash — momentary scale up that springs back.
-        // Felt, not seen — the row settles into place rather than just
-        // changing state. Persistent state stays clean.
         withAnimation(.spring(response: 0.25, dampingFraction: 0.55)) {
             completionFlash = true
+        }
+        // Shimmer sweep — start position already off-screen left.
+        // Animate to off-screen right over 0.6s. Polished marble feel.
+        shimmerProgress = -1.5
+        withAnimation(.easeOut(duration: 0.6)) {
+            shimmerProgress = 1.5
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
