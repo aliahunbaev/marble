@@ -47,39 +47,69 @@ struct MarblePrimaryButton: ViewModifier {
 
 // MARK: - Secondary
 
+/// Glass-based now — matches the FINISH/rest-timer/template-detail glass
+/// vocabulary across the app. Was solid `marbleSurfaceTint` rectangle;
+/// now an untinted glass pill (or its iOS 17-25 material fallback). Used
+/// for +SET, +EXERCISE, ±10s, SKIP, DONE, Sign Out, Create exercise, etc.
 struct MarbleSecondaryButton: ViewModifier {
     var fullWidth: Bool = true
 
     func body(content: Content) -> some View {
-        content
+        let base = content
             .font(UtilitySpec.font)
             .tracking(UtilitySpec.tracking)
             .foregroundStyle(Color("marblePrimary"))
             .padding(.horizontal, UtilitySpec.horizontalPadding)
             .padding(.vertical, UtilitySpec.verticalPadding)
             .frame(maxWidth: fullWidth ? .infinity : nil)
-            .background(Color.marbleSurfaceTint)
-            .clipShape(RoundedRectangle(cornerRadius: UtilitySpec.cornerRadius))
-            .contentShape(Rectangle())
+
+        if #available(iOS 26.0, *) {
+            base
+                .glassEffect(.regular, in: Capsule())
+                .contentShape(Capsule())
+        } else {
+            base
+                .background(.ultraThinMaterial, in: Capsule())
+                .overlay(
+                    Capsule()
+                        .stroke(Color("marblePrimary").opacity(0.08), lineWidth: 0.5)
+                )
+                .contentShape(Capsule())
+        }
     }
 }
 
 // MARK: - Destructive
 
+/// Glass-based, oxblood text. Reserved for explicit destructive actions
+/// like CLEAR DATA in Settings. The inline DISCARD WORKOUT button on the
+/// workout screen was moved into a toolbar menu so this style appears
+/// less often (which is correct — destructive should be rare, not loud).
 struct MarbleDestructiveButton: ViewModifier {
     var fullWidth: Bool = true
 
     func body(content: Content) -> some View {
-        content
+        let base = content
             .font(UtilitySpec.font)
             .tracking(UtilitySpec.tracking)
             .foregroundStyle(Color.marbleDestructive)
             .padding(.horizontal, UtilitySpec.horizontalPadding)
             .padding(.vertical, UtilitySpec.verticalPadding)
             .frame(maxWidth: fullWidth ? .infinity : nil)
-            .background(Color.marbleDestructiveTint)
-            .clipShape(RoundedRectangle(cornerRadius: UtilitySpec.cornerRadius))
-            .contentShape(Rectangle())
+
+        if #available(iOS 26.0, *) {
+            base
+                .glassEffect(.regular, in: Capsule())
+                .contentShape(Capsule())
+        } else {
+            base
+                .background(.ultraThinMaterial, in: Capsule())
+                .overlay(
+                    Capsule()
+                        .stroke(Color.marbleDestructive.opacity(0.20), lineWidth: 0.5)
+                )
+                .contentShape(Capsule())
+        }
     }
 }
 

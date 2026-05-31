@@ -101,10 +101,6 @@ struct ActiveWorkoutView: View {
                     addExerciseButton
                         .padding(.top, entries.isEmpty ? 0 : 4)
                         .padding(.horizontal, 20)
-
-                    discardButton
-                        .padding(.top, 24)
-                        .padding(.horizontal, 20)
                         .padding(.bottom, 40)
                 }
             }
@@ -156,12 +152,26 @@ struct ActiveWorkoutView: View {
     // MARK: - Floating Toolbar (iOS-26 liquid glass)
 
     private var floatingToolbar: some View {
-        HStack {
+        HStack(spacing: 10) {
             FloatingRestTimerButton(state: restTimer) {
                 showingRestTimer = true
             }
 
             Spacer()
+
+            // Workout-level menu — discard lives here instead of as a
+            // persistent red bar at the bottom. Reachable but not loud.
+            Menu {
+                Button(role: .destructive) {
+                    showingDiscardAlert = true
+                } label: {
+                    Label("Discard workout", systemImage: "trash")
+                }
+            } label: {
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 15, weight: .medium))
+                    .marbleGlassCapsule(size: 44)
+            }
 
             Button {
                 attemptFinish()
@@ -209,18 +219,6 @@ struct ActiveWorkoutView: View {
                 Text("EXERCISE").tracking(1)
             }
             .marbleSecondaryButton()
-        }
-        .buttonStyle(.plain)
-    }
-
-    // MARK: - Discard Button
-
-    private var discardButton: some View {
-        Button {
-            showingDiscardAlert = true
-        } label: {
-            Text("DISCARD WORKOUT")
-                .marbleDestructiveButton()
         }
         .buttonStyle(.plain)
     }

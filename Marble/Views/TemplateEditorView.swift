@@ -371,11 +371,11 @@ struct ExerciseSetTable: View {
                     )
                     .padding(.horizontal, 20)
                     .padding(.vertical, 8)
-                    .background(
-                        set.isCompleted && isWorkoutMode
-                            ? Color("marbleCompletedRow")
-                            : Color.clear
-                    )
+                    // No row background tint for completed sets. State is
+                    // already conveyed by: bright checkmark, opaque set
+                    // number, clean (no-tint) fields. The green wash was
+                    // extra signal that read as "highlighted spreadsheet
+                    // row" — completed sets now read as settled and clean.
                 } onDelete: {
                     UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                     withAnimation(.easeInOut(duration: 0.2)) {
