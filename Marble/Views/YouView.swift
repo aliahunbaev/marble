@@ -231,8 +231,10 @@ struct WorkoutFeedCard: View {
                         .padding(.top, 6)
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(20)
         }
+        .frame(maxWidth: .infinity)
         .background(.ultraThinMaterial)
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
         .overlay(
@@ -285,7 +287,7 @@ struct WorkoutFeedCard: View {
 
     private var statsString: String {
         var parts: [String] = []
-        if workout.duration > 0 {
+        if Int(workout.duration) / 60 >= 1 {
             parts.append(formattedDuration)
         }
         let totalSets = workout.exerciseLogs.reduce(0) {
