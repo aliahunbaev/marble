@@ -325,10 +325,8 @@ struct ExerciseSetTable: View {
                         }
                     } label: {
                         Image(systemName: "ellipsis")
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundStyle(Color("marbleSecondary"))
-                            .frame(width: 36, height: 36, alignment: .center)
-                            .contentShape(Rectangle())
+                            .font(.system(size: 13, weight: .medium))
+                            .marbleGlassCapsule(size: 32)
                     }
                 }
             }
@@ -371,7 +369,17 @@ struct ExerciseSetTable: View {
                         onComplete: onSetCompleted
                     )
                     .padding(.horizontal, 20)
-                    .padding(.vertical, 8)
+                    .padding(.vertical, 10)
+                    .background(
+                        // Subtle warm wash on completed rows — reads as
+                        // "settled / polished marble" instead of "selected
+                        // spreadsheet row." Bone-warm, not green. Only
+                        // applies in workout mode; template editor mode
+                        // doesn't have a "completed" concept.
+                        set.isCompleted && isWorkoutMode
+                            ? Color("marblePrimary").opacity(0.04)
+                            : Color.clear
+                    )
                 } onDelete: {
                     // The SwipeToDeleteRow already handled the collapse
                     // animation + haptic; we just commit the data mutation.
@@ -379,12 +387,11 @@ struct ExerciseSetTable: View {
                         entry.sets.removeAll { $0.id == set.id }
                     }
                 }
-                .transition(
-                    .asymmetric(
-                        insertion: .opacity.combined(with: .move(edge: .top)),
-                        removal: .opacity
-                    )
-                )
+                // Opacity-only transition so new rows fade in at their
+                // final position; the layout below shifts smoothly via
+                // implicit animation rather than the new row sliding
+                // down from above (which caused visible overlap).
+                .transition(.opacity)
             }
 
             // + SET button — append wrapped in spring so the new row
@@ -464,10 +471,6 @@ struct SetRowView: View {
     @State private var repsInvalid = false
     /// Brief scale flash on completion — felt micro-settle.
     @State private var completionFlash: Bool = false
-    /// Shimmer sweep position. -1.5 = off-screen left, 1.5 = off-screen
-    /// right. Animated on completion to sweep a soft light gradient
-    /// across the row, like polished marble briefly catching light.
-    @State private var shimmerProgress: CGFloat = -1.5
     @FocusState private var weightFocused: Bool
     @FocusState private var repsFocused: Bool
 
@@ -526,28 +529,6 @@ struct SetRowView: View {
             }
         }
         .scaleEffect(completionFlash ? 1.015 : 1.0)
-        // Shimmer sweep — soft gradient passes across the row on
-        // completion. Polished marble catching light. Restrained
-        // (low opacity) and brief (~0.6s total) so it stays editorial,
-        // not gamified.
-        .overlay(
-            GeometryReader { geo in
-                LinearGradient(
-                    colors: [
-                        .clear,
-                        Color("marblePrimary").opacity(0.18),
-                        .clear
-                    ],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-                .frame(width: geo.size.width * 0.5)
-                .offset(x: shimmerProgress * geo.size.width)
-                .allowsHitTesting(false)
-            }
-            .mask(Rectangle())
-            .allowsHitTesting(false)
-        )
     }
 
     private func handleComplete() {
@@ -603,12 +584,6 @@ struct SetRowView: View {
         // Brief row "settle" flash — momentary scale up that springs back.
         withAnimation(.spring(response: 0.25, dampingFraction: 0.55)) {
             completionFlash = true
-        }
-        // Shimmer sweep — start position already off-screen left.
-        // Animate to off-screen right over 0.6s. Polished marble feel.
-        shimmerProgress = -1.5
-        withAnimation(.easeOut(duration: 0.6)) {
-            shimmerProgress = 1.5
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
@@ -706,6 +681,17 @@ struct SetRowView: View {
 ///
 /// Spring physics throughout instead of easeOut so the row's release
 /// feels like material, not a mechanical cursor.
+/// Swipe left to reveal a DELETE affordance, or swipe further to commit
+/// the delete in one motion. Key behaviors:
+///   - Drag tracking is baseline-aware: if the row is already partially
+///     revealed (isSwiped), additional drag adds onto the threshold, not
+///     onto 0. Prevents the "snaps back to small offset" bug.
+///   - simultaneousGesture instead of .gesture so the drag wins over the
+///     TextField focus handler that lives inside the row content. Lets
+///     you swipe to delete even when starting the swipe over a field.
+///   - Full opacity on the delete background once visible. No proportional
+///     fade — the affordance is either there or not.
+///   - Spring snap on release.
 struct SwipeToDeleteRow<Content: View>: View {
     let content: () -> Content
     let onDelete: () -> Void
@@ -714,8 +700,8 @@ struct SwipeToDeleteRow<Content: View>: View {
     @State private var isSwiped = false
     @State private var isDeleting = false
 
-    private let deleteThreshold: CGFloat = -80
-    private let fullSwipeThreshold: CGFloat = -180
+    private let deleteThreshold: CGFloat = -88
+    private let fullSwipeThreshold: CGFloat = -200
 
     init(@ViewBuilder content: @escaping () -> Content, onDelete: @escaping () -> Void) {
         self.content = content
@@ -724,8 +710,7 @@ struct SwipeToDeleteRow<Content: View>: View {
 
     var body: some View {
         ZStack(alignment: .trailing) {
-            // Delete affordance — proportional opacity follows swipe depth
-            // instead of binary toggle so the reveal feels continuous.
+            // DELETE affordance — full opacity once any drag has occurred.
             HStack {
                 Spacer()
                 Button {
@@ -743,52 +728,55 @@ struct SwipeToDeleteRow<Content: View>: View {
             .background(Color.red.opacity(0.9))
             .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
             .padding(.horizontal, 4)
-            .opacity(min(1.0, abs(offset) / 80.0))
+            .opacity(offset < 0 ? 1 : 0)
 
             content()
                 .background(Color("marbleBackground"))
                 .offset(x: offset)
                 .opacity(isDeleting ? 0 : 1)
-                .gesture(
-                    DragGesture(minimumDistance: 20)
+                .simultaneousGesture(
+                    DragGesture(minimumDistance: 15, coordinateSpace: .local)
                         .onChanged { value in
-                            let translation = value.translation.width
-                            if translation < 0 {
-                                // Mild rubber-band past full-swipe threshold.
-                                let baseline: CGFloat = 0
-                                let raw = baseline + translation
+                            // Only treat clearly-horizontal drags as swipes.
+                            // Vertical drags shouldn't slide the row sideways.
+                            guard abs(value.translation.width) > abs(value.translation.height) else {
+                                return
+                            }
+                            let baseline: CGFloat = isSwiped ? deleteThreshold : 0
+                            let raw = baseline + value.translation.width
+                            if raw < 0 {
                                 if raw < fullSwipeThreshold {
+                                    // Rubber-band past full-swipe threshold
                                     let over = fullSwipeThreshold - raw
                                     offset = fullSwipeThreshold - sqrt(over) * 4
                                 } else {
                                     offset = raw
                                 }
-                            } else if isSwiped {
-                                offset = min(0, deleteThreshold + translation)
+                            } else {
+                                offset = 0
                             }
                         }
-                        .onEnded { _ in
+                        .onEnded { value in
+                            // If the gesture was mostly vertical, ignore.
+                            guard abs(value.translation.width) > abs(value.translation.height) else {
+                                snapBack()
+                                return
+                            }
                             if offset < fullSwipeThreshold {
                                 commitDelete()
                             } else if offset < deleteThreshold {
-                                withAnimation(.spring(response: 0.35, dampingFraction: 0.78)) {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
                                     offset = deleteThreshold
                                 }
                                 isSwiped = true
                             } else {
-                                withAnimation(.spring(response: 0.4, dampingFraction: 0.78)) {
-                                    offset = 0
-                                }
-                                isSwiped = false
+                                snapBack()
                             }
                         }
                 )
                 .onTapGesture {
                     if isSwiped {
-                        withAnimation(.spring(response: 0.4, dampingFraction: 0.78)) {
-                            offset = 0
-                        }
-                        isSwiped = false
+                        snapBack()
                     }
                 }
         }
@@ -798,16 +786,21 @@ struct SwipeToDeleteRow<Content: View>: View {
         .clipped()
     }
 
-    /// Commit a delete: row collapses (opacity + height) over a spring,
-    /// then the actual delete fires. Brief haptic just before to confirm
-    /// the action.
+    private func snapBack() {
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+            offset = 0
+        }
+        isSwiped = false
+    }
+
+    /// Row collapses (opacity + height) over a spring, then delete fires.
     private func commitDelete() {
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+        withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
             isDeleting = true
             offset = -UIScreen.main.bounds.width
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.28) {
             onDelete()
         }
     }
