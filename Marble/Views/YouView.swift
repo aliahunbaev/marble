@@ -42,23 +42,20 @@ struct YouView: View {
                         if visibleWorkouts.isEmpty {
                             emptyFeed
                         } else {
-                            ForEach(Array(visibleWorkouts.enumerated()), id: \.element.id) { index, workout in
-                                if index > 0 {
-                                    Rectangle()
-                                        .fill(Color("marblePrimary").opacity(0.12))
-                                        .frame(height: 0.5)
-                                        .padding(.vertical, 28)
+                            VStack(spacing: 16) {
+                                ForEach(visibleWorkouts) { workout in
+                                    NavigationLink {
+                                        WorkoutDetailView(workout: workout)
+                                    } label: {
+                                        WorkoutEntry(
+                                            workout: workout,
+                                            photos: photosFor(workout)
+                                        )
+                                    }
+                                    .buttonStyle(.plain)
                                 }
-                                NavigationLink {
-                                    WorkoutDetailView(workout: workout)
-                                } label: {
-                                    WorkoutEntry(
-                                        workout: workout,
-                                        photos: photosFor(workout)
-                                    )
-                                }
-                                .buttonStyle(.plain)
                             }
+                            .padding(.horizontal, 16)
                         }
                     }
                     .padding(.bottom, 40)
@@ -219,73 +216,55 @@ struct WorkoutEntry: View {
     let workout: Workout
     let photos: [ProgressPhoto]
 
+    private let cardCornerRadius: CGFloat = 18
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Header row with handwritten ghost layer of exercise names
-            // (same pattern as Train tab template cards — unifies the brand)
-            headerRow
-                .padding(.horizontal, 20)
-                .padding(.top, 4)
-
-            // Note below the row, full text width
-            if let note = workout.notes?.trimmingCharacters(in: .whitespaces),
-               !note.isEmpty {
-                Text(note)
-                    .font(.marbleBody(15))
-                    .foregroundStyle(Color("marblePrimary"))
-                    .lineSpacing(3)
-                    .padding(.horizontal, 20)
-                    .padding(.top, 16)
-            }
-
-            // Photo BELOW everything — edge-to-edge, sharp corners
+            // Photo hero — fills card width, 4:5 portrait aspect
             if let hero = photos.first {
                 photoHero(hero)
-                    .padding(.top, 18)
             }
+
+            // Text composition
+            VStack(alignment: .leading, spacing: 14) {
+                Text(dateString)
+                    .font(.marbleMono(11))
+                    .tracking(1.5)
+                    .foregroundStyle(Color("marbleSecondary"))
+
+                Text(workout.name)
+                    .font(.marbleBody(26))
+                    .foregroundStyle(Color("marblePrimary"))
+                    .lineLimit(2)
+
+                // Always 3-column stats with placeholders for consistency
+                HStack(alignment: .top, spacing: 28) {
+                    statColumn(label: "SETS", value: setsValue)
+                    statColumn(label: "TIME", value: timeValue)
+                    statColumn(label: "VOLUME", value: volumeValue)
+                    Spacer(minLength: 0)
+                }
+
+                if let note = workout.notes?.trimmingCharacters(in: .whitespaces),
+                   !note.isEmpty {
+                    Text(note)
+                        .font(.marbleBody(15))
+                        .foregroundStyle(Color("marblePrimary"))
+                        .lineSpacing(3)
+                        .padding(.top, 4)
+                }
+            }
+            .padding(20)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .contentShape(Rectangle())
-    }
-
-    // MARK: - Header Row (left content + right handwritten ghost)
-
-    private var headerRow: some View {
-        ZStack(alignment: .trailing) {
-            // Handwritten ghost — exercise names floating on the right
-            // at low opacity. Same treatment as Train tab template rows.
-            VStack(alignment: .trailing, spacing: 1) {
-                ForEach(workout.exerciseLogs.prefix(6)) { log in
-                    Text(log.exercise?.name ?? "—")
-                        .font(.marbleScript(15))
-                        .foregroundStyle(Color("marblePrimary").opacity(0.13))
-                        .lineLimit(1)
-                }
-            }
-            .frame(maxWidth: 150, alignment: .trailing)
-
-            // Foreground content — anchored left, doesn't overlap ghost
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 14) {
-                    Text(dateString)
-                        .font(.marbleMono(11))
-                        .tracking(1.5)
-                        .foregroundStyle(Color("marbleSecondary"))
-
-                    Text(workout.name)
-                        .font(.marbleBody(28))
-                        .foregroundStyle(Color("marblePrimary"))
-                        .lineLimit(2)
-
-                    HStack(alignment: .top, spacing: 28) {
-                        statColumn(label: "SETS", value: setsValue)
-                        statColumn(label: "TIME", value: timeValue)
-                        statColumn(label: "VOLUME", value: volumeValue)
-                    }
-                }
-                Spacer(minLength: 16)
-            }
-        }
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: cardCornerRadius))
+        .overlay(
+            RoundedRectangle(cornerRadius: cardCornerRadius)
+                .stroke(Color("marblePrimary").opacity(0.06), lineWidth: 0.5)
+        )
+        .shadow(color: .black.opacity(0.04), radius: 12, x: 0, y: 4)
+        .contentShape(RoundedRectangle(cornerRadius: cardCornerRadius))
     }
 
     // MARK: - Photo Hero (edge-to-edge magazine spread)
