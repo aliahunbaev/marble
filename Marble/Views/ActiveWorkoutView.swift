@@ -20,6 +20,10 @@ struct ActiveWorkoutView: View {
     @State private var draggingEntryID: UUID?
     @State private var lastSwapOffset: CGFloat = 0
     @State private var showingEmptyFinishAlert = false
+    /// When set, the next exercise picked from the library replaces this
+    /// entry instead of being toggled into the entries list. Cleared
+    /// after a successful replace.
+    @State private var replacingEntryID: UUID?
 
     @AppStorage("defaultRestTimer") private var defaultRestTimer: Int = 90
 
@@ -86,7 +90,7 @@ struct ActiveWorkoutView: View {
                             ExerciseSetTable(
                                 entry: $entry,
                                 onRemove: {
-                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                    withAnimation(.easeInOut(duration: 0.25)) {
                                         session.entries.removeAll { $0.id == entry.id }
                                     }
                                 },
@@ -98,9 +102,21 @@ struct ActiveWorkoutView: View {
                                     showingRestTimer = true
                                 },
                                 onReplaceExercise: {
+                                    replacingEntryID = entry.id
                                     showingLibrary = true
                                 },
-                                dragHandle: false
+                                dragHandle: true,
+                                onDragChanged: { translation in
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        handleDrag(entryID: entry.id, translation: translation)
+                                    }
+                                },
+                                onDragEnded: {
+                                    withAnimation(.easeInOut(duration: 0.25)) {
+                                        draggingEntryID = nil
+                                    }
+                                    lastSwapOffset = 0
+                                }
                             )
                             exerciseDivider
                         }
@@ -124,10 +140,27 @@ struct ActiveWorkoutView: View {
                 to: nil, from: nil, for: nil
             )
         }
-        .sheet(isPresented: $showingLibrary) {
+        .sheet(isPresented: $showingLibrary, onDismiss: {
+            replacingEntryID = nil
+        }) {
             let selectedExercises = session.entries.map(\.exercise)
             ExerciseLibraryView(selectedExercises: selectedExercises) { exercise in
-                toggleExercise(exercise)
+                if let replaceID = replacingEntryID {
+                    // Replace path — swap the exercise in place, preserving
+                    // the existing sets so the user's in-progress data
+                    // isn't lost. Dismiss the library after one pick.
+                    if let idx = session.entries.firstIndex(where: { $0.id == replaceID }) {
+                        let preservedSets = session.entries[idx].sets
+                        session.entries[idx] = ExerciseEntry(
+                            exercise: exercise,
+                            sets: preservedSets
+                        )
+                    }
+                    replacingEntryID = nil
+                    showingLibrary = false
+                } else {
+                    toggleExercise(exercise)
+                }
             }
         }
         .sheet(isPresented: $showingRestTimer) {

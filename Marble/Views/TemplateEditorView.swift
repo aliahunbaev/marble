@@ -297,12 +297,18 @@ struct ExerciseSetTable: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Exercise name header — the name itself is the menu trigger.
-            // Standalone ⋯ button removed (cleaner row); "Start rest timer"
-            // item dropped (useless — the floating timer button is one tap
-            // away, and per-set rest customization would be a real feature
-            // beyond just opening the modal).
+            // Exercise name header — name is plain text (no tap target).
+            // Long-press on the name triggers reorder. A separate ⋯ button
+            // on the right exposes Replace / Remove. Reintroduced after
+            // the tap-name-opens-menu pattern fought the long-press
+            // reorder gesture on the same element.
             HStack {
+                Text(entry.exercise.name)
+                    .font(.marbleBody(22))
+                    .foregroundStyle(Color("marblePrimary"))
+
+                Spacer()
+
                 if onRemove != nil {
                     Menu {
                         if isWorkoutMode {
@@ -318,26 +324,19 @@ struct ExerciseSetTable: View {
                             Label("Remove", systemImage: "trash")
                         }
                     } label: {
-                        Text(entry.exercise.name)
-                            .font(.marbleBody(22))
-                            .foregroundStyle(Color("marblePrimary"))
+                        Image(systemName: "ellipsis")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundStyle(Color("marbleSecondary"))
+                            .frame(width: 36, height: 36, alignment: .center)
                             .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
-                } else {
-                    Text(entry.exercise.name)
-                        .font(.marbleBody(22))
-                        .foregroundStyle(Color("marblePrimary"))
                 }
-
-                Spacer()
             }
             .padding(.horizontal, 20)
             .padding(.bottom, 14)
-            // Invisible reorder gesture — long-press the exercise name area
-            // to enter reorder mode, then drag to move. No visible handle.
-            // Long-press is distinct from the Menu's tap trigger, so both
-            // gestures coexist on the same name.
+            // Long-press the exercise name area to enter reorder mode,
+            // then drag to move. The name has no tap action, so no
+            // gesture conflict — long-press is unambiguous here.
             .modifier(ReorderGestureModifier(
                 enabled: dragHandle,
                 onChanged: onDragChanged,
@@ -349,7 +348,8 @@ struct ExerciseSetTable: View {
                 .padding(.horizontal, 20)
                 .padding(.bottom, 8)
 
-            // Set rows
+            // Set rows — append/remove animates with spring + opacity for
+            // a smoother feel than the default snap-in/snap-out.
             ForEach($entry.sets) { $set in
                 let index = entry.sets.firstIndex(where: { $0.id == set.id }) ?? 0
                 let prev: (weight: String?, reps: String?) = showPrevious
@@ -372,23 +372,28 @@ struct ExerciseSetTable: View {
                     )
                     .padding(.horizontal, 20)
                     .padding(.vertical, 8)
-                    // No row background tint for completed sets. State is
-                    // already conveyed by: bright checkmark, opaque set
-                    // number, clean (no-tint) fields. The green wash was
-                    // extra signal that read as "highlighted spreadsheet
-                    // row" — completed sets now read as settled and clean.
                 } onDelete: {
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                    withAnimation(.easeInOut(duration: 0.2)) {
+                    // The SwipeToDeleteRow already handled the collapse
+                    // animation + haptic; we just commit the data mutation.
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
                         entry.sets.removeAll { $0.id == set.id }
                     }
                 }
+                .transition(
+                    .asymmetric(
+                        insertion: .opacity.combined(with: .move(edge: .top)),
+                        removal: .opacity
+                    )
+                )
             }
 
-            // + SET button
+            // + SET button — append wrapped in spring so the new row
+            // materializes with a soft fade + slide-in instead of a snap.
             Button {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                entry.sets.append(EditableSet())
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.82)) {
+                    entry.sets.append(EditableSet())
+                }
             } label: {
                 HStack(spacing: 6) {
                     Text("+")
@@ -692,12 +697,22 @@ struct SetRowView: View {
 
 // MARK: - Swipe to Delete
 
+/// Swipe a row left to reveal a delete affordance. Two interactions:
+///   - Partial swipe past `deleteThreshold` → row settles at threshold,
+///     revealing the Delete label. Tap the label OR tap anywhere on the
+///     row to dismiss.
+///   - Full swipe past `fullSwipeThreshold` → row commits to delete
+///     immediately (collapses + fades) without needing the second tap.
+///
+/// Spring physics throughout instead of easeOut so the row's release
+/// feels like material, not a mechanical cursor.
 struct SwipeToDeleteRow<Content: View>: View {
     let content: () -> Content
     let onDelete: () -> Void
 
     @State private var offset: CGFloat = 0
     @State private var isSwiped = false
+    @State private var isDeleting = false
 
     private let deleteThreshold: CGFloat = -80
     private let fullSwipeThreshold: CGFloat = -180
@@ -709,58 +724,91 @@ struct SwipeToDeleteRow<Content: View>: View {
 
     var body: some View {
         ZStack(alignment: .trailing) {
+            // Delete affordance — proportional opacity follows swipe depth
+            // instead of binary toggle so the reveal feels continuous.
             HStack {
                 Spacer()
-                Text("Delete")
-                    .font(.marbleMono(12))
-                    .foregroundStyle(Color("marbleBackground"))
-                    .padding(.trailing, 20)
+                Button {
+                    commitDelete()
+                } label: {
+                    Text("DELETE")
+                        .font(.marbleMono(11, weight: .medium))
+                        .tracking(1.5)
+                        .foregroundStyle(Color.white)
+                        .padding(.horizontal, 24)
+                }
+                .buttonStyle(.plain)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color.red)
-            .cornerRadius(4)
+            .background(Color.red.opacity(0.9))
+            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
             .padding(.horizontal, 4)
-            .opacity(offset < 0 ? 1 : 0)
+            .opacity(min(1.0, abs(offset) / 80.0))
 
             content()
                 .background(Color("marbleBackground"))
                 .offset(x: offset)
+                .opacity(isDeleting ? 0 : 1)
                 .gesture(
                     DragGesture(minimumDistance: 20)
                         .onChanged { value in
                             let translation = value.translation.width
                             if translation < 0 {
-                                offset = translation
+                                // Mild rubber-band past full-swipe threshold.
+                                let baseline: CGFloat = 0
+                                let raw = baseline + translation
+                                if raw < fullSwipeThreshold {
+                                    let over = fullSwipeThreshold - raw
+                                    offset = fullSwipeThreshold - sqrt(over) * 4
+                                } else {
+                                    offset = raw
+                                }
                             } else if isSwiped {
-                                offset = deleteThreshold + translation
-                                if offset > 0 { offset = 0 }
+                                offset = min(0, deleteThreshold + translation)
                             }
                         }
-                        .onEnded { value in
-                            withAnimation(.easeOut(duration: 0.2)) {
-                                if offset < fullSwipeThreshold {
-                                    offset = -500
-                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                                        onDelete()
-                                    }
-                                } else if offset < deleteThreshold {
+                        .onEnded { _ in
+                            if offset < fullSwipeThreshold {
+                                commitDelete()
+                            } else if offset < deleteThreshold {
+                                withAnimation(.spring(response: 0.35, dampingFraction: 0.78)) {
                                     offset = deleteThreshold
-                                    isSwiped = true
-                                } else {
-                                    offset = 0
-                                    isSwiped = false
                                 }
+                                isSwiped = true
+                            } else {
+                                withAnimation(.spring(response: 0.4, dampingFraction: 0.78)) {
+                                    offset = 0
+                                }
+                                isSwiped = false
                             }
                         }
                 )
                 .onTapGesture {
                     if isSwiped {
-                        withAnimation(.easeOut(duration: 0.2)) {
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.78)) {
                             offset = 0
-                            isSwiped = false
                         }
+                        isSwiped = false
                     }
                 }
+        }
+        // Collapse height as the row fades on delete, so following rows
+        // smoothly take its place instead of jumping.
+        .frame(maxHeight: isDeleting ? 0 : nil)
+        .clipped()
+    }
+
+    /// Commit a delete: row collapses (opacity + height) over a spring,
+    /// then the actual delete fires. Brief haptic just before to confirm
+    /// the action.
+    private func commitDelete() {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+            isDeleting = true
+            offset = -UIScreen.main.bounds.width
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            onDelete()
         }
     }
 }
