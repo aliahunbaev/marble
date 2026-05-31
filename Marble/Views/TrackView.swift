@@ -1,156 +1,48 @@
 import SwiftUI
 import SwiftData
 
+/// Track tab — "portfolio of strength." Two sections:
+///   1. THE MONTH — compact dot grid of training rhythm. Swipeable
+///      horizontally to scroll through prior months. Each dot = one day,
+///      filled = workout. Glowing dots in marblePrimary (mode-adaptive).
+///   2. MY LIFTS — each tracked lift as an editorial row with sparkline.
+///
+/// Bodyweight lives on YOU tab (it's identity-adjacent, not training output).
+/// Modularity was rejected on purpose. This is curation, not configuration.
 struct TrackView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Workout.date, order: .reverse) private var workouts: [Workout]
     @Query(sort: \TrackedLift.displayOrder) private var trackedLifts: [TrackedLift]
-    @AppStorage("weightUnit") private var weightUnit: String = "lbs"
 
     @State private var showingAddLift = false
-    @State private var workoutToDelete: Workout?
-
-    private let columns = [
-        GridItem(.flexible(), spacing: 12),
-        GridItem(.flexible(), spacing: 12)
-    ]
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 32) {
+                VStack(alignment: .leading, spacing: 40) {
+                    TheMonthHero(workouts: workouts)
+                        .padding(.top, 16)
+
                     myLiftsSection
-                    contributionGrid
-                    historySection
+                        .padding(.horizontal, 20)
                 }
-                .padding(.top, 8)
-                .padding(.bottom, 40)
+                .padding(.bottom, 140) // breathing room above the tab bar glass
             }
             .background(Color("marbleBackground"))
             .navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $showingAddLift) {
                 AddTrackedLiftSheet(trackedLifts: trackedLifts)
             }
-            .alert("Delete this workout? This cannot be undone.", isPresented: Binding<Bool>(
-                get: { workoutToDelete != nil },
-                set: { if !$0 { workoutToDelete = nil } }
-            )) {
-                Button("Cancel", role: .cancel) {
-                    workoutToDelete = nil
-                }
-                Button("Delete", role: .destructive) {
-                    if let workout = workoutToDelete {
-                        let cloudID = workout.cloudID
-                        modelContext.delete(workout)
-                        try? modelContext.save()
-                        CloudSyncService.shared.deleteWorkout(cloudID: cloudID)
-                        workoutToDelete = nil
-                    }
-                }
-            }
         }
-    }
-
-    // MARK: - Contribution Grid
-
-    private var contributionGrid: some View {
-        let gridData = buildGridData()
-        let gridSpacing: CGFloat = 2
-        let gridWidth: CGFloat = UIScreen.main.bounds.width - 40
-        let cellSize: CGFloat = (gridWidth - gridSpacing * CGFloat(gridData.columns - 1)) / CGFloat(gridData.columns)
-        let gridHeight: CGFloat = cellSize * 7 + gridSpacing * 6
-
-        return VStack(alignment: .leading, spacing: 8) {
-            // Grid — dense, full-width
-            HStack(spacing: gridSpacing) {
-                ForEach(0..<gridData.columns, id: \.self) { col in
-                    VStack(spacing: gridSpacing) {
-                        ForEach(0..<7, id: \.self) { row in
-                            let state = gridData.cells[row][col]
-                            RoundedRectangle(cornerRadius: 1)
-                                .fill(
-                                    state == .active
-                                        ? Color("marblePrimary")
-                                        : state == .empty
-                                            ? Color("marblePrimary").opacity(0.06)
-                                            : Color.clear
-                                )
-                                .frame(width: cellSize, height: cellSize)
-                        }
-                    }
-                }
-            }
-            .frame(height: gridHeight)
-
-            // Summary
-            Text(gridSummary(gridData))
-                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 11).weight(.light))
-                .foregroundStyle(Color("marbleSecondary"))
-        }
-        .padding(.horizontal, 20)
-    }
-
-    private enum CellState {
-        case active, empty, future
-    }
-
-    private struct GridData {
-        var cells: [[CellState]]
-        var columns: Int
-        var totalWorkouts: Int
-        var totalWeeks: Int
-    }
-
-    private func buildGridData() -> GridData {
-        let calendar = Calendar(identifier: .iso8601)
-        let today = calendar.startOfDay(for: Date())
-        let numWeeks = 26
-
-        let todayWeekday = calendar.component(.weekday, from: today)
-        let daysFromMonday = (todayWeekday + 5) % 7
-        guard let currentWeekMonday = calendar.date(byAdding: .day, value: -daysFromMonday, to: today),
-              let gridStart = calendar.date(byAdding: .weekOfYear, value: -(numWeeks - 1), to: currentWeekMonday) else {
-            return GridData(cells: Array(repeating: Array(repeating: .empty, count: numWeeks), count: 7), columns: numWeeks, totalWorkouts: 0, totalWeeks: numWeeks)
-        }
-
-        var workoutDates = Set<Date>()
-        for workout in workouts {
-            workoutDates.insert(calendar.startOfDay(for: workout.date))
-        }
-
-        var cells = Array(repeating: Array(repeating: CellState.future, count: numWeeks), count: 7)
-        var totalWorkouts = 0
-
-        for col in 0..<numWeeks {
-            guard let weekStart = calendar.date(byAdding: .day, value: col * 7, to: gridStart) else { continue }
-            for row in 0..<7 {
-                guard let cellDate = calendar.date(byAdding: .day, value: row, to: weekStart) else { continue }
-                if cellDate > today {
-                    cells[row][col] = .future
-                } else if workoutDates.contains(cellDate) {
-                    cells[row][col] = .active
-                    totalWorkouts += 1
-                } else {
-                    cells[row][col] = .empty
-                }
-            }
-        }
-
-        return GridData(cells: cells, columns: numWeeks, totalWorkouts: totalWorkouts, totalWeeks: numWeeks)
-    }
-
-    private func gridSummary(_ data: GridData) -> String {
-        let workouts = data.totalWorkouts
-        if workouts == 0 { return "No workouts yet" }
-        let avg = Double(workouts) / Double(data.totalWeeks)
-        let avgStr = avg == floor(avg) ? "\(Int(avg))" : String(format: "%.1f", avg)
-        return "\(workouts) workouts · \(avgStr)/week"
     }
 
     // MARK: - My Lifts
 
+    /// Editorial rows — each tracked lift gets a full-width row with its
+    /// name on the left, current best metric on the right, and a subtle
+    /// sparkline of recent history beneath. Tap to drill into the full chart.
     private var myLiftsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 0) {
             HStack {
                 SectionHeader(title: "MY LIFTS")
                 Spacer()
@@ -158,29 +50,25 @@ struct TrackView: View {
                     showingAddLift = true
                 } label: {
                     Image(systemName: "plus")
-                        .font(.system(size: 13, weight: .light))
-                        .foregroundStyle(Color("marbleSecondary"))
-                        .frame(width: 30, height: 30)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 4)
-                                .stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5)
-                        )
+                        .font(.system(size: 14, weight: .regular))
+                        .marbleGlassCapsule(size: 32)
                 }
                 .buttonStyle(.plain)
             }
+            .padding(.bottom, 8)
 
             if trackedLifts.isEmpty {
                 Text("Tap + to track your lifts")
-                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 13).weight(.light))
+                    .font(.marbleMono(13))
                     .foregroundStyle(Color("marbleSecondary"))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 40)
             } else {
-                LazyVGrid(columns: columns, spacing: 12) {
-                    ForEach(trackedLifts, id: \.id) { lift in
+                VStack(spacing: 0) {
+                    ForEach(Array(trackedLifts.enumerated()), id: \.element.id) { index, lift in
                         if let exercise = lift.exercise {
                             NavigationLink(destination: ExerciseLiftDetailView(trackedLift: lift)) {
-                                LiftCardView(lift: lift, exercise: exercise, workouts: workouts)
+                                LiftRowView(lift: lift, exercise: exercise, workouts: workouts)
                             }
                             .buttonStyle(.plain)
                             .contextMenu {
@@ -193,95 +81,210 @@ struct TrackView: View {
                                     Label("Remove", systemImage: "trash")
                                 }
                             }
+
+                            if index < trackedLifts.count - 1 {
+                                Rectangle()
+                                    .fill(Color("marblePrimary").opacity(0.06))
+                                    .frame(height: 0.5)
+                            }
                         }
                     }
                 }
             }
         }
-        .padding(.horizontal, 20)
-    }
-
-    // MARK: - History
-
-    private var historySection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: "HISTORY")
-
-            if workouts.isEmpty {
-                Text("No workouts yet")
-                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 13).weight(.light))
-                    .foregroundStyle(Color("marbleSecondary"))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 40)
-            } else {
-                VStack(spacing: 0) {
-                    ForEach(Array(workouts.enumerated()), id: \.element.id) { index, workout in
-                        NavigationLink(destination: WorkoutDetailView(workout: workout)) {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(workout.name)
-                                        .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 14).weight(.light))
-                                        .foregroundStyle(Color("marblePrimary"))
-
-                                    HStack(spacing: 8) {
-                                        Text(historyDateString(workout.date))
-                                        Text("·")
-                                        Text(formattedDuration(workout.duration))
-                                        Text("·")
-                                        Text("\(workout.exerciseLogs.count) exercises")
-                                    }
-                                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 11).weight(.light))
-                                    .foregroundStyle(Color("marbleSecondary"))
-                                }
-                                Spacer()
-                            }
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 12)
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .contextMenu {
-                            Button(role: .destructive) {
-                                workoutToDelete = workout
-                            } label: {
-                                Label("Delete", systemImage: "trash")
-                            }
-                        }
-
-                        if index < workouts.count - 1 {
-                            Rectangle()
-                                .fill(Color("marblePrimary").opacity(0.06))
-                                .frame(height: 0.5)
-                                .padding(.leading, 14)
-                        }
-                    }
-                }
-            }
-        }
-        .padding(.horizontal, 20)
-    }
-
-    private func historyDateString(_ date: Date) -> String {
-        let calendar = Calendar.current
-        if calendar.isDateInToday(date) { return "Today" }
-        if calendar.isDateInYesterday(date) { return "Yesterday" }
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMM d"
-        return formatter.string(from: date)
-    }
-
-    private func formattedDuration(_ interval: TimeInterval) -> String {
-        let totalMinutes = Int(interval) / 60
-        if totalMinutes < 60 { return "\(totalMinutes)m" }
-        let hours = totalMinutes / 60
-        let minutes = totalMinutes % 60
-        return "\(hours)h \(minutes)m"
     }
 }
 
-// MARK: - Lift Card View
+// MARK: - The Month (Hero)
 
-private struct LiftCardView: View {
+/// Compact dot grid of training rhythm. 10 columns wide, rows scale with
+/// month length (28 → 3 rows, 31 → 4 rows). Each dot = one day; filled
+/// dots glow in marblePrimary (mode-adaptive). Binary on/off — no volume
+/// tiers. Horizontal swipe pages through prior months.
+private struct TheMonthHero: View {
+    let workouts: [Workout]
+
+    @State private var selectedMonthOffset: Int = 0
+    private let monthsBack: Int = 24
+
+    /// Map start-of-day → bool indicating a workout happened that day.
+    /// Binary now (volume tiers were removed — added noise without info).
+    private var workoutDays: Set<Date> {
+        let calendar = Calendar(identifier: .iso8601)
+        var days = Set<Date>()
+        for workout in workouts {
+            let hasCompletedSets = workout.exerciseLogs.contains { log in
+                log.sets.contains(where: \.isCompleted)
+            }
+            if hasCompletedSets {
+                days.insert(calendar.startOfDay(for: workout.date))
+            }
+        }
+        return days
+    }
+
+    var body: some View {
+        TabView(selection: $selectedMonthOffset) {
+            ForEach((-monthsBack...0).reversed(), id: \.self) { offset in
+                MonthDotPage(
+                    monthOffset: offset,
+                    workoutDays: workoutDays
+                )
+                .tag(offset)
+            }
+        }
+        .tabViewStyle(.page(indexDisplayMode: .never))
+        .frame(height: 200)
+        .onAppear { selectedMonthOffset = 0 }
+    }
+}
+
+/// One month rendered as a 10-column dot grid. No day-of-week constraint —
+/// dots are laid out as a "block of days," compact and abstract. Reads as a
+/// record being inscribed, not a calendar.
+private struct MonthDotPage: View {
+    let monthOffset: Int  // 0 = current month, -1 = last month, etc.
+    let workoutDays: Set<Date>
+
+    private let columnsPerRow = 10
+    private let dotSize: CGFloat = 7
+
+    private var calendar: Calendar {
+        var cal = Calendar(identifier: .iso8601)
+        cal.timeZone = .current
+        return cal
+    }
+
+    private var monthAnchor: Date {
+        let today = calendar.startOfDay(for: Date())
+        let baseFirst = calendar.date(from: calendar.dateComponents([.year, .month], from: today)) ?? today
+        return calendar.date(byAdding: .month, value: monthOffset, to: baseFirst) ?? baseFirst
+    }
+
+    private var daysInMonth: Int {
+        calendar.range(of: .day, in: .month, for: monthAnchor)?.count ?? 30
+    }
+
+    private var monthLabel: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMMM yyyy"
+        return formatter.string(from: monthAnchor).uppercased()
+    }
+
+    private var today: Date {
+        calendar.startOfDay(for: Date())
+    }
+
+    private var workoutCount: Int {
+        (1...daysInMonth).reduce(0) { acc, dayNumber in
+            guard let date = calendar.date(byAdding: .day, value: dayNumber - 1, to: monthAnchor) else { return acc }
+            return acc + (workoutDays.contains(date) ? 1 : 0)
+        }
+    }
+
+    /// Stat line under the grid: workouts this month + per-week cadence.
+    /// For the current month, cadence is over ELAPSED weeks so it isn't
+    /// artificially deflated early in the month.
+    private var statLine: String {
+        if workoutCount == 0 {
+            return monthOffset == 0 ? "No workouts yet this month" : "No workouts"
+        }
+
+        let weeksElapsed: Double
+        if monthOffset == 0 {
+            let daysElapsed = (calendar.dateComponents([.day], from: monthAnchor, to: today).day ?? 0) + 1
+            weeksElapsed = max(1, Double(daysElapsed)) / 7.0
+        } else {
+            weeksElapsed = Double(daysInMonth) / 7.0
+        }
+        let perWeek = Double(workoutCount) / weeksElapsed
+        let avgStr = perWeek == floor(perWeek) ? "\(Int(perWeek))" : String(format: "%.1f", perWeek)
+        let unit = workoutCount == 1 ? "workout" : "workouts"
+        return "\(workoutCount) \(unit) · \(avgStr)/week"
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            // Month label
+            Text(monthLabel)
+                .font(.marbleMono(11))
+                .tracking(2)
+                .foregroundStyle(Color("marbleSecondary"))
+                .padding(.horizontal, 24)
+
+            // Dot grid — fixed 10 columns, rows scale with month length
+            LazyVGrid(
+                columns: Array(repeating: GridItem(.flexible(), spacing: 14), count: columnsPerRow),
+                spacing: 14
+            ) {
+                ForEach(1...daysInMonth, id: \.self) { dayNumber in
+                    let cellDate = calendar.date(byAdding: .day, value: dayNumber - 1, to: monthAnchor) ?? monthAnchor
+                    DayDot(
+                        didWorkout: workoutDays.contains(cellDate),
+                        isToday: calendar.isDate(cellDate, inSameDayAs: today),
+                        isFuture: cellDate > today,
+                        dotSize: dotSize
+                    )
+                }
+            }
+            .padding(.horizontal, 24)
+
+            // Stat line
+            Text(statLine)
+                .font(.marbleMono(11))
+                .foregroundStyle(Color("marbleSecondary"))
+                .padding(.horizontal, 24)
+        }
+    }
+}
+
+/// A single day cell in the dot grid. Three states:
+///   - Workout day: glowing primary-color dot with stacked shadow bloom
+///   - Rest day (past): subtle outlined dot, very low opacity
+///   - Future: nothing rendered
+/// Today is hinted with a faint ring around the dot.
+private struct DayDot: View {
+    let didWorkout: Bool
+    let isToday: Bool
+    let isFuture: Bool
+    let dotSize: CGFloat
+
+    var body: some View {
+        ZStack {
+            if didWorkout {
+                // Glowing dot. Three stacked shadows produce a soft bloom
+                // that uses marblePrimary so it adapts to both modes
+                // (warm-bone halo on dark, warm-ink halo on light).
+                Circle()
+                    .fill(Color("marblePrimary"))
+                    .frame(width: dotSize, height: dotSize)
+                    .shadow(color: Color("marblePrimary").opacity(0.6), radius: 3)
+                    .shadow(color: Color("marblePrimary").opacity(0.35), radius: 6)
+                    .shadow(color: Color("marblePrimary").opacity(0.15), radius: 10)
+            } else if !isFuture {
+                Circle()
+                    .stroke(Color("marblePrimary").opacity(0.14), lineWidth: 0.5)
+                    .frame(width: dotSize, height: dotSize)
+            }
+            // Future days render nothing.
+
+            // Today gets a hairline ring (visible regardless of workout state).
+            if isToday {
+                Circle()
+                    .stroke(Color("marblePrimary").opacity(didWorkout ? 0 : 0.45), lineWidth: 0.5)
+                    .frame(width: dotSize + 6, height: dotSize + 6)
+            }
+        }
+        .frame(height: dotSize + 6)
+    }
+}
+
+// MARK: - Lift Row View
+
+/// Full-width editorial row for one tracked lift. Top: exercise name + best
+/// metric. Middle: sparkline of recent values for the configured metric.
+/// Bottom: metric label + percentage trend if available.
+private struct LiftRowView: View {
     let lift: TrackedLift
     let exercise: Exercise
     let workouts: [Workout]
@@ -289,47 +292,54 @@ private struct LiftCardView: View {
     var body: some View {
         let metrics = LiftMetrics.compute(for: exercise, workouts: workouts, lift: lift)
         let trend = computeTrend(metrics: metrics)
+        let sparklinePoints = sparklineValues()
 
-        VStack(alignment: .leading, spacing: 6) {
-            Text(exercise.name)
-                .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 14).weight(.light))
-                .foregroundStyle(Color("marblePrimary"))
-                .lineLimit(2)
-                .multilineTextAlignment(.leading)
+        VStack(alignment: .leading, spacing: 10) {
+            // Top row — name + value
+            HStack(alignment: .firstTextBaseline) {
+                Text(exercise.name)
+                    .font(.marbleBody(20))
+                    .foregroundStyle(Color("marblePrimary"))
+                    .lineLimit(1)
+                Spacer(minLength: 12)
+                Text(metricValue(metrics))
+                    .font(.marbleMono(18))
+                    .foregroundStyle(Color("marblePrimary"))
+                    .lineLimit(1)
+            }
 
-            Spacer(minLength: 4)
+            // Sparkline — subtle, full width
+            LiftSparkline(values: sparklinePoints)
+                .frame(height: 28)
 
-            Text(metricValue(metrics))
-                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 20).weight(.light))
-                .foregroundStyle(Color("marblePrimary"))
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-
-            HStack(spacing: 4) {
+            // Bottom row — metric label + trend
+            HStack(spacing: 6) {
                 Text(metricLabel)
-                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 10).weight(.light))
+                    .font(.marbleMono(10))
+                    .tracking(1)
                     .foregroundStyle(Color("marbleSecondary"))
-                    .tracking(0.3)
-
                 if let trend {
+                    Text("·")
+                        .font(.marbleMono(10))
+                        .foregroundStyle(Color("marbleTertiary"))
                     Text(trend)
-                        .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 10).weight(.light))
-                        .foregroundStyle(trend.hasPrefix("+") ? Color.green.opacity(0.8) : Color("marbleSecondary"))
+                        .font(.marbleMono(10))
+                        .tracking(0.5)
+                        .foregroundStyle(trend.hasPrefix("+") ? Color.green.opacity(0.85) : Color("marbleSecondary"))
                 }
+                Spacer()
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .frame(minHeight: 110)
-        .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5))
+        .padding(.vertical, 18)
+        .contentShape(Rectangle())
     }
 
     private var metricLabel: String {
         switch lift.metricType {
-        case "bestWeight": return "Best Weight"
-        case "maxVolume": return "Max Volume"
-        case "oneRepMax": return "Est. 1RM"
-        default: return "Best Weight"
+        case "bestWeight": return "BEST WEIGHT"
+        case "maxVolume": return "MAX VOLUME"
+        case "oneRepMax": return "EST. 1RM"
+        default: return "BEST WEIGHT"
         }
     }
 
@@ -342,11 +352,39 @@ private struct LiftCardView: View {
         }
     }
 
-    // Compare current best to previous best (before last workout)
+    /// Returns the chronological series of per-workout metric values for the
+    /// sparkline. Oldest → newest so the line reads left-to-right as growth.
+    private func sparklineValues() -> [Double] {
+        let exerciseID = exercise.persistentModelID
+        let chronological = workouts
+            .filter { workout in
+                workout.exerciseLogs.contains { log in
+                    log.exercise?.persistentModelID == exerciseID
+                        && log.sets.contains { $0.isCompleted && $0.weight > 0 }
+                }
+            }
+            .sorted { $0.date < $1.date }
+
+        return chronological.map { workout in
+            let sets: [(weight: Double, reps: Int)] = workout.exerciseLogs
+                .filter { $0.exercise?.persistentModelID == exerciseID }
+                .flatMap { $0.sets.filter { $0.isCompleted && $0.weight > 0 } }
+                .map { (weight: $0.weight, reps: $0.reps) }
+
+            switch lift.metricType {
+            case "oneRepMax":
+                return sets.map { s in s.weight * (1.0 + Double(s.reps) / 30.0) }.max() ?? 0
+            case "maxVolume":
+                return sets.map { s in s.weight * Double(s.reps) }.max() ?? 0
+            default:
+                return sets.map(\.weight).max() ?? 0
+            }
+        }
+    }
+
     private func computeTrend(metrics: LiftMetrics) -> String? {
         let exerciseID = exercise.persistentModelID
 
-        // Filter workouts containing this exercise with completed sets
         let relevantWorkouts: [Workout] = workouts.filter { workout in
             for log in workout.exerciseLogs {
                 guard log.exercise?.persistentModelID == exerciseID else { continue }
@@ -398,11 +436,60 @@ private struct LiftCardView: View {
     private func formatDelta(current: Double, previous: Double) -> String? {
         guard previous > 0 else { return nil }
         let pct = ((current - previous) / previous) * 100
-        guard abs(pct) >= 0.5 else { return nil } // ignore noise
+        guard abs(pct) >= 0.5 else { return nil }
         if pct > 0 {
             return "+\(Int(round(pct)))%"
         } else {
             return "\(Int(round(pct)))%"
+        }
+    }
+}
+
+/// Tiny line chart for a lift's metric history. Same restrained treatment as
+/// the bodyweight sparkline but generalized to any [Double] series.
+private struct LiftSparkline: View {
+    let values: [Double]
+
+    var body: some View {
+        GeometryReader { geo in
+            if values.count >= 2 {
+                let minV = values.min() ?? 0
+                let maxV = values.max() ?? 1
+                let range = max(maxV - minV, 1)
+                let stepX = geo.size.width / CGFloat(max(values.count - 1, 1))
+
+                let points: [CGPoint] = values.enumerated().map { i, v in
+                    let x = CGFloat(i) * stepX
+                    let normalized = (v - minV) / range
+                    let y = geo.size.height * (1 - CGFloat(normalized))
+                    return CGPoint(x: x, y: y)
+                }
+
+                ZStack {
+                    Path { path in
+                        guard let first = points.first else { return }
+                        path.move(to: first)
+                        for point in points.dropFirst() {
+                            path.addLine(to: point)
+                        }
+                    }
+                    .stroke(Color("marblePrimary").opacity(0.55), lineWidth: 1.2)
+
+                    if let last = points.last {
+                        Circle()
+                            .fill(Color("marblePrimary"))
+                            .frame(width: 4, height: 4)
+                            .position(last)
+                    }
+                }
+            } else if values.count == 1 {
+                // Single value — flat line center
+                Path { path in
+                    path.move(to: CGPoint(x: 0, y: geo.size.height / 2))
+                    path.addLine(to: CGPoint(x: geo.size.width, y: geo.size.height / 2))
+                }
+                .stroke(Color("marblePrimary").opacity(0.25), style: StrokeStyle(lineWidth: 1, dash: [2, 3]))
+            }
         }
     }
 }
@@ -444,7 +531,7 @@ private struct AddTrackedLiftSheet: View {
                             .foregroundStyle(Color("marbleSecondary"))
                             .font(.system(size: 14))
                         TextField("Search exercises", text: $searchText)
-                            .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 14).weight(.light))
+                            .font(.marbleBody(14))
                             .autocorrectionDisabled()
                     }
                     .padding(12)
@@ -469,10 +556,10 @@ private struct AddTrackedLiftSheet: View {
                                         HStack {
                                             VStack(alignment: .leading, spacing: 2) {
                                                 Text(exercise.name)
-                                                    .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 14).weight(.light))
+                                                    .font(.marbleBody(14))
                                                     .foregroundStyle(Color("marblePrimary"))
                                                 Text(exercise.muscleGroup)
-                                                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 11).weight(.light))
+                                                    .font(.marbleMono(11))
                                                     .foregroundStyle(Color("marbleSecondary"))
                                             }
                                             Spacer()
@@ -519,7 +606,7 @@ private struct AddTrackedLiftSheet: View {
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     Text("Track Exercise")
-                        .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 14).weight(.light))
+                        .font(.marbleBody(14))
                         .foregroundStyle(Color("marblePrimary"))
                 }
                 ToolbarItem(placement: .cancellationAction) {
@@ -531,7 +618,7 @@ private struct AddTrackedLiftSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
-                        .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 14).weight(.light))
+                        .font(.marbleMono(14))
                 }
             }
         }
@@ -564,24 +651,24 @@ struct LiftMetrics {
     var isManualMaxVolume: Bool
 
     var bestWeightFormatted: String {
-        guard bestWeight > 0 else { return "-" }
+        guard bestWeight > 0 else { return "—" }
         let w = bestWeight == floor(bestWeight) ? "\(Int(bestWeight))" : String(format: "%.1f", bestWeight)
-        return "\(w) x \(bestWeightReps)"
+        return "\(w) × \(bestWeightReps)"
     }
 
     var oneRepMaxFormatted: String {
-        guard oneRepMax > 0 else { return "-" }
+        guard oneRepMax > 0 else { return "—" }
         let prefix = isManualOneRepMax ? "" : "~"
-        return "\(prefix)\(Int(oneRepMax)) lbs"
+        return "\(prefix)\(Int(oneRepMax)) lb"
     }
 
     var maxVolumeFormatted: String {
-        guard maxVolume > 0 else { return "-" }
+        guard maxVolume > 0 else { return "—" }
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
         formatter.maximumFractionDigits = 0
         let formatted = formatter.string(from: NSNumber(value: maxVolume)) ?? "0"
-        return "\(formatted) lbs"
+        return "\(formatted) lb"
     }
 
     var autoBestWeight: Double
@@ -590,23 +677,23 @@ struct LiftMetrics {
     var autoMaxVolume: Double
 
     var autoBestWeightFormatted: String {
-        guard autoBestWeight > 0 else { return "-" }
+        guard autoBestWeight > 0 else { return "—" }
         let w = autoBestWeight == floor(autoBestWeight) ? "\(Int(autoBestWeight))" : String(format: "%.1f", autoBestWeight)
-        return "\(w) x \(autoBestWeightReps)"
+        return "\(w) × \(autoBestWeightReps)"
     }
 
     var autoOneRepMaxFormatted: String {
-        guard autoOneRepMax > 0 else { return "-" }
-        return "~\(Int(autoOneRepMax)) lbs"
+        guard autoOneRepMax > 0 else { return "—" }
+        return "~\(Int(autoOneRepMax)) lb"
     }
 
     var autoMaxVolumeFormatted: String {
-        guard autoMaxVolume > 0 else { return "-" }
+        guard autoMaxVolume > 0 else { return "—" }
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
         formatter.maximumFractionDigits = 0
         let formatted = formatter.string(from: NSNumber(value: autoMaxVolume)) ?? "0"
-        return "\(formatted) lbs"
+        return "\(formatted) lb"
     }
 
     static func compute(for exercise: Exercise, workouts: [Workout], lift: TrackedLift? = nil) -> LiftMetrics {

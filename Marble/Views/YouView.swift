@@ -8,9 +8,12 @@ struct YouView: View {
 
     @Query(sort: \Workout.date, order: .reverse) private var workouts: [Workout]
     @Query(sort: \ProgressPhoto.date, order: .reverse) private var allPhotos: [ProgressPhoto]
+    @Query(sort: \BodyweightEntry.date, order: .reverse) private var bodyweightEntries: [BodyweightEntry]
+    @AppStorage("weightUnit") private var weightUnit: String = "lbs"
 
     @State private var showingSignIn = false
     @State private var showingSettings = false
+    @State private var showingLogBodyweight = false
 
     var body: some View {
         NavigationStack {
@@ -90,6 +93,9 @@ struct YouView: View {
                 SignInView()
                     .environmentObject(auth)
             }
+            .sheet(isPresented: $showingLogBodyweight) {
+                LogBodyweightSheet()
+            }
         }
     }
 
@@ -104,11 +110,14 @@ struct YouView: View {
                     Text(profile.name)
                         .font(.marbleBody(22))
                         .foregroundStyle(Color("marblePrimary"))
-                    if let joinDate = joinDateString(profile.joinDate) {
-                        Text(joinDate)
-                            .font(.marbleMono(11))
-                            .tracking(1)
-                            .foregroundStyle(Color("marbleSecondary"))
+                    HStack(spacing: 8) {
+                        if let joinDate = joinDateString(profile.joinDate) {
+                            Text(joinDate)
+                                .font(.marbleMono(11))
+                                .tracking(1)
+                                .foregroundStyle(Color("marbleSecondary"))
+                        }
+                        bodyweightInline
                     }
                 } else {
                     Button {
@@ -127,6 +136,39 @@ struct YouView: View {
             }
             Spacer()
         }
+    }
+
+    /// Bodyweight inline under the user's name. Tap to log a new entry.
+    /// Lives here (not on Track tab) because bodyweight is identity-adjacent
+    /// metadata about your body, not training output.
+    @ViewBuilder
+    private var bodyweightInline: some View {
+        Button {
+            showingLogBodyweight = true
+        } label: {
+            HStack(spacing: 6) {
+                Text("·")
+                    .font(.marbleMono(11))
+                    .foregroundStyle(Color("marbleTertiary"))
+                if let latest = bodyweightEntries.first {
+                    let displayWeight = weightUnit == "kg" ? latest.weight / 2.20462 : latest.weight
+                    let formattedWeight = displayWeight == floor(displayWeight)
+                        ? "\(Int(displayWeight))"
+                        : String(format: "%.1f", displayWeight)
+                    let unit = weightUnit == "kg" ? "KG" : "LB"
+                    Text("\(formattedWeight) \(unit)")
+                        .font(.marbleMono(11))
+                        .tracking(1)
+                        .foregroundStyle(Color("marbleSecondary"))
+                } else {
+                    Text("LOG WEIGHT")
+                        .font(.marbleMono(11))
+                        .tracking(1)
+                        .foregroundStyle(Color("marbleSecondary"))
+                }
+            }
+        }
+        .buttonStyle(.plain)
     }
 
     private var avatarName: String {
@@ -374,6 +416,97 @@ struct WorkoutEntry: View {
             return "\(hours)h \(minutes)m"
         }
         return "\(minutes)m"
+    }
+}
+
+// MARK: - Log Bodyweight Sheet
+
+/// Modal for logging a new bodyweight entry. Lives in YouView because
+/// bodyweight is identity metadata, not training output. Single number
+/// input, decimal keyboard, today's date implicit.
+private struct LogBodyweightSheet: View {
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
+    @AppStorage("weightUnit") private var weightUnit: String = "lbs"
+
+    @State private var weightText: String = ""
+    @FocusState private var fieldFocused: Bool
+
+    private var parsedWeight: Double? {
+        Double(weightText.trimmingCharacters(in: .whitespaces))
+    }
+
+    private var unitLabel: String { weightUnit == "kg" ? "KG" : "LB" }
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                Spacer()
+
+                VStack(spacing: 8) {
+                    Text("LOG BODYWEIGHT")
+                        .font(.marbleMono(11))
+                        .tracking(2)
+                        .foregroundStyle(Color("marbleSecondary"))
+
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        TextField("0", text: $weightText)
+                            .font(.marbleBody(56))
+                            .foregroundStyle(Color("marblePrimary"))
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.center)
+                            .focused($fieldFocused)
+                            .fixedSize()
+                        Text(unitLabel)
+                            .font(.marbleMono(15))
+                            .tracking(1.5)
+                            .foregroundStyle(Color("marbleSecondary"))
+                    }
+                }
+
+                Spacer()
+
+                Button {
+                    save()
+                } label: {
+                    Text("SAVE")
+                        .marbleGlassPrimaryCapsule()
+                }
+                .buttonStyle(.plain)
+                .disabled(parsedWeight == nil || (parsedWeight ?? 0) <= 0)
+                .opacity((parsedWeight ?? 0) > 0 ? 1 : 0.3)
+                .padding(.bottom, 32)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color("marbleBackground"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 14, weight: .regular))
+                            .foregroundStyle(Color("marblePrimary"))
+                    }
+                }
+            }
+            .onAppear { fieldFocused = true }
+            .presentationDetents([.medium])
+            .presentationDragIndicator(.hidden)
+            .presentationCornerRadius(28)
+        }
+    }
+
+    private func save() {
+        guard let weight = parsedWeight, weight > 0 else { return }
+        let weightInLbs = weightUnit == "kg" ? weight * 2.20462 : weight
+        let entry = BodyweightEntry(weight: weightInLbs)
+        modelContext.insert(entry)
+        try? modelContext.save()
+        CloudSyncService.shared.uploadBodyweightEntry(entry)
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        dismiss()
     }
 }
 

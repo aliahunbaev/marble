@@ -49,6 +49,18 @@ final class CloudSyncService {
         }
     }
 
+    func uploadBodyweightEntry(_ entry: BodyweightEntry) {
+        guard let uid else { return }
+        let dto = BodyweightEntryDTO(from: entry)
+        do {
+            try db.collection("users").document(uid)
+                .collection("bodyweightEntries").document(entry.cloudID)
+                .setData(from: dto, merge: false)
+        } catch {
+            print("Cloud sync — upload bodyweight failed: \(error)")
+        }
+    }
+
     // MARK: - Delete
 
     func deleteWorkout(cloudID: String) {
@@ -67,6 +79,12 @@ final class CloudSyncService {
         guard let uid else { return }
         db.collection("users").document(uid)
             .collection("trackedLifts").document(cloudID).delete()
+    }
+
+    func deleteBodyweightEntry(cloudID: String) {
+        guard let uid else { return }
+        db.collection("users").document(uid)
+            .collection("bodyweightEntries").document(cloudID).delete()
     }
 
     // MARK: - Restore (on sign-in)
@@ -144,6 +162,23 @@ final class CloudSyncService {
             print("Cloud sync — restore tracked lifts failed: \(error)")
         }
 
+        // Bodyweight Entries
+        let existingBodyweightIDs = Set((try? context.fetch(FetchDescriptor<BodyweightEntry>()).map(\.cloudID)) ?? [])
+        do {
+            let bwSnap = try await db.collection("users").document(uid)
+                .collection("bodyweightEntries").getDocuments()
+            for doc in bwSnap.documents {
+                guard let dto = try? doc.data(as: BodyweightEntryDTO.self),
+                      !existingBodyweightIDs.contains(dto.cloudID) else { continue }
+                let entry = BodyweightEntry(weight: dto.weight, date: dto.date)
+                entry.cloudID = dto.cloudID
+                entry.createdAt = dto.createdAt
+                context.insert(entry)
+            }
+        } catch {
+            print("Cloud sync — restore bodyweight entries failed: \(error)")
+        }
+
         try? context.save()
     }
 
@@ -151,7 +186,7 @@ final class CloudSyncService {
 
     func clearAllCloudData() async {
         guard let uid else { return }
-        for collection in ["workouts", "templates", "trackedLifts"] {
+        for collection in ["workouts", "templates", "trackedLifts", "bodyweightEntries"] {
             do {
                 let snap = try await db.collection("users").document(uid)
                     .collection(collection).getDocuments()
@@ -171,9 +206,11 @@ final class CloudSyncService {
         let workouts = (try? context.fetch(FetchDescriptor<Workout>())) ?? []
         let templates = (try? context.fetch(FetchDescriptor<WorkoutTemplate>())) ?? []
         let lifts = (try? context.fetch(FetchDescriptor<TrackedLift>())) ?? []
+        let bodyweights = (try? context.fetch(FetchDescriptor<BodyweightEntry>())) ?? []
         workouts.forEach { uploadWorkout($0) }
         templates.forEach { uploadTemplate($0) }
         lifts.forEach { uploadTrackedLift($0) }
+        bodyweights.forEach { uploadBodyweightEntry($0) }
     }
 }
 
@@ -246,5 +283,19 @@ struct TrackedLiftDTO: Codable {
         self.manualBestWeightReps = lift.manualBestWeightReps
         self.manualOneRepMax = lift.manualOneRepMax
         self.manualMaxVolume = lift.manualMaxVolume
+    }
+}
+
+struct BodyweightEntryDTO: Codable {
+    var cloudID: String
+    var weight: Double
+    var date: Date
+    var createdAt: Date
+
+    init(from entry: BodyweightEntry) {
+        self.cloudID = entry.cloudID
+        self.weight = entry.weight
+        self.date = entry.date
+        self.createdAt = entry.createdAt
     }
 }

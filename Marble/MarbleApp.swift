@@ -27,7 +27,8 @@ struct MarbleApp: App {
             ExerciseLog.self,
             WorkoutSet.self,
             TrackedLift.self,
-            ProgressPhoto.self
+            ProgressPhoto.self,
+            BodyweightEntry.self
         ]) { result in
             if case .success(let container) = result {
                 ExerciseSeed.seedIfNeeded(context: container.mainContext)
