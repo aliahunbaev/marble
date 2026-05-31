@@ -64,14 +64,22 @@ struct ActiveWorkoutView: View {
 
         return ZStack(alignment: .top) {
             // Native List handles swipe-to-delete and vertical scroll
-            // natively at the framework level — no custom gesture
-            // recognizers to fight with the scroll. Each set is a
-            // listRow with .swipeActions; each exercise is a Section.
+            // natively at the framework level. Flat structure (no
+            // Sections) so exercise headers don't get the sticky-pin
+            // behavior that List gives section headers — they scroll
+            // with content like everything else.
             List {
                 workoutHeaderRow(session: session)
 
-                ForEach($session.entries) { $entry in
-                    exerciseSection(entry: $entry)
+                ForEach(Array($session.entries.enumerated()), id: \.element.id) { index, $entry in
+                    if index > 0 {
+                        exerciseDividerRow
+                    }
+                    exerciseHeaderRow(entry: $entry)
+                    ForEach($entry.sets) { $set in
+                        setRowItem(entry: $entry, set: $set)
+                    }
+                    addSetRow(entry: $entry)
                 }
 
                 addExerciseRow
@@ -89,21 +97,31 @@ struct ActiveWorkoutView: View {
             replacingEntryID = nil
         }) {
             let selectedExercises = session.entries.map(\.exercise)
-            ExerciseLibraryView(selectedExercises: selectedExercises) { exercise in
-                if let replaceID = replacingEntryID {
-                    if let idx = session.entries.firstIndex(where: { $0.id == replaceID }) {
-                        let preservedSets = session.entries[idx].sets
-                        session.entries[idx] = ExerciseEntry(
-                            exercise: exercise,
-                            sets: preservedSets
-                        )
+            let replacingName: String? = {
+                guard let id = replacingEntryID,
+                      let entry = session.entries.first(where: { $0.id == id })
+                else { return nil }
+                return entry.exercise.name
+            }()
+            ExerciseLibraryView(
+                selectedExercises: selectedExercises,
+                onToggle: { exercise in
+                    if let replaceID = replacingEntryID {
+                        if let idx = session.entries.firstIndex(where: { $0.id == replaceID }) {
+                            let preservedSets = session.entries[idx].sets
+                            session.entries[idx] = ExerciseEntry(
+                                exercise: exercise,
+                                sets: preservedSets
+                            )
+                        }
+                        replacingEntryID = nil
+                        showingLibrary = false
+                    } else {
+                        toggleExercise(exercise)
                     }
-                    replacingEntryID = nil
-                    showingLibrary = false
-                } else {
-                    toggleExercise(exercise)
-                }
-            }
+                },
+                replacingExerciseName: replacingName
+            )
         }
         .sheet(isPresented: $showingRestTimer) {
             RestTimerModal(state: session.restTimer)
@@ -153,36 +171,102 @@ struct ActiveWorkoutView: View {
         .listRowBackground(Color.clear)
     }
 
-    /// One section per exercise — header with name + ⋯ menu + column
-    /// labels, then a row per set with native swipe-to-delete, then a
-    /// + SET row.
-    @ViewBuilder
-    private func exerciseSection(entry: Binding<ExerciseEntry>) -> some View {
-        Section {
-            ForEach(entry.sets) { $set in
-                setRowItem(entry: entry, set: $set)
-            }
-
-            // + SET row
-            Button {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                withAnimation(.spring(response: 0.4, dampingFraction: 0.82)) {
-                    entry.wrappedValue.sets.append(EditableSet())
-                }
-            } label: {
-                HStack(spacing: 6) {
-                    Text("+")
-                    Text("SET").tracking(1)
-                }
-                .marbleSecondaryButton()
-            }
-            .buttonStyle(.plain)
-            .listRowInsets(EdgeInsets(top: 12, leading: 20, bottom: 32, trailing: 20))
+    /// Hairline row between exercises — replaces the visual separation
+    /// that Sections used to provide. Lives in the List as a regular
+    /// row so it scrolls with content.
+    private var exerciseDividerRow: some View {
+        Rectangle()
+            .fill(Color("marblePrimary").opacity(0.06))
+            .frame(height: 0.5)
+            .listRowInsets(EdgeInsets(top: 20, leading: 20, bottom: 20, trailing: 20))
             .listRowSeparator(.hidden)
             .listRowBackground(Color.clear)
-        } header: {
-            exerciseSectionHeader(entry: entry)
+    }
+
+    /// Exercise header as a regular List row (not a Section header) so
+    /// it scrolls naturally instead of getting List's default
+    /// pinned-to-top behavior.
+    @ViewBuilder
+    private func exerciseHeaderRow(entry: Binding<ExerciseEntry>) -> some View {
+        // Capture the ID at body-evaluation time so the Menu actions
+        // don't hold the Binding into the closure (the SwiftUI footgun
+        // that crashed Remove — the binding becomes invalid the moment
+        // session.entries is mutated).
+        let entryID = entry.wrappedValue.id
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Text(entry.wrappedValue.exercise.name)
+                    .font(.marbleBody(22))
+                    .foregroundStyle(Color("marblePrimary"))
+
+                Spacer()
+
+                Menu {
+                    Button {
+                        DispatchQueue.main.async {
+                            replacingEntryID = entryID
+                            showingLibrary = true
+                        }
+                    } label: {
+                        Label("Replace exercise", systemImage: "arrow.triangle.2.circlepath")
+                    }
+                    Button(role: .destructive) {
+                        DispatchQueue.main.async {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                                session.entries.removeAll { $0.id == entryID }
+                            }
+                        }
+                    } label: {
+                        Label("Remove", systemImage: "trash")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 13, weight: .medium))
+                        .marbleGlassCapsule(size: 32)
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 14)
+
+            // Column headers — widths track SetRowView field sizes.
+            HStack(spacing: 14) {
+                Text("SET").frame(width: 32, alignment: .center)
+                Spacer()
+                Text("LBS").frame(width: 100, alignment: .center)
+                Text("REPS").frame(width: 100, alignment: .center)
+                Image(systemName: "checkmark")
+                    .font(.system(size: 11, weight: .light))
+                    .frame(width: 44, alignment: .center)
+            }
+            .font(.marbleMono(11))
+            .tracking(1.5)
+            .foregroundStyle(Color("marbleSecondary"))
+            .padding(.horizontal, 20)
+            .padding(.bottom, 8)
         }
+        .listRowInsets(EdgeInsets())
+        .listRowSeparator(.hidden)
+        .listRowBackground(Color.clear)
+    }
+
+    /// + SET row at the end of each exercise's set list.
+    private func addSetRow(entry: Binding<ExerciseEntry>) -> some View {
+        Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.82)) {
+                entry.wrappedValue.sets.append(EditableSet())
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Text("+")
+                Text("SET").tracking(1)
+            }
+            .marbleSecondaryButton()
+        }
+        .buttonStyle(.plain)
+        .listRowInsets(EdgeInsets(top: 12, leading: 20, bottom: 8, trailing: 20))
+        .listRowSeparator(.hidden)
+        .listRowBackground(Color.clear)
     }
 
     @ViewBuilder
@@ -226,60 +310,6 @@ struct ActiveWorkoutView: View {
                 Label("Delete", systemImage: "trash")
             }
         }
-    }
-
-    @ViewBuilder
-    private func exerciseSectionHeader(entry: Binding<ExerciseEntry>) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                Text(entry.wrappedValue.exercise.name)
-                    .font(.marbleBody(22))
-                    .foregroundStyle(Color("marblePrimary"))
-
-                Spacer()
-
-                Menu {
-                    Button {
-                        replacingEntryID = entry.wrappedValue.id
-                        showingLibrary = true
-                    } label: {
-                        Label("Replace exercise", systemImage: "arrow.triangle.2.circlepath")
-                    }
-                    Button(role: .destructive) {
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                            session.entries.removeAll { $0.id == entry.wrappedValue.id }
-                        }
-                    } label: {
-                        Label("Remove", systemImage: "trash")
-                    }
-                } label: {
-                    Image(systemName: "ellipsis")
-                        .font(.system(size: 13, weight: .medium))
-                        .marbleGlassCapsule(size: 32)
-                }
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 16)
-            .padding(.bottom, 14)
-
-            // Column headers — widths track SetRowView field sizes.
-            HStack(spacing: 14) {
-                Text("SET").frame(width: 32, alignment: .center)
-                Spacer()
-                Text("LBS").frame(width: 100, alignment: .center)
-                Text("REPS").frame(width: 100, alignment: .center)
-                Image(systemName: "checkmark")
-                    .font(.system(size: 11, weight: .light))
-                    .frame(width: 44, alignment: .center)
-            }
-            .font(.marbleMono(11))
-            .tracking(1.5)
-            .foregroundStyle(Color("marbleSecondary"))
-            .padding(.horizontal, 20)
-            .padding(.bottom, 8)
-        }
-        .textCase(nil) // List default uppercases headers; we don't want that
-        .listRowInsets(EdgeInsets())
     }
 
     private var addExerciseRow: some View {

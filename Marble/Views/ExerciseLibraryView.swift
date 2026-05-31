@@ -13,6 +13,12 @@ struct ExerciseLibraryView: View {
 
     let selectedExercises: [Exercise]
     let onToggle: (Exercise) -> Void
+    /// When non-nil, the picker is in "replace" mode: title bar says
+    /// "Replace [name]", checkmarks are hidden (the existing tracked set
+    /// is irrelevant when you're swapping ONE exercise), and tapping
+    /// any row immediately commits and dismisses — no second tap on Done
+    /// or Add is required.
+    var replacingExerciseName: String? = nil
 
     private var filteredExercises: [Exercise] {
         if searchText.isEmpty { return allExercises }
@@ -58,7 +64,7 @@ struct ExerciseLibraryView: View {
                 .padding(.bottom, 40)
             }
             .background(Color("marbleBackground"))
-            .navigationTitle("Exercises")
+            .navigationTitle(navTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -68,9 +74,13 @@ struct ExerciseLibraryView: View {
                             .foregroundStyle(Color("marblePrimary"))
                     }
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Add") { dismiss() }
-                        .font(.marbleMono(14))
+                // "Done" / "Add" only meaningful in toggle mode; replace
+                // mode commits on selection and dismisses immediately.
+                if replacingExerciseName == nil {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done") { dismiss() }
+                            .font(.marbleMono(14))
+                    }
                 }
                 ToolbarItem(placement: .primaryAction) {
                     Button {
@@ -126,11 +136,21 @@ struct ExerciseLibraryView: View {
         }
     }
 
+    /// Title shown in the nav bar — context-aware. Replace mode tells
+    /// the user exactly which exercise they're swapping out.
+    private var navTitle: String {
+        if let name = replacingExerciseName {
+            return "Replace \(name)"
+        }
+        return "Exercises"
+    }
+
     private func exerciseRow(_ exercise: Exercise) -> some View {
-        // Drop the inline muscle group label — it's redundant because the
-        // section header already groups by muscle. The exercise name gets
-        // to breathe at a tactile size with more vertical room.
+        // In toggle mode, show a checkmark on already-tracked exercises.
+        // In replace mode, checkmarks are irrelevant (we're swapping ONE
+        // exercise, not curating a set) — hide them entirely.
         let isSelected = selectedExercises.contains(where: { $0.id == exercise.id })
+        let showCheckmark = isSelected && replacingExerciseName == nil
         return Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             onToggle(exercise)
@@ -140,7 +160,7 @@ struct ExerciseLibraryView: View {
                     .font(.marbleBody(17))
                     .foregroundStyle(Color("marblePrimary"))
                 Spacer()
-                if isSelected {
+                if showCheckmark {
                     Image(systemName: "checkmark")
                         .font(.system(size: 15, weight: .medium))
                         .foregroundStyle(Color("marblePrimary"))
