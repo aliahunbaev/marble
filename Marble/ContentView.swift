@@ -78,20 +78,30 @@ struct ContentView: View {
 }
 
 /// Applies real Liquid Glass to the tab bar on iOS 26+. The glass background
-/// is sized wider than the screen so the bright vertical edge highlights end
-/// up off-screen, leaving only the subtle top edge visible. Also extends
-/// through the bottom safe area to cover the home indicator zone.
+/// is sized wider AND taller than the visible area so the bright edge
+/// highlights on the left, right, and bottom end up off-screen — only the
+/// subtle top edge remains visible (which is what gives it the glass
+/// character). A faint backdrop is layered behind the glass so the labels
+/// stand out a touch more against busy scrolling content.
 /// Falls back to .ultraThinMaterial on iOS 17-25.
 private struct TabBarGlassModifier: ViewModifier {
     func body(content: Content) -> some View {
         if #available(iOS 26.0, *) {
             content
                 .background {
-                    Rectangle()
-                        .fill(Color.clear)
-                        .glassEffect(.regular, in: Rectangle())
-                        .padding(.horizontal, -40) // push vertical edges off-screen
-                        .ignoresSafeArea(edges: .bottom)
+                    ZStack {
+                        // Faint backdrop — fogs the content slightly so the
+                        // tab labels read cleanly without losing the glass
+                        // character of the bar.
+                        Rectangle()
+                            .fill(Color("marbleBackground").opacity(0.35))
+                        Rectangle()
+                            .fill(Color.clear)
+                            .glassEffect(.regular, in: Rectangle())
+                    }
+                    .padding(.horizontal, -40) // hide vertical edge shines
+                    .padding(.bottom, -40)     // hide bottom edge shine
+                    .ignoresSafeArea(edges: .bottom)
                 }
         } else {
             content
