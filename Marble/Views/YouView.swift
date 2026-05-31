@@ -47,7 +47,6 @@ struct YouView: View {
                                     Rectangle()
                                         .fill(Color("marblePrimary").opacity(0.12))
                                         .frame(height: 0.5)
-                                        .padding(.horizontal, 20)
                                         .padding(.vertical, 28)
                                 }
                                 NavigationLink {
@@ -222,45 +221,71 @@ struct WorkoutEntry: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Text composition ABOVE the visual (Strava-style)
-            VStack(alignment: .leading, spacing: 14) {
-                Text(dateString)
-                    .font(.marbleMono(11))
-                    .tracking(1.5)
-                    .foregroundStyle(Color("marbleSecondary"))
+            // Header row with handwritten ghost layer of exercise names
+            // (same pattern as Train tab template cards — unifies the brand)
+            headerRow
+                .padding(.horizontal, 20)
+                .padding(.top, 4)
 
-                Text(workout.name)
-                    .font(.marbleBody(28))
+            // Note below the row, full text width
+            if let note = workout.notes?.trimmingCharacters(in: .whitespaces),
+               !note.isEmpty {
+                Text(note)
+                    .font(.marbleBody(15))
                     .foregroundStyle(Color("marblePrimary"))
-
-                // Always 3-column stats row with placeholders for missing
-                // values, so every entry has the same visual structure
-                HStack(alignment: .top, spacing: 32) {
-                    statColumn(label: "SETS", value: setsValue)
-                    statColumn(label: "TIME", value: timeValue)
-                    statColumn(label: "VOLUME", value: volumeValue)
-                    Spacer(minLength: 0)
-                }
-
-                if let note = workout.notes?.trimmingCharacters(in: .whitespaces),
-                   !note.isEmpty {
-                    Text(note)
-                        .font(.marbleBody(15))
-                        .foregroundStyle(Color("marblePrimary"))
-                        .lineSpacing(3)
-                        .padding(.top, 4)
-                }
+                    .lineSpacing(3)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 16)
             }
-            .padding(.horizontal, 20)
-            .padding(.bottom, photos.first == nil ? 4 : 18)
 
-            // Photo BELOW the text — edge-to-edge, sharp corners
+            // Photo BELOW everything — edge-to-edge, sharp corners
             if let hero = photos.first {
                 photoHero(hero)
+                    .padding(.top, 18)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
+    }
+
+    // MARK: - Header Row (left content + right handwritten ghost)
+
+    private var headerRow: some View {
+        ZStack(alignment: .trailing) {
+            // Handwritten ghost — exercise names floating on the right
+            // at low opacity. Same treatment as Train tab template rows.
+            VStack(alignment: .trailing, spacing: 1) {
+                ForEach(workout.exerciseLogs.prefix(6)) { log in
+                    Text(log.exercise?.name ?? "—")
+                        .font(.marbleScript(15))
+                        .foregroundStyle(Color("marblePrimary").opacity(0.13))
+                        .lineLimit(1)
+                }
+            }
+            .frame(maxWidth: 150, alignment: .trailing)
+
+            // Foreground content — anchored left, doesn't overlap ghost
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 14) {
+                    Text(dateString)
+                        .font(.marbleMono(11))
+                        .tracking(1.5)
+                        .foregroundStyle(Color("marbleSecondary"))
+
+                    Text(workout.name)
+                        .font(.marbleBody(28))
+                        .foregroundStyle(Color("marblePrimary"))
+                        .lineLimit(2)
+
+                    HStack(alignment: .top, spacing: 28) {
+                        statColumn(label: "SETS", value: setsValue)
+                        statColumn(label: "TIME", value: timeValue)
+                        statColumn(label: "VOLUME", value: volumeValue)
+                    }
+                }
+                Spacer(minLength: 16)
+            }
+        }
     }
 
     // MARK: - Photo Hero (edge-to-edge magazine spread)
