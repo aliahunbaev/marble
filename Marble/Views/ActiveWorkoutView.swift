@@ -22,6 +22,10 @@ struct ActiveWorkoutView: View {
     /// entry instead of being toggled into the entries list. Cleared
     /// after a successful replace.
     @State private var replacingEntryID: UUID?
+    /// Long-press on an exercise header flips this on, collapsing the
+    /// sets to titles-only so the user can drag-reorder. The Done glass
+    /// pill in the toolbar exits the mode.
+    @State private var isReordering: Bool = false
 
     @AppStorage("defaultRestTimer") private var defaultRestTimer: Int = 90
 
@@ -68,26 +72,26 @@ struct ActiveWorkoutView: View {
             // Sections) so exercise headers don't get the sticky-pin
             // behavior that List gives section headers — they scroll
             // with content like everything else.
+            //
+            // Reorder mode: when isReordering is true, the sets collapse
+            // and a single ForEach of headers replaces the expanded
+            // structure so native .onMove drag-to-reorder works on the
+            // exercise list. Exit via Done in the toolbar.
             List {
                 workoutHeaderRow(session: session)
 
-                ForEach(Array($session.entries.enumerated()), id: \.element.id) { index, $entry in
-                    if index > 0 {
-                        exerciseDividerRow
-                    }
-                    exerciseHeaderRow(entry: $entry)
-                    ForEach($entry.sets) { $set in
-                        setRowItem(entry: $entry, set: $set)
-                    }
-                    addSetRow(entry: $entry)
+                if isReordering {
+                    reorderingHeadersForEach(entries: $session.entries)
+                } else {
+                    expandedExercisesContent(entries: $session.entries)
+                    addExerciseRow
                 }
-
-                addExerciseRow
             }
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
             .scrollDismissesKeyboard(.interactively)
             .environment(\.defaultMinListRowHeight, 0)
+            .environment(\.editMode, .constant(isReordering ? .active : .inactive))
 
             // Floating glass buttons over the workout content
             floatingToolbar
@@ -187,6 +191,51 @@ struct ActiveWorkoutView: View {
             .listRowBackground(Color.clear)
     }
 
+    /// Normal expanded rendering — header + sets + +SET per exercise,
+    /// with hairline dividers between exercises.
+    @ViewBuilder
+    private func expandedExercisesContent(entries: Binding<[ExerciseEntry]>) -> some View {
+        ForEach(Array(entries.enumerated()), id: \.element.id) { index, $entry in
+            if index > 0 {
+                exerciseDividerRow
+            }
+            exerciseHeaderRow(entry: $entry)
+            ForEach($entry.sets) { $set in
+                setRowItem(entry: $entry, set: $set)
+            }
+            addSetRow(entry: $entry)
+        }
+    }
+
+    /// Reorder mode rendering — just exercise titles with hairlines,
+    /// wrapped in a single ForEach with .onMove so native iOS drag-to-
+    /// reorder activates. Edit mode is forced .active on the List so the
+    /// drag handles + ordering gestures kick in immediately, without
+    /// needing the user to long-press a row first.
+    @ViewBuilder
+    private func reorderingHeadersForEach(entries: Binding<[ExerciseEntry]>) -> some View {
+        ForEach(entries) { $entry in
+            reorderingTitleRow(entry: $entry)
+        }
+        .onMove { from, to in
+            session.entries.move(fromOffsets: from, toOffset: to)
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        }
+    }
+
+    private func reorderingTitleRow(entry: Binding<ExerciseEntry>) -> some View {
+        Text(entry.wrappedValue.exercise.name)
+            .font(.marbleBody(22))
+            .foregroundStyle(Color("marblePrimary"))
+            .padding(.horizontal, 20)
+            .padding(.vertical, 18)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .listRowInsets(EdgeInsets())
+            .listRowSeparator(.visible, edges: .bottom)
+            .listRowSeparatorTint(Color("marblePrimary").opacity(0.08))
+            .listRowBackground(Color.clear)
+    }
+
     /// Exercise header as a regular List row (not a Section header) so
     /// it scrolls naturally instead of getting List's default
     /// pinned-to-top behavior.
@@ -251,6 +300,17 @@ struct ActiveWorkoutView: View {
         .listRowInsets(EdgeInsets())
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
+        // Long-press an exercise header → enter reorder mode. The sets
+        // collapse, native List drag handles appear via .editMode, and
+        // the user can immediately drag titles to reorder. Tap Done in
+        // the toolbar to exit.
+        .onLongPressGesture(minimumDuration: 0.45) {
+            guard !isReordering else { return }
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+                isReordering = true
+            }
+        }
     }
 
     /// + SET row at the end of each exercise's set list.
@@ -336,7 +396,16 @@ struct ActiveWorkoutView: View {
 
     // MARK: - Floating Toolbar (iOS-26 liquid glass)
 
+    @ViewBuilder
     private var floatingToolbar: some View {
+        if isReordering {
+            reorderingToolbar
+        } else {
+            normalToolbar
+        }
+    }
+
+    private var normalToolbar: some View {
         HStack(spacing: 10) {
             // Minimize → mini-bar.
             Button {
@@ -373,6 +442,26 @@ struct ActiveWorkoutView: View {
                 attemptFinish()
             } label: {
                 Text("FINISH")
+                    .marbleGlassPill()
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+    }
+
+    /// Reorder-mode toolbar — just a Done glass pill that exits back to
+    /// the expanded layout. Hides the other actions to keep focus.
+    private var reorderingToolbar: some View {
+        HStack {
+            Spacer()
+            Button {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+                    isReordering = false
+                }
+            } label: {
+                Text("DONE")
                     .marbleGlassPill()
             }
             .buttonStyle(.plain)
