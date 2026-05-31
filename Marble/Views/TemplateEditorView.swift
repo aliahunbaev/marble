@@ -351,16 +351,21 @@ struct ExerciseSetTable: View {
             // Set rows
             ForEach($entry.sets) { $set in
                 let index = entry.sets.firstIndex(where: { $0.id == set.id }) ?? 0
-                let prevText: String? = showPrevious
-                    ? PreviousPerformance.formattedPrevious(for: entry.exercise, setIndex: index, context: modelContext)
-                    : nil
+                let prev: (weight: String?, reps: String?) = showPrevious
+                    ? PreviousPerformance.previousComponents(
+                        for: entry.exercise,
+                        setIndex: index,
+                        context: modelContext
+                    )
+                    : (nil, nil)
                 SwipeToDeleteRow {
                     SetRowView(
                         setNumber: index + 1,
                         weight: $set.weight,
                         reps: $set.reps,
                         isCompleted: $set.isCompleted,
-                        previousText: prevText,
+                        previousWeight: prev.weight,
+                        previousReps: prev.reps,
                         showCheckmark: isWorkoutMode,
                         onComplete: onSetCompleted
                     )
@@ -397,20 +402,17 @@ struct ExerciseSetTable: View {
     }
 
     private var columnHeaders: some View {
-        // Header widths track SetRowView field sizes (32/84/84/44).
+        // LAST column dropped — previous values live as ghost-text inside
+        // the LBS and REPS fields. Header widths track SetRowView field
+        // sizes (32 set num / flexible spacer / 100 / 100 / 44 check).
         HStack(spacing: 14) {
             Text("SET")
                 .frame(width: 32, alignment: .center)
-            if showPrevious {
-                Text("LAST")
-                    .frame(maxWidth: .infinity)
-            } else {
-                Spacer()
-            }
+            Spacer()
             Text("LBS")
-                .frame(width: 84, alignment: .center)
+                .frame(width: 100, alignment: .center)
             Text("REPS")
-                .frame(width: 84, alignment: .center)
+                .frame(width: 100, alignment: .center)
             if isWorkoutMode {
                 Image(systemName: "checkmark")
                     .font(.system(size: 11, weight: .light))
@@ -426,9 +428,13 @@ struct ExerciseSetTable: View {
 // MARK: - Set Row
 
 /// One set row in an exercise table. Sculptural rather than spreadsheet —
-/// taller height, larger fields, sculpted glass-tinted depressions for
-/// inputs, sharper visual distinction between completed and incomplete
-/// states. Each row reads as an object instead of a cell.
+/// taller height, larger fields, sculpted depressions for inputs, sharper
+/// visual distinction between completed and incomplete states. Each row
+/// reads as an object instead of a cell.
+///
+/// LAST column eliminated: previous workout's value now lives as ghost-
+/// text placeholder inside each input. Tap checkmark with empty fields
+/// to auto-accept the suggested values, or type to override.
 ///
 /// Focus state: when a field is being edited, it gets a hairline ring
 /// affordance so you can see exactly where you are.
@@ -437,7 +443,13 @@ struct SetRowView: View {
     @Binding var weight: String
     @Binding var reps: String
     @Binding var isCompleted: Bool
-    var previousText: String? = nil
+    /// Previous workout's weight for this set index, as a string. Shown
+    /// as ghost placeholder in the LBS field when the user hasn't typed
+    /// anything yet. Auto-fills on checkmark if the field is empty.
+    var previousWeight: String? = nil
+    /// Previous workout's reps for this set index, as a string. Same
+    /// ghost-placeholder + auto-fill behavior as previousWeight.
+    var previousReps: String? = nil
     var showCheckmark: Bool = false
     var onComplete: (() -> Void)? = nil
 
@@ -447,8 +459,8 @@ struct SetRowView: View {
     @FocusState private var weightFocused: Bool
     @FocusState private var repsFocused: Bool
 
-    private let fieldHeight: CGFloat = 48
-    private let fieldWidth: CGFloat = 84
+    private let fieldHeight: CGFloat = 52
+    private let fieldWidth: CGFloat = 100
     private let checkSize: CGFloat = 44
 
     var body: some View {
@@ -459,30 +471,21 @@ struct SetRowView: View {
                 .foregroundStyle(Color("marblePrimary").opacity(isCompleted ? 0.95 : 0.5))
                 .frame(width: 32, height: fieldHeight, alignment: .center)
 
-            // Previous performance — same height as fields, dimmer when no data
-            if showCheckmark || previousText != nil {
-                Text(previousText ?? "—")
-                    .font(.marbleMono(14))
-                    .foregroundStyle(Color("marbleSecondary"))
-                    .frame(height: fieldHeight)
-                    .frame(maxWidth: .infinity)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-            } else {
-                Spacer()
-            }
+            Spacer()
 
-            // Weight
+            // Weight — previous value lives inside as ghost placeholder
             fieldView(
                 text: $weight,
+                placeholder: previousWeight,
                 keyboard: .decimalPad,
                 invalid: weightInvalid,
                 focused: $weightFocused
             )
 
-            // Reps
+            // Reps — same ghost-placeholder treatment
             fieldView(
                 text: $reps,
+                placeholder: previousReps,
                 keyboard: .numberPad,
                 invalid: repsInvalid,
                 focused: $repsFocused
@@ -510,10 +513,6 @@ struct SetRowView: View {
                 .buttonStyle(.plain)
             }
         }
-        // Whole-row affordance: completed rows feel "settled" via reduced
-        // opacity on the set number; incomplete rows feel "in progress"
-        // via the field tints below. Together this signals state without
-        // needing a separate column or label.
     }
 
     private func handleComplete() {
@@ -526,7 +525,19 @@ struct SetRowView: View {
             return
         }
 
-        // Validate
+        // Auto-fill from ghost placeholders before validating. If the user
+        // tapped checkmark with empty fields but there's a previous value
+        // suggested in the placeholder, accept it as the value.
+        let weightTrimmed = weight.trimmingCharacters(in: .whitespaces)
+        let repsTrimmed = reps.trimmingCharacters(in: .whitespaces)
+        if weightTrimmed.isEmpty, let suggested = previousWeight {
+            weight = suggested
+        }
+        if repsTrimmed.isEmpty, let suggested = previousReps {
+            reps = suggested
+        }
+
+        // Re-validate after auto-fill
         let weightEmpty = weight.trimmingCharacters(in: .whitespaces).isEmpty
         let repsEmpty = reps.trimmingCharacters(in: .whitespaces).isEmpty
         if weightEmpty || repsEmpty {
@@ -562,25 +573,54 @@ struct SetRowView: View {
         onComplete?()
     }
 
-    /// Field — sculpted depression aesthetic. Larger numerals, more visible
-    /// tint when incomplete, clean text when complete, hairline focus ring
-    /// when the field is being edited.
+    /// Field — sculpted depression aesthetic. Inner shadow at the top edge
+    /// suggests the field is carved into the row (Noguchi, not floating
+    /// rectangles). Ghost-text placeholder shows the previous workout's
+    /// value when the field is empty. Hairline focus ring when editing.
     private func fieldView(
         text: Binding<String>,
+        placeholder: String?,
         keyboard: UIKeyboardType,
         invalid: Bool,
         focused: FocusState<Bool>.Binding
     ) -> some View {
-        TextField("", text: text)
-            .font(.marbleMono(20))
+        let placeholderText = Text(placeholder ?? "")
+            .foregroundStyle(Color("marblePrimary").opacity(0.25))
+
+        return TextField(text: text, prompt: placeholderText) { EmptyView() }
+            .font(.marbleMono(22))
             .foregroundStyle(Color("marblePrimary"))
             .multilineTextAlignment(.center)
             .keyboardType(keyboard)
             .focused(focused)
             .frame(width: fieldWidth, height: fieldHeight)
             .background(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(backgroundColor(invalid: invalid))
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(backgroundColor(invalid: invalid))
+                    // Inner shadow at the top edge — Noguchi-style depth.
+                    // The depression reads as carved-into rather than
+                    // filled-on-top. Only shown for incomplete (active)
+                    // fields; completed fields are clean.
+                    if !isCompleted {
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .stroke(
+                                Color("marblePrimary").opacity(0.12),
+                                lineWidth: 1
+                            )
+                            .blur(radius: 1)
+                            .mask(
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [.black, .clear],
+                                            startPoint: .top,
+                                            endPoint: .center
+                                        )
+                                    )
+                            )
+                    }
+                }
             )
             .overlay(
                 // Focus ring — visible only while editing this field
@@ -604,8 +644,7 @@ struct SetRowView: View {
             // (applied at the ExerciseSetTable level) carries the state.
             return .clear
         }
-        // Incomplete: stronger tint than before (0.06 → 0.10) so the
-        // depressions read clearly as places to type into.
+        // Incomplete: visible depression tint.
         return Color("marblePrimary").opacity(0.10)
     }
 }

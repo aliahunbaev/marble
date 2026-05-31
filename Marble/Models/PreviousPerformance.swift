@@ -36,4 +36,31 @@ enum PreviousPerformance {
         }
         return "\(weightStr) × \(set.reps)"
     }
+
+    /// Component values for a specific set index — weight and reps as
+    /// editable strings. Used to populate ghost-placeholder text inside
+    /// the LBS and REPS input fields. Returns nil for either component
+    /// when no previous set exists at that index or the value is zero
+    /// (zero is meaningless as a suggestion).
+    static func previousComponents(
+        for exercise: Exercise,
+        setIndex: Int,
+        context: ModelContext
+    ) -> (weight: String?, reps: String?) {
+        let sets = previousSets(for: exercise, context: context)
+        guard setIndex < sets.count else { return (nil, nil) }
+        let set = sets[setIndex]
+
+        let weightStr: String?
+        if set.weight > 0 {
+            weightStr = set.weight == floor(set.weight)
+                ? "\(Int(set.weight))"
+                : String(format: "%.1f", set.weight)
+        } else {
+            weightStr = nil
+        }
+
+        let repsStr: String? = set.reps > 0 ? "\(set.reps)" : nil
+        return (weightStr, repsStr)
+    }
 }
