@@ -44,7 +44,15 @@ struct ActiveWorkoutView: View {
         if showingSummary, let workout = completedWorkout {
             ClosingRitualView(workout: workout, onBack: { undoFinish(workout: workout) })
                 .onDisappear {
-                    dismiss()
+                    // Only dismiss the outer workout flow if the user
+                    // actually completed the ritual. The back chevron path
+                    // sets completedWorkout = nil before dismounting the
+                    // ritual view, so we use that as the signal to stay
+                    // inside the workout view instead of dismissing back
+                    // to the tab.
+                    if completedWorkout != nil {
+                        dismiss()
+                    }
                 }
         } else {
             workoutContentView

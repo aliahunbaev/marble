@@ -319,14 +319,14 @@ struct ExerciseSetTable: View {
                         }
                     } label: {
                         Text(entry.exercise.name)
-                            .font(.marbleBody(17))
+                            .font(.marbleBody(22))
                             .foregroundStyle(Color("marblePrimary"))
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                 } else {
                     Text(entry.exercise.name)
-                        .font(.marbleBody(17))
+                        .font(.marbleBody(22))
                         .foregroundStyle(Color("marblePrimary"))
                 }
 

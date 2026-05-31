@@ -70,9 +70,21 @@ class RestTimerState {
             if self.remainingSeconds == 0 {
                 let generator = UINotificationFeedbackGenerator()
                 generator.notificationOccurred(.success)
-                AudioServicesPlaySystemSound(1007)
+                Self.playBoxingBell()
                 self.stop()
             }
+        }
+    }
+
+    /// Two short bell rings in quick succession — approximates a boxing-
+    /// bell round-end. System sound 1013 is the shortest "ding" iOS ships;
+    /// fired twice with a ~180ms gap reads as "ding ding." A custom .caf
+    /// asset would sound more authentic — this is the system-sound
+    /// approximation pending one.
+    static func playBoxingBell() {
+        AudioServicesPlaySystemSound(1013)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+            AudioServicesPlaySystemSound(1013)
         }
     }
 }
