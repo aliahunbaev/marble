@@ -65,7 +65,7 @@ struct OnboardingFlow: View {
             Spacer()
 
             Text("MARBLE")
-                .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 22).weight(.light))
+                .font(.marbleBody(22))
                 .tracking(revealTracking)
                 .foregroundStyle(.white)
                 .opacity(revealOpacity)
@@ -73,7 +73,7 @@ struct OnboardingFlow: View {
             Spacer()
 
             Text("TAP TO CONTINUE")
-                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 10).weight(.light))
+                .font(.marbleMono(10))
                 .tracking(2)
                 .foregroundStyle(.white.opacity(0.3))
                 .opacity(revealOpacity)
@@ -101,14 +101,14 @@ struct OnboardingFlow: View {
 
             VStack(spacing: 32) {
                 Text("Man cannot remake himself\nwithout suffering, for he is\nboth the marble and the sculptor.")
-                    .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 22).weight(.light))
+                    .font(.marbleBody(22))
                     .foregroundStyle(.white)
                     .multilineTextAlignment(.center)
                     .lineSpacing(8)
                     .padding(.horizontal, 32)
 
                 Text("— ALEXIS CARREL")
-                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 11).weight(.light))
+                    .font(.marbleMono(11))
                     .tracking(2)
                     .foregroundStyle(.white.opacity(0.4))
             }
@@ -129,14 +129,14 @@ struct OnboardingFlow: View {
 
             VStack(spacing: 28) {
                 Text("This is your record.")
-                    .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 28).weight(.light))
+                    .font(.marbleBody(28))
                     .foregroundStyle(.white)
 
                 VStack(spacing: 4) {
                     Text("No coaches. No notifications. No noise.")
                     Text("Just the work, and what you make of it.")
                 }
-                .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 15).weight(.light))
+                .font(.marbleBody(15))
                 .foregroundStyle(.white.opacity(0.5))
                 .multilineTextAlignment(.center)
                 .lineSpacing(4)
@@ -160,11 +160,11 @@ struct OnboardingFlow: View {
 
             VStack(spacing: 28) {
                 Text("What should we call you?")
-                    .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 22).weight(.light))
+                    .font(.marbleBody(22))
                     .foregroundStyle(Color("marblePrimary"))
 
                 TextField("", text: $name)
-                    .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 28).weight(.light))
+                    .font(.marbleBody(28))
                     .foregroundStyle(Color("marblePrimary"))
                     .multilineTextAlignment(.center)
                     .focused($nameFieldFocused)
@@ -213,11 +213,11 @@ struct OnboardingFlow: View {
 
             VStack(spacing: 16) {
                 Text("Save your work.")
-                    .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 22).weight(.light))
+                    .font(.marbleBody(22))
                     .foregroundStyle(Color("marblePrimary"))
 
                 Text("So your record is yours, forever.")
-                    .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 14).weight(.light))
+                    .font(.marbleBody(14))
                     .foregroundStyle(Color("marbleSecondary"))
             }
 
@@ -230,7 +230,7 @@ struct OnboardingFlow: View {
                         Image(systemName: "checkmark")
                             .font(.system(size: 12, weight: .light))
                         Text("SIGNED IN")
-                            .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 11).weight(.medium))
+                            .font(.marbleMono(11, weight: .medium))
                             .tracking(2)
                     }
                     .foregroundStyle(Color("marbleSecondary"))
@@ -243,7 +243,7 @@ struct OnboardingFlow: View {
                             .environmentObject(auth)
                     } label: {
                         Text("Sign in")
-                            .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 15).weight(.medium))
+                            .font(.marbleBody(15, weight: .regular))
                             .foregroundStyle(Color("marbleBackground"))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 16)
@@ -256,7 +256,7 @@ struct OnboardingFlow: View {
                         finishOnboarding()
                     } label: {
                         Text("Skip for now")
-                            .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 14).weight(.light))
+                            .font(.marbleBody(14))
                             .foregroundStyle(Color("marbleSecondary"))
                             .padding(.vertical, 12)
                     }
@@ -273,7 +273,7 @@ struct OnboardingFlow: View {
             advance()
         } label: {
             Text(label)
-                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 12).weight(.medium))
+                .font(.marbleMono(12, weight: .medium))
                 .tracking(2)
                 .foregroundStyle(buttonForeground(emphasized: emphasized, lightOnDark: lightOnDark))
                 .frame(maxWidth: .infinity)

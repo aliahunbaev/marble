@@ -382,11 +382,17 @@ struct ExerciseLiftDetailView: View {
             let performances = computePerformances()
 
             if performances.isEmpty {
-                Text("No data yet")
-                    .font(.marbleMono(13))
-                    .foregroundStyle(Color("marbleSecondary"))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 32)
+                VStack(spacing: 6) {
+                    Text("No history yet.")
+                        .font(.marbleBody(15))
+                        .foregroundStyle(Color("marbleSecondary"))
+                    Text("Log this lift in a workout.")
+                        .font(.marbleMono(11))
+                        .tracking(1)
+                        .foregroundStyle(Color("marbleTertiary"))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 32)
             } else {
                 VStack(spacing: 0) {
                     ForEach(Array(performances.enumerated()), id: \.offset) { index, perf in

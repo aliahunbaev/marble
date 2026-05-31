@@ -264,11 +264,18 @@ struct TrainView: View {
         }
     }
 
+    /// Empty state — match the editorial tone the rest of the app uses for
+    /// absence ("Begin." on YOU, "No data yet" on lift detail). Two-line
+    /// poetic prompt that invites first-template creation without nagging.
     private var emptyProgramsPlaceholder: some View {
-        VStack(spacing: 8) {
-            Text("No programs yet")
-                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 13).weight(.light))
+        VStack(spacing: 6) {
+            Text("No programs yet.")
+                .font(.marbleBody(15))
                 .foregroundStyle(Color("marbleSecondary"))
+            Text("Tap + to compose one.")
+                .font(.marbleMono(11))
+                .tracking(1)
+                .foregroundStyle(Color("marbleTertiary"))
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 40)

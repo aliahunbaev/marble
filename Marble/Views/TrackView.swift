@@ -103,11 +103,19 @@ struct TrackView: View {
             }
 
             if trackedLifts.isEmpty {
-                Text("Tap + to track your lifts")
-                    .font(.marbleMono(13))
-                    .foregroundStyle(Color("marbleSecondary"))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 28)
+                // Match the editorial tone of the rest of the app's empty
+                // states. Two-line poetic prompt instead of mono-only label.
+                VStack(spacing: 6) {
+                    Text("No lifts tracked.")
+                        .font(.marbleBody(15))
+                        .foregroundStyle(Color("marbleSecondary"))
+                    Text("Tap + to follow one.")
+                        .font(.marbleMono(11))
+                        .tracking(1)
+                        .foregroundStyle(Color("marbleTertiary"))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 28)
             }
         }
     }
@@ -971,10 +979,16 @@ struct BodyweightDetailView: View {
                                 .frame(height: 56)
                                 .padding(.top, 4)
                         } else {
-                            Text("No entries yet")
-                                .font(.marbleMono(13))
-                                .foregroundStyle(Color("marbleSecondary"))
-                                .padding(.vertical, 8)
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("Nothing logged yet.")
+                                    .font(.marbleBody(15))
+                                    .foregroundStyle(Color("marbleSecondary"))
+                                Text("Tap + to record your weight.")
+                                    .font(.marbleMono(11))
+                                    .tracking(1)
+                                    .foregroundStyle(Color("marbleTertiary"))
+                            }
+                            .padding(.vertical, 8)
                         }
                     }
                     .padding(.horizontal, 20)
