@@ -39,10 +39,10 @@ struct YouView: View {
                             .padding(.top, 12)
                             .padding(.bottom, 24)
 
-                        if workouts.isEmpty {
+                        if visibleWorkouts.isEmpty {
                             emptyFeed
                         } else {
-                            ForEach(workouts) { workout in
+                            ForEach(Array(visibleWorkouts.enumerated()), id: \.element.id) { index, workout in
                                 NavigationLink {
                                     WorkoutDetailView(workout: workout)
                                 } label: {
@@ -52,6 +52,10 @@ struct YouView: View {
                                     )
                                 }
                                 .buttonStyle(.plain)
+
+                                if index < visibleWorkouts.count - 1 {
+                                    entryDivider
+                                }
                             }
                         }
                     }
@@ -147,6 +151,16 @@ struct YouView: View {
         .frame(maxWidth: .infinity)
     }
 
+    /// Only workouts with at least one completed set. Filters out abandoned
+    /// or test entries that would otherwise look broken in the feed.
+    private var visibleWorkouts: [Workout] {
+        workouts.filter { workout in
+            workout.exerciseLogs.contains { log in
+                log.sets.contains(where: \.isCompleted)
+            }
+        }
+    }
+
     private func photosFor(_ workout: Workout) -> [ProgressPhoto] {
         allPhotos.filter { $0.workoutCloudID == workout.cloudID }
     }
@@ -203,16 +217,14 @@ struct WorkoutEntry: View {
     let workout: Workout
     let photos: [ProgressPhoto]
 
-    private let cardCornerRadius: CGFloat = 18
-
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Photo hero (when present)
+            // Photo hero — edge-to-edge, sharp corners (full magazine spread)
             if let hero = photos.first {
                 photoHero(hero)
             }
 
-            // Text composition
+            // Text composition with editorial margins
             VStack(alignment: .leading, spacing: 14) {
                 Text(dateString)
                     .font(.marbleMono(11))
@@ -223,13 +235,13 @@ struct WorkoutEntry: View {
                     .font(.marbleBody(26))
                     .foregroundStyle(Color("marblePrimary"))
 
-                if !statItems.isEmpty {
-                    HStack(alignment: .top, spacing: 32) {
-                        ForEach(statItems, id: \.label) { item in
-                            statColumn(label: item.label, value: item.value)
-                        }
-                        Spacer(minLength: 0)
-                    }
+                // Always 3-column stats row with placeholders for missing
+                // values, so every entry has the same visual structure
+                HStack(alignment: .top, spacing: 32) {
+                    statColumn(label: "SETS", value: setsValue)
+                    statColumn(label: "TIME", value: timeValue)
+                    statColumn(label: "VOLUME", value: volumeValue)
+                    Spacer(minLength: 0)
                 }
 
                 if let note = workout.notes?.trimmingCharacters(in: .whitespaces),
@@ -241,20 +253,15 @@ struct WorkoutEntry: View {
                         .padding(.top, 4)
                 }
             }
-            .padding(20)
+            .padding(.horizontal, 20)
+            .padding(.top, photos.isEmpty ? 8 : 20)
+            .padding(.bottom, 4)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: cardCornerRadius))
-        .overlay(
-            RoundedRectangle(cornerRadius: cardCornerRadius)
-                .stroke(Color("marblePrimary").opacity(0.06), lineWidth: 0.5)
-        )
-        .shadow(color: .black.opacity(0.04), radius: 12, x: 0, y: 4)
-        .contentShape(RoundedRectangle(cornerRadius: cardCornerRadius))
+        .contentShape(Rectangle())
     }
 
-    // MARK: - Photo Hero
+    // MARK: - Photo Hero (edge-to-edge magazine spread)
 
     @ViewBuilder
     private func photoHero(_ photo: ProgressPhoto) -> some View {
@@ -286,23 +293,21 @@ struct WorkoutEntry: View {
         .aspectRatio(4.0 / 5.0, contentMode: .fit)
     }
 
-    // MARK: - Stats Row (Strava-style)
+    // MARK: - Stat value helpers (placeholders for missing values)
 
-    private struct StatItem { let label: String; let value: String }
-
-    private var statItems: [StatItem] {
-        var items: [StatItem] = []
-        if totalSets > 0 {
-            items.append(StatItem(label: "SETS", value: "\(totalSets)"))
-        }
-        if Int(workout.duration) / 60 >= 1 {
-            items.append(StatItem(label: "TIME", value: formattedDuration))
-        }
-        if totalVolume > 0 {
-            items.append(StatItem(label: "VOLUME", value: formattedVolume))
-        }
-        return items
+    private var setsValue: String {
+        totalSets > 0 ? "\(totalSets)" : "—"
     }
+
+    private var timeValue: String {
+        Int(workout.duration) / 60 >= 1 ? formattedDuration : "—"
+    }
+
+    private var volumeValue: String {
+        totalVolume > 0 ? formattedVolume : "—"
+    }
+
+    // MARK: - Stats Row (Strava-style, always 3 columns)
 
     private func statColumn(label: String, value: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
