@@ -49,19 +49,19 @@ struct MarbleGlassCapsule: ViewModifier {
     var size: CGFloat = 36
 
     func body(content: Content) -> some View {
-        // .compositingGroup() before .shadow() flattens the glass + content
-        // into one layer so the shadow renders against the flattened result
-        // instead of having to re-stitch across layers on every render.
-        // Without it, Menu's press/dismiss cycle reveals a brief frame
-        // where the shadow hasn't yet recomposed — the "gray box" artifact.
+        // No shadow on iOS 26 — the Liquid Glass effect provides its own
+        // edge highlights for depth. Adding a separate .shadow() forces
+        // SwiftUI to re-stitch the shadow against the glass layer on
+        // every render, which leaves a brief "gray box" during a Menu's
+        // press → dismiss cycle (the cycle of compositing didn't catch
+        // it because the gap is in the glass-effect render, not the
+        // shadow render).
         if #available(iOS 26.0, *) {
             content
                 .foregroundStyle(Color("marblePrimary"))
                 .frame(width: size, height: size)
                 .glassEffect(.regular, in: Circle())
                 .contentShape(Circle())
-                .compositingGroup()
-                .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 1)
         } else {
             content
                 .foregroundStyle(Color("marblePrimary"))
@@ -91,6 +91,8 @@ struct MarbleGlassPill: ViewModifier {
 
     func body(content: Content) -> some View {
         if #available(iOS 26.0, *) {
+            // No shadow on iOS 26 — Liquid Glass provides edge depth
+            // intrinsically. See MarbleGlassCapsule for full rationale.
             content
                 .font(.marbleMono(13, weight: .regular))
                 .tracking(1)
@@ -99,8 +101,6 @@ struct MarbleGlassPill: ViewModifier {
                 .frame(height: height)
                 .glassEffect(.regular, in: Capsule())
                 .contentShape(Capsule())
-                .compositingGroup()
-                .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
         } else {
             content
                 .font(.marbleMono(13, weight: .regular))
@@ -132,6 +132,8 @@ struct MarbleGlassPrimaryCapsule: ViewModifier {
 
     func body(content: Content) -> some View {
         if #available(iOS 26.0, *) {
+            // No shadow on iOS 26 — Liquid Glass provides edge depth
+            // intrinsically. See MarbleGlassCapsule for full rationale.
             content
                 .font(.marbleMono(13, weight: .regular))
                 .tracking(1)
@@ -140,8 +142,6 @@ struct MarbleGlassPrimaryCapsule: ViewModifier {
                 .frame(height: height)
                 .glassEffect(.regular.tint(Color("marblePrimary")), in: Capsule())
                 .contentShape(Capsule())
-                .compositingGroup()
-                .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 2)
         } else {
             content
                 .font(.marbleMono(13, weight: .regular))
