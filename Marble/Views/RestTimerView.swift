@@ -222,10 +222,12 @@ struct RestTimerModal: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .background(Color("marbleBackground"))
         .presentationDetents([.height(420)])
         .presentationDragIndicator(.hidden)
-        .presentationCornerRadius(20)
+        .presentationCornerRadius(28)
+        // iOS 26 system sheets get Liquid Glass automatically — same path
+        // as the template detail sheet. Older iOS falls back to material.
+        .modifier(RestTimerGlassBackgroundModifier())
     }
 
     // MARK: - Preset Picker (inactive)
@@ -335,6 +337,20 @@ struct RestTimerModal: View {
             return s > 0 ? "\(m):\(String(format: "%02d", s))" : "\(m)m"
         }
         return "\(seconds)s"
+    }
+}
+
+/// On iOS 17-25, applies .ultraThinMaterial as the sheet presentation
+/// background. On iOS 26+, intentionally does nothing — the system gives
+/// sheets Liquid Glass by default, and overriding it with a custom
+/// presentationBackground would prevent the proper glass treatment.
+private struct RestTimerGlassBackgroundModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content
+        } else {
+            content.presentationBackground(.ultraThinMaterial)
+        }
     }
 }
 
