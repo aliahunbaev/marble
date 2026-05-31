@@ -41,10 +41,9 @@ struct ContentView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            // Custom tab bar — glass that blurs scrolling content beneath,
-            // with a hairline above to separate it from the feed. The
-            // background opted out of solid color so the glass picks up
-            // whatever scrolls past (cards, gradient, photos).
+            // Custom tab bar — Liquid Glass that actually refracts content
+            // scrolling beneath (iOS 26). On older iOS, falls back to
+            // .ultraThinMaterial. Hairline above to separate it from the feed.
             VStack(spacing: 0) {
                 Rectangle()
                     .fill(Color("marblePrimary").opacity(0.08))
@@ -76,9 +75,28 @@ struct ContentView: View {
                 }
                 .padding(.bottom, 16)
             }
-            .background(.ultraThinMaterial)
+            .modifier(TabBarGlassModifier())
         }
         .ignoresSafeArea(.keyboard)
+    }
+}
+
+/// Applies real Liquid Glass to the tab bar on iOS 26+ (proper refraction
+/// of scrolling content) and falls back to .ultraThinMaterial on iOS 17-25.
+private struct TabBarGlassModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content
+                .background {
+                    Rectangle()
+                        .fill(Color.clear)
+                        .glassEffect(.regular, in: Rectangle())
+                        .ignoresSafeArea(edges: .bottom)
+                }
+        } else {
+            content
+                .background(.ultraThinMaterial)
+        }
     }
 }
 

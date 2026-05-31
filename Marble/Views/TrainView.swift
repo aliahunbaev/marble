@@ -181,10 +181,12 @@ struct TrainView: View {
             if templates.isEmpty {
                 emptyProgramsPlaceholder
             } else {
-                // Glass cards — same archetype as the YOU feed. Drops the
-                // inline hairlines in favor of card-to-card spacing.
-                VStack(spacing: 12) {
-                    ForEach(templates) { template in
+                // Inline rows with hairlines — templates are a "pick a
+                // workout" utility list, not a memory feed. Glass cards
+                // (used on YOU) read as artifacts to look at; rows read as
+                // a menu to act on. Different semantic, different container.
+                VStack(spacing: 0) {
+                    ForEach(Array(templates.enumerated()), id: \.element.id) { index, template in
                         Button {
                             selectedTemplate = template
                         } label: {
@@ -218,6 +220,12 @@ struct TrainView: View {
                                 Label("Delete", systemImage: "trash")
                             }
                         }
+
+                        if index < templates.count - 1 {
+                            Rectangle()
+                                .fill(Color("marblePrimary").opacity(0.06))
+                                .frame(height: 0.5)
+                        }
                     }
                 }
             }
@@ -226,14 +234,12 @@ struct TrainView: View {
 
     private func templateRow(_ template: WorkoutTemplate) -> some View {
         ZStack(alignment: .trailing) {
-            // Handwritten watermark — ghost layer, right-aligned. Lower
-            // opacity than before since the glass card already provides
-            // visual texture and the ghost would compete otherwise.
+            // Handwritten watermark — ghost layer, right-aligned
             VStack(alignment: .trailing, spacing: 1) {
                 ForEach(template.exercises) { exercise in
                     Text(exercise.name)
                         .font(.custom("Nothing You Could Do", size: 15))
-                        .foregroundStyle(Color("marblePrimary").opacity(0.10))
+                        .foregroundStyle(Color("marblePrimary").opacity(0.12))
                         .lineLimit(1)
                 }
             }
@@ -254,13 +260,8 @@ struct TrainView: View {
                 Spacer(minLength: 20)
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 20)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .clipShape(RoundedRectangle(cornerRadius: 18))
-        .marbleLiquidGlassCard(cornerRadius: 18)
-        .shadow(color: .black.opacity(0.04), radius: 12, x: 0, y: 4)
-        .contentShape(RoundedRectangle(cornerRadius: 18))
+        .padding(.vertical, 24)
+        .contentShape(Rectangle())
     }
 
     private func templateMetadata(_ template: WorkoutTemplate) -> String {

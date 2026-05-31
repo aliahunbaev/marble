@@ -54,6 +54,7 @@ struct MarbleGlassCapsule: ViewModifier {
                 .foregroundStyle(Color("marblePrimary"))
                 .frame(width: size, height: size)
                 .glassEffect(.regular, in: Circle())
+                .contentShape(Circle())
                 .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 1)
         } else {
             content
@@ -64,6 +65,7 @@ struct MarbleGlassCapsule: ViewModifier {
                     Circle()
                         .stroke(Color("marblePrimary").opacity(0.08), lineWidth: 0.5)
                 )
+                .contentShape(Circle())
                 .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 1)
         }
     }
@@ -88,6 +90,7 @@ struct MarbleGlassPrimaryCapsule: ViewModifier {
                 .padding(.horizontal, horizontalPadding)
                 .frame(height: height)
                 .glassEffect(.regular.tint(Color("marblePrimary")), in: Capsule())
+                .contentShape(Capsule())
                 .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 2)
         } else {
             content
@@ -106,6 +109,7 @@ struct MarbleGlassPrimaryCapsule: ViewModifier {
                     Capsule()
                         .stroke(Color("marblePrimary").opacity(0.15), lineWidth: 0.5)
                 )
+                .contentShape(Capsule())
                 .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 2)
         }
     }
