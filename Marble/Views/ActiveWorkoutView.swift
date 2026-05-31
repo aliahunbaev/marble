@@ -8,8 +8,8 @@ struct ActiveWorkoutView: View {
     /// workout survives across tab navigation, minimize-to-mini-bar, etc.
     @Environment(WorkoutSession.self) private var session
 
-    // View-local presentation state (sheets, alerts, drag) — distinct
-    // from workout data, doesn't need to survive minimization.
+    // View-local presentation state (sheets, alerts) — distinct from
+    // workout data, doesn't need to survive minimization.
     @State private var showingLibrary = false
     @State private var showingRestTimer = false
     @State private var showingDiscardAlert = false
@@ -17,8 +17,6 @@ struct ActiveWorkoutView: View {
     @State private var showingSummary = false
     @State private var showingPhotoCapture = false
     @State private var capturedPhoto: ProgressPhoto?
-    @State private var draggingEntryID: UUID?
-    @State private var lastSwapOffset: CGFloat = 0
     @State private var showingEmptyFinishAlert = false
     /// When set, the next exercise picked from the library replaces this
     /// entry instead of being toggled into the entries list. Cleared
@@ -65,90 +63,34 @@ struct ActiveWorkoutView: View {
         @Bindable var session = session
 
         return ZStack(alignment: .top) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    TextField("Workout", text: $session.name)
-                        .font(.marbleBody(32))
-                        .foregroundStyle(Color("marblePrimary"))
-                        .padding(.horizontal, 20)
-                        .padding(.top, 64) // breathing room below floating buttons
-                        .padding(.bottom, 6)
+            // Native List handles swipe-to-delete and vertical scroll
+            // natively at the framework level — no custom gesture
+            // recognizers to fight with the scroll. Each set is a
+            // listRow with .swipeActions; each exercise is a Section.
+            List {
+                workoutHeaderRow(session: session)
 
-                    Text(session.formattedTime)
-                        .font(.marbleMono(13))
-                        .tracking(1)
-                        .foregroundStyle(Color("marbleSecondary"))
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 40)
-
-                    if draggingEntryID != nil {
-                        ForEach(session.entries) { entry in
-                            reorderRow(entry: entry)
-                        }
-                    } else {
-                        ForEach($session.entries) { $entry in
-                            ExerciseSetTable(
-                                entry: $entry,
-                                onRemove: {
-                                    withAnimation(.easeInOut(duration: 0.25)) {
-                                        session.entries.removeAll { $0.id == entry.id }
-                                    }
-                                },
-                                isWorkoutMode: true,
-                                onSetCompleted: {
-                                    // Rest timer auto-start removed — manual only
-                                },
-                                onStartRestTimer: {
-                                    showingRestTimer = true
-                                },
-                                onReplaceExercise: {
-                                    replacingEntryID = entry.id
-                                    showingLibrary = true
-                                },
-                                dragHandle: true,
-                                onDragChanged: { translation in
-                                    withAnimation(.easeInOut(duration: 0.2)) {
-                                        handleDrag(entryID: entry.id, translation: translation)
-                                    }
-                                },
-                                onDragEnded: {
-                                    withAnimation(.easeInOut(duration: 0.25)) {
-                                        draggingEntryID = nil
-                                    }
-                                    lastSwapOffset = 0
-                                }
-                            )
-                            exerciseDivider
-                        }
-                    }
-
-                    addExerciseButton
-                        .padding(.top, session.entries.isEmpty ? 0 : 4)
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 40)
+                ForEach($session.entries) { $entry in
+                    exerciseSection(entry: $entry)
                 }
+
+                addExerciseRow
             }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .scrollDismissesKeyboard(.interactively)
+            .environment(\.defaultMinListRowHeight, 0)
 
             // Floating glass buttons over the workout content
             floatingToolbar
         }
         .background(Color("marbleBackground"))
-        .scrollDismissesKeyboard(.interactively)
-        .onTapGesture {
-            UIApplication.shared.sendAction(
-                #selector(UIResponder.resignFirstResponder),
-                to: nil, from: nil, for: nil
-            )
-        }
         .sheet(isPresented: $showingLibrary, onDismiss: {
             replacingEntryID = nil
         }) {
             let selectedExercises = session.entries.map(\.exercise)
             ExerciseLibraryView(selectedExercises: selectedExercises) { exercise in
                 if let replaceID = replacingEntryID {
-                    // Replace path — swap the exercise in place, preserving
-                    // the existing sets so the user's in-progress data
-                    // isn't lost. Dismiss the library after one pick.
                     if let idx = session.entries.firstIndex(where: { $0.id == replaceID }) {
                         let preservedSets = session.entries[idx].sets
                         session.entries[idx] = ExerciseEntry(
@@ -186,12 +128,181 @@ struct ActiveWorkoutView: View {
         }
     }
 
+    // MARK: - List Rows
+
+    /// Workout name + duration as the first list row. Extra top padding
+    /// gives breathing room below the floating toolbar that overlays.
+    @ViewBuilder
+    private func workoutHeaderRow(session: WorkoutSession) -> some View {
+        @Bindable var session = session
+        VStack(alignment: .leading, spacing: 6) {
+            TextField("Workout", text: $session.name)
+                .font(.marbleBody(32))
+                .foregroundStyle(Color("marblePrimary"))
+
+            Text(session.formattedTime)
+                .font(.marbleMono(13))
+                .tracking(1)
+                .foregroundStyle(Color("marbleSecondary"))
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 52)
+        .padding(.bottom, 32)
+        .listRowInsets(EdgeInsets())
+        .listRowSeparator(.hidden)
+        .listRowBackground(Color.clear)
+    }
+
+    /// One section per exercise — header with name + ⋯ menu + column
+    /// labels, then a row per set with native swipe-to-delete, then a
+    /// + SET row.
+    @ViewBuilder
+    private func exerciseSection(entry: Binding<ExerciseEntry>) -> some View {
+        Section {
+            ForEach(entry.sets) { $set in
+                setRowItem(entry: entry, set: $set)
+            }
+
+            // + SET row
+            Button {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.82)) {
+                    entry.wrappedValue.sets.append(EditableSet())
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    Text("+")
+                    Text("SET").tracking(1)
+                }
+                .marbleSecondaryButton()
+            }
+            .buttonStyle(.plain)
+            .listRowInsets(EdgeInsets(top: 12, leading: 20, bottom: 32, trailing: 20))
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
+        } header: {
+            exerciseSectionHeader(entry: entry)
+        }
+    }
+
+    @ViewBuilder
+    private func setRowItem(
+        entry: Binding<ExerciseEntry>,
+        set: Binding<EditableSet>
+    ) -> some View {
+        let index = entry.wrappedValue.sets.firstIndex(where: { $0.id == set.wrappedValue.id }) ?? 0
+        let prev = PreviousPerformance.previousComponents(
+            for: entry.wrappedValue.exercise,
+            setIndex: index,
+            context: modelContext
+        )
+
+        SetRowView(
+            setNumber: index + 1,
+            weight: set.weight,
+            reps: set.reps,
+            isCompleted: set.isCompleted,
+            previousWeight: prev.weight,
+            previousReps: prev.reps,
+            showCheckmark: true,
+            onComplete: nil
+        )
+        .listRowInsets(EdgeInsets(top: 10, leading: 20, bottom: 10, trailing: 20))
+        .listRowSeparator(.hidden)
+        .listRowBackground(
+            // Subtle warm wash on completed rows. Reads as "settled /
+            // polished marble" instead of "selected spreadsheet row."
+            set.wrappedValue.isCompleted
+                ? Color("marblePrimary").opacity(0.04)
+                : Color.clear
+        )
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            Button(role: .destructive) {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                    entry.wrappedValue.sets.removeAll { $0.id == set.wrappedValue.id }
+                }
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func exerciseSectionHeader(entry: Binding<ExerciseEntry>) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Text(entry.wrappedValue.exercise.name)
+                    .font(.marbleBody(22))
+                    .foregroundStyle(Color("marblePrimary"))
+
+                Spacer()
+
+                Menu {
+                    Button {
+                        replacingEntryID = entry.wrappedValue.id
+                        showingLibrary = true
+                    } label: {
+                        Label("Replace exercise", systemImage: "arrow.triangle.2.circlepath")
+                    }
+                    Button(role: .destructive) {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                            session.entries.removeAll { $0.id == entry.wrappedValue.id }
+                        }
+                    } label: {
+                        Label("Remove", systemImage: "trash")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 13, weight: .medium))
+                        .marbleGlassCapsule(size: 32)
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 16)
+            .padding(.bottom, 14)
+
+            // Column headers — widths track SetRowView field sizes.
+            HStack(spacing: 14) {
+                Text("SET").frame(width: 32, alignment: .center)
+                Spacer()
+                Text("LBS").frame(width: 100, alignment: .center)
+                Text("REPS").frame(width: 100, alignment: .center)
+                Image(systemName: "checkmark")
+                    .font(.system(size: 11, weight: .light))
+                    .frame(width: 44, alignment: .center)
+            }
+            .font(.marbleMono(11))
+            .tracking(1.5)
+            .foregroundStyle(Color("marbleSecondary"))
+            .padding(.horizontal, 20)
+            .padding(.bottom, 8)
+        }
+        .textCase(nil) // List default uppercases headers; we don't want that
+        .listRowInsets(EdgeInsets())
+    }
+
+    private var addExerciseRow: some View {
+        Button {
+            showingLibrary = true
+        } label: {
+            HStack(spacing: 6) {
+                Text("+")
+                Text("EXERCISE").tracking(1)
+            }
+            .marbleSecondaryButton()
+        }
+        .buttonStyle(.plain)
+        .listRowInsets(EdgeInsets(top: 24, leading: 20, bottom: 120, trailing: 20))
+        .listRowSeparator(.hidden)
+        .listRowBackground(Color.clear)
+    }
+
     // MARK: - Floating Toolbar (iOS-26 liquid glass)
 
     private var floatingToolbar: some View {
         HStack(spacing: 10) {
-            // Minimize → mini-bar. Drops back to the underlying tab, keeps
-            // the workout running. Tap the mini-bar later to re-expand.
+            // Minimize → mini-bar.
             Button {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 session.minimize()
@@ -247,29 +358,6 @@ struct ActiveWorkoutView: View {
         }
     }
 
-    // MARK: - Shared Components
-
-    private var exerciseDivider: some View {
-        Rectangle()
-            .fill(Color("marblePrimary").opacity(0.06))
-            .frame(height: 0.5)
-            .padding(.horizontal, 20)
-            .padding(.vertical, 20)
-    }
-
-    private var addExerciseButton: some View {
-        Button {
-            showingLibrary = true
-        } label: {
-            HStack(spacing: 6) {
-                Text("+")
-                Text("EXERCISE").tracking(1)
-            }
-            .marbleSecondaryButton()
-        }
-        .buttonStyle(.plain)
-    }
-
     // MARK: - Actions
 
     private func toggleExercise(_ exercise: Exercise) {
@@ -280,65 +368,6 @@ struct ActiveWorkoutView: View {
                 EditableSet(), EditableSet(), EditableSet()
             ])
             session.entries.append(entry)
-        }
-    }
-
-    private func reorderRow(entry: ExerciseEntry) -> some View {
-        HStack {
-            Image(systemName: "line.3.horizontal")
-                .font(.system(size: 12, weight: .light))
-                .foregroundStyle(Color("marbleTertiary"))
-                .padding(.trailing, 6)
-
-            Text(entry.exercise.name)
-                .font(.marbleBody(16))
-                .foregroundStyle(Color("marblePrimary"))
-
-            Spacer()
-
-            Text("\(entry.sets.count) sets")
-                .font(.marbleMono(11))
-                .foregroundStyle(Color("marbleSecondary"))
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 14)
-        .background(draggingEntryID == entry.id ? Color("marblePrimary").opacity(0.06) : Color.clear)
-        .gesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { value in
-                    handleDrag(entryID: entry.id, translation: value.translation.height)
-                }
-                .onEnded { _ in
-                    withAnimation(.easeInOut(duration: 0.25)) {
-                        draggingEntryID = nil
-                    }
-                    lastSwapOffset = 0
-                }
-        )
-    }
-
-    private func handleDrag(entryID: UUID, translation: CGFloat) {
-        if draggingEntryID == nil {
-            draggingEntryID = entryID
-            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        }
-
-        guard let currentIndex = session.entries.firstIndex(where: { $0.id == entryID }) else { return }
-        let delta = translation - lastSwapOffset
-        let threshold: CGFloat = 50
-
-        if delta > threshold, currentIndex < session.entries.count - 1 {
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            withAnimation(.easeInOut(duration: 0.2)) {
-                session.entries.move(fromOffsets: IndexSet(integer: currentIndex), toOffset: currentIndex + 2)
-            }
-            lastSwapOffset = translation
-        } else if delta < -threshold, currentIndex > 0 {
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            withAnimation(.easeInOut(duration: 0.2)) {
-                session.entries.move(fromOffsets: IndexSet(integer: currentIndex), toOffset: currentIndex - 1)
-            }
-            lastSwapOffset = translation
         }
     }
 
