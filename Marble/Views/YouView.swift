@@ -106,9 +106,7 @@ struct YouView: View {
     }
 
     private func joinDateString(_ date: Date) -> String? {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMMM yyyy"
-        return "SINCE " + formatter.string(from: date).uppercased()
+        "SINCE \(date.marbleMonthYear())"
     }
 
     // MARK: - Feed
@@ -312,9 +310,7 @@ struct WorkoutEntry: View {
     // MARK: - Computed values
 
     private var dateString: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "EEEE · MMMM d"
-        return formatter.string(from: workout.date).uppercased()
+        workout.date.marbleFullDate()
     }
 
     private var totalSets: Int {

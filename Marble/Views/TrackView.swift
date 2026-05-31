@@ -218,9 +218,7 @@ private struct MonthDotPage: View {
     }
 
     private var monthLabel: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMMM yyyy"
-        return formatter.string(from: monthAnchor).uppercased()
+        monthAnchor.marbleMonthYear()
     }
 
     private var today: Date {
@@ -1070,14 +1068,7 @@ struct BodyweightDetailView: View {
     }
 
     private func formatDate(_ date: Date) -> String {
-        let calendar = Calendar.current
-        if calendar.isDateInToday(date) { return "TODAY" }
-        if calendar.isDateInYesterday(date) { return "YESTERDAY" }
-        let days = calendar.dateComponents([.day], from: date, to: Date()).day ?? 0
-        if days < 7 { return "\(days) DAYS AGO" }
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMM d, yyyy"
-        return formatter.string(from: date).uppercased()
+        date.marbleRelative()
     }
 
     private func delete(_ entry: BodyweightEntry) {

@@ -37,8 +37,7 @@ struct ExerciseLibraryView: View {
                             .foregroundStyle(Color("marbleSecondary"))
                             .font(.system(size: 14))
                         TextField("Search exercises", text: $searchText)
-                            .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 14))
-                            .fontWeight(.light)
+                            .font(.marbleBody(14))
                             .autocorrectionDisabled()
                     }
                     .padding(12)
@@ -71,8 +70,7 @@ struct ExerciseLibraryView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Add") { dismiss() }
-                        .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 14))
-                        .fontWeight(.light)
+                        .font(.marbleMono(14))
                 }
                 ToolbarItem(placement: .primaryAction) {
                     Button {
@@ -137,10 +135,10 @@ struct ExerciseLibraryView: View {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(exercise.name)
-                        .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 14).weight(.light))
+                        .font(.marbleBody(14))
                         .foregroundStyle(Color("marblePrimary"))
                     Text(exercise.muscleGroup)
-                        .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 11).weight(.light))
+                        .font(.marbleMono(11))
                         .foregroundStyle(Color("marbleSecondary"))
                 }
                 Spacer()
@@ -159,25 +157,24 @@ struct ExerciseLibraryView: View {
 
     private var emptyState: some View {
         VStack(spacing: 12) {
-            Text("No exercises found")
-                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 13))
-                .fontWeight(.light)
-                .foregroundStyle(Color("marbleSecondary"))
+            VStack(spacing: 6) {
+                Text("No exercises found.")
+                    .font(.marbleBody(15))
+                    .foregroundStyle(Color("marbleSecondary"))
+                if searchText.isEmpty {
+                    Text("Tap + to add one.")
+                        .font(.marbleMono(11))
+                        .tracking(1)
+                        .foregroundStyle(Color("marbleTertiary"))
+                }
+            }
             if !searchText.isEmpty {
                 Button {
                     newName = searchText
                     showingCreate = true
                 } label: {
-                    Text("Create \"\(searchText)\"")
-                        .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 13))
-                        .fontWeight(.light)
-                        .foregroundStyle(Color("marblePrimary"))
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 10)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 4)
-                                .stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5)
-                        )
+                    Text("CREATE \"\(searchText.uppercased())\"")
+                        .marbleSecondaryButton(fullWidth: false)
                 }
                 .buttonStyle(.plain)
             }

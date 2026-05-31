@@ -428,14 +428,7 @@ struct ExerciseLiftDetailView: View {
         let sets: [(weight: Double, reps: Int)]
 
         var dateString: String {
-            let calendar = Calendar.current
-            if calendar.isDateInToday(date) { return "TODAY" }
-            if calendar.isDateInYesterday(date) { return "YESTERDAY" }
-            let days = calendar.dateComponents([.day], from: date, to: Date()).day ?? 0
-            if days < 7 { return "\(days)D AGO" }
-            let formatter = DateFormatter()
-            formatter.dateFormat = "MMM d"
-            return formatter.string(from: date).uppercased()
+            date.marbleRelative()
         }
 
         var setsDescription: String {

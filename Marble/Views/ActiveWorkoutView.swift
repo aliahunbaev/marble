@@ -240,13 +240,13 @@ struct ActiveWorkoutView: View {
                 .padding(.trailing, 6)
 
             Text(entry.exercise.name)
-                .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 16).weight(.light))
+                .font(.marbleBody(16))
                 .foregroundStyle(Color("marblePrimary"))
 
             Spacer()
 
             Text("\(entry.sets.count) sets")
-                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 11).weight(.light))
+                .font(.marbleMono(11))
                 .foregroundStyle(Color("marbleSecondary"))
         }
         .padding(.horizontal, 20)
@@ -355,12 +355,12 @@ struct ActiveWorkoutView: View {
 
                 // Title
                 Text("Workout Complete")
-                    .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 24).weight(.light))
+                    .font(.marbleBody(24))
                     .foregroundStyle(Color("marblePrimary"))
 
                 // Workout name
                 Text(workout.name)
-                    .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 16).weight(.light))
+                    .font(.marbleBody(16))
                     .foregroundStyle(Color("marbleSecondary"))
 
                 // Stats
@@ -401,7 +401,7 @@ struct ActiveWorkoutView: View {
                             Image(systemName: "camera")
                                 .font(.system(size: 14, weight: .light))
                             Text("MARK IT")
-                                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 12).weight(.medium))
+                                .font(.marbleMono(12, weight: .medium))
                                 .tracking(2)
                         }
                         .foregroundStyle(Color("marblePrimary"))
@@ -418,7 +418,7 @@ struct ActiveWorkoutView: View {
                         Image(systemName: "checkmark")
                             .font(.system(size: 12, weight: .light))
                         Text("MARKED")
-                            .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 12).weight(.medium))
+                            .font(.marbleMono(12, weight: .medium))
                             .tracking(2)
                     }
                     .foregroundStyle(Color("marbleSecondary"))
@@ -430,7 +430,7 @@ struct ActiveWorkoutView: View {
                     dismiss()
                 } label: {
                     Text("DONE")
-                        .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 16).weight(.light))
+                        .font(.marbleBody(16))
                         .foregroundStyle(Color("marbleBackground"))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
@@ -458,10 +458,10 @@ struct ActiveWorkoutView: View {
     private func summaryStatView(label: String, value: String) -> some View {
         VStack(spacing: 6) {
             Text(value)
-                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 32).weight(.light))
+                .font(.marbleMono(32))
                 .foregroundStyle(Color("marblePrimary"))
             Text(label)
-                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 10).weight(.light))
+                .font(.marbleMono(10))
                 .tracking(1.5)
                 .foregroundStyle(Color("marbleSecondary"))
         }

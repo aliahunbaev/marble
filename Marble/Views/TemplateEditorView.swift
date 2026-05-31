@@ -162,13 +162,13 @@ struct TemplateEditorView: View {
                 .padding(.trailing, 6)
 
             Text(entry.exercise.name)
-                .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 16).weight(.light))
+                .font(.marbleBody(16))
                 .foregroundStyle(Color("marblePrimary"))
 
             Spacer()
 
             Text("\(entry.sets.count) sets")
-                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 11).weight(.light))
+                .font(.marbleMono(11))
                 .foregroundStyle(Color("marbleSecondary"))
         }
         .padding(.horizontal, 20)
@@ -577,7 +577,7 @@ struct SwipeToDeleteRow<Content: View>: View {
             HStack {
                 Spacer()
                 Text("Delete")
-                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 12).weight(.light))
+                    .font(.marbleMono(12))
                     .foregroundStyle(Color("marbleBackground"))
                     .padding(.trailing, 20)
             }

@@ -85,9 +85,7 @@ struct TrainView: View {
     // MARK: - Hero (Quote + Start)
 
     private var formattedDate: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "EEEE · MMMM d"
-        return formatter.string(from: Date()).uppercased()
+        Date().marbleFullDate()
     }
 
     private var heroSection: some View {
@@ -249,19 +247,7 @@ struct TrainView: View {
         let lastWorkout = workouts.first(where: { $0.name == template.name })
         let count = "\(template.exercises.count) EXERCISES"
         guard let last = lastWorkout else { return count }
-
-        let days = Calendar.current.dateComponents([.day], from: last.date, to: Date()).day ?? 0
-        if days == 0 {
-            return "\(count) · TODAY"
-        } else if days == 1 {
-            return "\(count) · YESTERDAY"
-        } else if days < 7 {
-            return "\(count) · \(days) DAYS AGO"
-        } else {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "MMM d"
-            return "\(count) · \(formatter.string(from: last.date).uppercased())"
-        }
+        return "\(count) · \(last.date.marbleRelative())"
     }
 
     /// Empty state — match the editorial tone the rest of the app uses for

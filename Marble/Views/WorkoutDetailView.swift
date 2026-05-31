@@ -196,9 +196,7 @@ struct WorkoutDetailView: View {
     }
 
     private var formattedDate: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "EEEE, MMM d"
-        return formatter.string(from: workout.date)
+        workout.date.marbleFullDate()
     }
 
     private var formattedDuration: String {
