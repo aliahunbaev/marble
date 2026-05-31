@@ -49,12 +49,18 @@ struct MarbleGlassCapsule: ViewModifier {
     var size: CGFloat = 36
 
     func body(content: Content) -> some View {
+        // .compositingGroup() before .shadow() flattens the glass + content
+        // into one layer so the shadow renders against the flattened result
+        // instead of having to re-stitch across layers on every render.
+        // Without it, Menu's press/dismiss cycle reveals a brief frame
+        // where the shadow hasn't yet recomposed — the "gray box" artifact.
         if #available(iOS 26.0, *) {
             content
                 .foregroundStyle(Color("marblePrimary"))
                 .frame(width: size, height: size)
                 .glassEffect(.regular, in: Circle())
                 .contentShape(Circle())
+                .compositingGroup()
                 .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 1)
         } else {
             content
@@ -66,6 +72,7 @@ struct MarbleGlassCapsule: ViewModifier {
                         .stroke(Color("marblePrimary").opacity(0.08), lineWidth: 0.5)
                 )
                 .contentShape(Circle())
+                .compositingGroup()
                 .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 1)
         }
     }
@@ -92,6 +99,7 @@ struct MarbleGlassPill: ViewModifier {
                 .frame(height: height)
                 .glassEffect(.regular, in: Capsule())
                 .contentShape(Capsule())
+                .compositingGroup()
                 .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
         } else {
             content
@@ -106,6 +114,7 @@ struct MarbleGlassPill: ViewModifier {
                         .stroke(Color("marblePrimary").opacity(0.08), lineWidth: 0.5)
                 )
                 .contentShape(Capsule())
+                .compositingGroup()
                 .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
         }
     }
@@ -131,6 +140,7 @@ struct MarbleGlassPrimaryCapsule: ViewModifier {
                 .frame(height: height)
                 .glassEffect(.regular.tint(Color("marblePrimary")), in: Capsule())
                 .contentShape(Capsule())
+                .compositingGroup()
                 .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 2)
         } else {
             content
@@ -150,6 +160,7 @@ struct MarbleGlassPrimaryCapsule: ViewModifier {
                         .stroke(Color("marblePrimary").opacity(0.15), lineWidth: 0.5)
                 )
                 .contentShape(Capsule())
+                .compositingGroup()
                 .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 2)
         }
     }
