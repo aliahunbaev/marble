@@ -204,9 +204,10 @@ struct WorkoutEntry: View {
     let photos: [ProgressPhoto]
 
     private let cardCornerRadius: CGFloat = 18
+    private let visualHeight: CGFloat = 220
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 14) {
             // Date
             Text(dateString)
                 .font(.marbleMono(11))
@@ -226,12 +227,12 @@ struct WorkoutEntry: View {
                     }
                     Spacer(minLength: 0)
                 }
-                .padding(.top, 2)
             }
 
-            // Carousel — typographic composition first, then photos
-            carousel
-                .padding(.top, 2)
+            // Horizontal scroll — typographic visual first, then photos.
+            // Same height, snap to items. Like Strava's map + photo scroll.
+            horizontalVisuals
+                .padding(.top, 4)
 
             // Note (regular body, no italic, no handwritten)
             if let note = workout.notes?.trimmingCharacters(in: .whitespaces),
@@ -285,97 +286,114 @@ struct WorkoutEntry: View {
         }
     }
 
-    // MARK: - Carousel (typographic + photos)
+    // MARK: - Horizontal visuals (Strava-style)
 
-    private var carousel: some View {
-        TabView {
-            typographicSlide
-                .tag(-1)
-            ForEach(Array(photos.enumerated()), id: \.element.id) { idx, photo in
-                photoSlide(photo)
-                    .tag(idx)
+    /// Horizontal scroll, same height across all items, snap to view.
+    /// Typo visual first at full card width (like Strava's map), then photos
+    /// at portrait width slide in from the right. No page dots — natural
+    /// horizontal scroll affordance.
+    private var horizontalVisuals: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                typoVisual
+                    .containerRelativeFrame(.horizontal) { width, _ in
+                        width - 40 // account for card's 20pt padding on each side
+                    }
+                ForEach(photos) { photo in
+                    photoTile(photo)
+                }
             }
+            .scrollTargetLayout()
         }
-        .tabViewStyle(.page(indexDisplayMode: photos.isEmpty ? .never : .always))
-        .indexViewStyle(.page(backgroundDisplayMode: .never))
-        .aspectRatio(4.0 / 5.0, contentMode: .fit)
+        .scrollTargetBehavior(.viewAligned)
+        .frame(height: visualHeight)
+    }
+
+    /// The work itself, composed as typography. Larger mono throughout.
+    /// Each exercise: small mono caps name + larger mono set line under it.
+    /// Hairlines bracket the composition top and bottom.
+    private var typoVisual: some View {
+        ZStack {
+            Color.marbleSurfaceTint
+
+            VStack(spacing: 14) {
+                Rectangle()
+                    .fill(Color("marblePrimary").opacity(0.22))
+                    .frame(width: 24, height: 0.5)
+
+                Spacer(minLength: 0)
+
+                VStack(spacing: 16) {
+                    ForEach(workout.exerciseLogs.prefix(5)) { log in
+                        exerciseBlock(log)
+                    }
+                }
+
+                Spacer(minLength: 0)
+
+                Rectangle()
+                    .fill(Color("marblePrimary").opacity(0.22))
+                    .frame(width: 24, height: 0.5)
+            }
+            .padding(.vertical, 18)
+            .padding(.horizontal, 20)
+        }
+        .frame(height: visualHeight)
         .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 
-    /// The work itself, composed as typography. This is the "map equivalent."
-    /// Centered composition with hairlines bracketing — exercise names in
-    /// quiet mono caps, set lines in larger mono. Reads like a museum object
-    /// label or printed receipt.
-    private var typographicSlide: some View {
-        ZStack {
-            // Subtle tinted background
-            Color.marbleSurfaceTint
-
-            VStack(spacing: 18) {
-                Rectangle()
-                    .fill(Color("marblePrimary").opacity(0.2))
-                    .frame(width: 18, height: 0.5)
-
-                Spacer(minLength: 0)
-
-                ScrollView(showsIndicators: false) {
-                    VStack(alignment: .center, spacing: 18) {
-                        ForEach(workout.exerciseLogs) { log in
-                            exerciseBlock(log)
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.horizontal, 16)
-                }
-                .allowsHitTesting(false) // let the carousel swipe through
-
-                Spacer(minLength: 0)
-
-                Rectangle()
-                    .fill(Color("marblePrimary").opacity(0.2))
-                    .frame(width: 18, height: 0.5)
-            }
-            .padding(.vertical, 20)
-        }
-    }
-
     private func exerciseBlock(_ log: ExerciseLog) -> some View {
-        VStack(spacing: 4) {
+        VStack(spacing: 3) {
             Text((log.exercise?.name ?? "—").uppercased())
                 .font(.marbleMono(10))
                 .tracking(1.5)
                 .foregroundStyle(Color("marbleSecondary"))
-
-            let completed = log.sets.filter(\.isCompleted)
-            ForEach(completed) { set in
-                Text(setLine(set))
-                    .font(.marbleMono(13))
-                    .foregroundStyle(Color("marblePrimary"))
-            }
+            Text(setsLine(log))
+                .font(.marbleMono(16))
+                .foregroundStyle(Color("marblePrimary"))
+                .lineLimit(1)
         }
     }
 
-    private func setLine(_ set: WorkoutSet) -> String {
-        let w = set.weight == floor(set.weight)
-            ? "\(Int(set.weight))"
-            : String(format: "%.1f", set.weight)
-        return "\(w) × \(set.reps)"
+    /// Compact set summary on a single line. Same-weight reps collapsed.
+    /// "225 × 8, 8, 8" or "225 × 8, 8 | 235 × 3".
+    private func setsLine(_ log: ExerciseLog) -> String {
+        let completed = log.sets.filter(\.isCompleted)
+        guard !completed.isEmpty else { return "—" }
+
+        var groups: [(weight: Double, reps: [Int])] = []
+        for set in completed {
+            if let lastIdx = groups.indices.last, groups[lastIdx].weight == set.weight {
+                groups[lastIdx].reps.append(set.reps)
+            } else {
+                groups.append((weight: set.weight, reps: [set.reps]))
+            }
+        }
+
+        return groups.map { group in
+            let w = group.weight == floor(group.weight)
+                ? "\(Int(group.weight))"
+                : String(format: "%.1f", group.weight)
+            return "\(w) × \(group.reps.map(String.init).joined(separator: ", "))"
+        }.joined(separator: " | ")
     }
 
-    private func photoSlide(_ photo: ProgressPhoto) -> some View {
-        GeometryReader { geo in
-            Group {
-                if let img = PhotoStorageService.shared.image(for: photo) {
-                    Image(uiImage: img)
-                        .resizable()
-                        .scaledToFill()
-                } else {
-                    Color("marbleFieldBackground")
-                }
+    /// Photo at same height as the typo visual, portrait-aspect width.
+    /// Slides into the horizontal scroll alongside the typo visual.
+    private func photoTile(_ photo: ProgressPhoto) -> some View {
+        let width = visualHeight * 0.8 // 4:5 portrait aspect
+        return Group {
+            if let img = PhotoStorageService.shared.image(for: photo) {
+                Image(uiImage: img)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                Color("marbleFieldBackground")
             }
-            .frame(width: geo.size.width, height: geo.size.width * 1.25)
-            .clipped()
         }
+        .frame(width: width, height: visualHeight)
+        .clipped()
+        .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 
     // MARK: - Computed values
