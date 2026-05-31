@@ -52,10 +52,7 @@ struct YouView: View {
                                     )
                                 }
                                 .buttonStyle(.plain)
-
-                                if index < visibleWorkouts.count - 1 {
-                                    entryDivider
-                                }
+                                .padding(.top, index == 0 ? 0 : 36)
                             }
                         }
                     }
@@ -219,12 +216,15 @@ struct WorkoutEntry: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Photo hero — edge-to-edge, sharp corners (full magazine spread)
-            if let hero = photos.first {
-                photoHero(hero)
-            }
+            // Small editorial mark — subtle differentiator from generic
+            // photo feeds. A short hairline at the start of each section.
+            Rectangle()
+                .fill(Color("marblePrimary").opacity(0.35))
+                .frame(width: 22, height: 0.5)
+                .padding(.horizontal, 20)
+                .padding(.bottom, 14)
 
-            // Text composition with editorial margins
+            // Text composition ABOVE the visual (Strava-style)
             VStack(alignment: .leading, spacing: 14) {
                 Text(dateString)
                     .font(.marbleMono(11))
@@ -232,7 +232,7 @@ struct WorkoutEntry: View {
                     .foregroundStyle(Color("marbleSecondary"))
 
                 Text(workout.name)
-                    .font(.marbleBody(26))
+                    .font(.marbleBody(28))
                     .foregroundStyle(Color("marblePrimary"))
 
                 // Always 3-column stats row with placeholders for missing
@@ -254,8 +254,12 @@ struct WorkoutEntry: View {
                 }
             }
             .padding(.horizontal, 20)
-            .padding(.top, photos.isEmpty ? 8 : 20)
-            .padding(.bottom, 4)
+            .padding(.bottom, photos.first == nil ? 4 : 18)
+
+            // Photo BELOW the text — edge-to-edge, sharp corners
+            if let hero = photos.first {
+                photoHero(hero)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
