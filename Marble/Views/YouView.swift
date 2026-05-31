@@ -204,47 +204,45 @@ struct WorkoutEntry: View {
     let photos: [ProgressPhoto]
 
     private let cardCornerRadius: CGFloat = 18
-    private let visualHeight: CGFloat = 220
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            // Date
-            Text(dateString)
-                .font(.marbleMono(11))
-                .tracking(1.5)
-                .foregroundStyle(Color("marbleSecondary"))
+        VStack(alignment: .leading, spacing: 0) {
+            // Photo hero (when present)
+            if let hero = photos.first {
+                photoHero(hero)
+            }
 
-            // Workout name
-            Text(workout.name)
-                .font(.marbleBody(26))
-                .foregroundStyle(Color("marblePrimary"))
+            // Text composition
+            VStack(alignment: .leading, spacing: 14) {
+                Text(dateString)
+                    .font(.marbleMono(11))
+                    .tracking(1.5)
+                    .foregroundStyle(Color("marbleSecondary"))
 
-            // Stats row — Strava-style
-            if !statItems.isEmpty {
-                HStack(alignment: .top, spacing: 32) {
-                    ForEach(statItems, id: \.label) { item in
-                        statColumn(label: item.label, value: item.value)
+                Text(workout.name)
+                    .font(.marbleBody(26))
+                    .foregroundStyle(Color("marblePrimary"))
+
+                if !statItems.isEmpty {
+                    HStack(alignment: .top, spacing: 32) {
+                        ForEach(statItems, id: \.label) { item in
+                            statColumn(label: item.label, value: item.value)
+                        }
+                        Spacer(minLength: 0)
                     }
-                    Spacer(minLength: 0)
+                }
+
+                if let note = workout.notes?.trimmingCharacters(in: .whitespaces),
+                   !note.isEmpty {
+                    Text(note)
+                        .font(.marbleBody(15))
+                        .foregroundStyle(Color("marblePrimary"))
+                        .lineSpacing(3)
+                        .padding(.top, 4)
                 }
             }
-
-            // Horizontal scroll — typographic visual first, then photos.
-            // Same height, snap to items. Like Strava's map + photo scroll.
-            horizontalVisuals
-                .padding(.top, 4)
-
-            // Note (regular body, no italic, no handwritten)
-            if let note = workout.notes?.trimmingCharacters(in: .whitespaces),
-               !note.isEmpty {
-                Text(note)
-                    .font(.marbleBody(15))
-                    .foregroundStyle(Color("marblePrimary"))
-                    .lineSpacing(3)
-                    .padding(.top, 2)
-            }
+            .padding(20)
         }
-        .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.ultraThinMaterial)
         .clipShape(RoundedRectangle(cornerRadius: cardCornerRadius))
@@ -254,6 +252,38 @@ struct WorkoutEntry: View {
         )
         .shadow(color: .black.opacity(0.04), radius: 12, x: 0, y: 4)
         .contentShape(RoundedRectangle(cornerRadius: cardCornerRadius))
+    }
+
+    // MARK: - Photo Hero
+
+    @ViewBuilder
+    private func photoHero(_ photo: ProgressPhoto) -> some View {
+        GeometryReader { geo in
+            Group {
+                if let img = PhotoStorageService.shared.image(for: photo) {
+                    Image(uiImage: img)
+                        .resizable()
+                        .scaledToFill()
+                } else {
+                    Color("marbleFieldBackground")
+                }
+            }
+            .frame(width: geo.size.width, height: geo.size.width * 1.25)
+            .clipped()
+            .overlay(alignment: .topTrailing) {
+                if photos.count > 1 {
+                    Text("\(photos.count)")
+                        .font(.marbleMono(11))
+                        .tracking(1)
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(.black.opacity(0.4), in: Capsule())
+                        .padding(12)
+                }
+            }
+        }
+        .aspectRatio(4.0 / 5.0, contentMode: .fit)
     }
 
     // MARK: - Stats Row (Strava-style)
@@ -284,116 +314,6 @@ struct WorkoutEntry: View {
                 .font(.marbleBody(20))
                 .foregroundStyle(Color("marblePrimary"))
         }
-    }
-
-    // MARK: - Horizontal visuals (Strava-style)
-
-    /// Horizontal scroll, same height across all items, snap to view.
-    /// Typo visual first at full card width (like Strava's map), then photos
-    /// at portrait width slide in from the right. No page dots — natural
-    /// horizontal scroll affordance.
-    private var horizontalVisuals: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
-                typoVisual
-                    .containerRelativeFrame(.horizontal) { width, _ in
-                        width - 40 // account for card's 20pt padding on each side
-                    }
-                ForEach(photos) { photo in
-                    photoTile(photo)
-                }
-            }
-            .scrollTargetLayout()
-        }
-        .scrollTargetBehavior(.viewAligned)
-        .frame(height: visualHeight)
-    }
-
-    /// The work itself, composed as typography. Larger mono throughout.
-    /// Each exercise: small mono caps name + larger mono set line under it.
-    /// Hairlines bracket the composition top and bottom.
-    private var typoVisual: some View {
-        ZStack {
-            Color.marbleSurfaceTint
-
-            VStack(spacing: 14) {
-                Rectangle()
-                    .fill(Color("marblePrimary").opacity(0.22))
-                    .frame(width: 24, height: 0.5)
-
-                Spacer(minLength: 0)
-
-                VStack(spacing: 16) {
-                    ForEach(workout.exerciseLogs.prefix(5)) { log in
-                        exerciseBlock(log)
-                    }
-                }
-
-                Spacer(minLength: 0)
-
-                Rectangle()
-                    .fill(Color("marblePrimary").opacity(0.22))
-                    .frame(width: 24, height: 0.5)
-            }
-            .padding(.vertical, 18)
-            .padding(.horizontal, 20)
-        }
-        .frame(height: visualHeight)
-        .clipShape(RoundedRectangle(cornerRadius: 10))
-    }
-
-    private func exerciseBlock(_ log: ExerciseLog) -> some View {
-        VStack(spacing: 3) {
-            Text((log.exercise?.name ?? "—").uppercased())
-                .font(.marbleMono(10))
-                .tracking(1.5)
-                .foregroundStyle(Color("marbleSecondary"))
-            Text(setsLine(log))
-                .font(.marbleMono(16))
-                .foregroundStyle(Color("marblePrimary"))
-                .lineLimit(1)
-        }
-    }
-
-    /// Compact set summary on a single line. Same-weight reps collapsed.
-    /// "225 × 8, 8, 8" or "225 × 8, 8 | 235 × 3".
-    private func setsLine(_ log: ExerciseLog) -> String {
-        let completed = log.sets.filter(\.isCompleted)
-        guard !completed.isEmpty else { return "—" }
-
-        var groups: [(weight: Double, reps: [Int])] = []
-        for set in completed {
-            if let lastIdx = groups.indices.last, groups[lastIdx].weight == set.weight {
-                groups[lastIdx].reps.append(set.reps)
-            } else {
-                groups.append((weight: set.weight, reps: [set.reps]))
-            }
-        }
-
-        return groups.map { group in
-            let w = group.weight == floor(group.weight)
-                ? "\(Int(group.weight))"
-                : String(format: "%.1f", group.weight)
-            return "\(w) × \(group.reps.map(String.init).joined(separator: ", "))"
-        }.joined(separator: " | ")
-    }
-
-    /// Photo at same height as the typo visual, portrait-aspect width.
-    /// Slides into the horizontal scroll alongside the typo visual.
-    private func photoTile(_ photo: ProgressPhoto) -> some View {
-        let width = visualHeight * 0.8 // 4:5 portrait aspect
-        return Group {
-            if let img = PhotoStorageService.shared.image(for: photo) {
-                Image(uiImage: img)
-                    .resizable()
-                    .scaledToFill()
-            } else {
-                Color("marbleFieldBackground")
-            }
-        }
-        .frame(width: width, height: visualHeight)
-        .clipped()
-        .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 
     // MARK: - Computed values
