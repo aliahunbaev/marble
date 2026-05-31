@@ -4,15 +4,14 @@ import SwiftData
 struct ActiveWorkoutView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    /// Shared workout state — name/entries/timer all live here so the
+    /// workout survives across tab navigation, minimize-to-mini-bar, etc.
+    @Environment(WorkoutSession.self) private var session
 
-    @State private var name: String
-    @State private var entries: [ExerciseEntry]
+    // View-local presentation state (sheets, alerts, drag) — distinct
+    // from workout data, doesn't need to survive minimization.
     @State private var showingLibrary = false
     @State private var showingRestTimer = false
-    @State private var elapsedSeconds: Int = 0
-    @State private var workoutTimer: Timer?
-    @State private var startDate = Date()
-    @State private var restTimer = RestTimerState()
     @State private var showingDiscardAlert = false
     @State private var completedWorkout: Workout?
     @State private var showingSummary = false
@@ -22,35 +21,18 @@ struct ActiveWorkoutView: View {
     @State private var lastSwapOffset: CGFloat = 0
     @State private var showingEmptyFinishAlert = false
 
-    private let sourceTemplate: WorkoutTemplate?
-
-    init(template: WorkoutTemplate) {
-        self.sourceTemplate = template
-        _name = State(initialValue: template.name)
-        _entries = State(initialValue: template.exercises.map { exercise in
-            ExerciseEntry(exercise: exercise, sets: [
-                EditableSet(), EditableSet(), EditableSet()
-            ])
-        })
-    }
-
-    init() {
-        self.sourceTemplate = nil
-        _name = State(initialValue: "Workout")
-        _entries = State(initialValue: [])
-    }
+    @AppStorage("defaultRestTimer") private var defaultRestTimer: Int = 90
 
     var body: some View {
         if showingSummary, let workout = completedWorkout {
             ClosingRitualView(workout: workout, onBack: { undoFinish(workout: workout) })
                 .onDisappear {
-                    // Only dismiss the outer workout flow if the user
-                    // actually completed the ritual. The back chevron path
-                    // sets completedWorkout = nil before dismounting the
-                    // ritual view, so we use that as the signal to stay
-                    // inside the workout view instead of dismissing back
-                    // to the tab.
+                    // Only dismiss the outer cover if the user actually
+                    // completed the ritual. Back-chevron path clears
+                    // completedWorkout before dismount, so we stay inside
+                    // the workout view in that case.
                     if completedWorkout != nil {
+                        session.end()
                         dismiss()
                     }
                 }
@@ -62,38 +44,33 @@ struct ActiveWorkoutView: View {
     /// Undo the finish: delete the just-saved workout from the model
     /// context, resume the timer (preserving the original startDate so
     /// elapsed time keeps accumulating), and drop back to the workout
-    /// content view. The user's exercise entries are still in memory
-    /// (they were never cleared), so they reappear intact.
+    /// content view. Entries are still in the session, so they reappear.
     private func undoFinish(workout: Workout) {
         let cloudID = workout.cloudID
         modelContext.delete(workout)
         try? modelContext.save()
         CloudSyncService.shared.deleteWorkout(cloudID: cloudID)
 
-        // Resume timer without resetting startDate — startWorkoutTimer
-        // would reset it, breaking elapsed time. Schedule a fresh timer
-        // that ticks against the existing startDate.
-        workoutTimer?.invalidate()
-        workoutTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
-            elapsedSeconds = Int(Date().timeIntervalSince(startDate))
-        }
+        session.resumeTimer()
 
         completedWorkout = nil
         withAnimation { showingSummary = false }
     }
 
     private var workoutContentView: some View {
-        ZStack(alignment: .top) {
+        @Bindable var session = session
+
+        return ZStack(alignment: .top) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    TextField("Workout", text: $name)
+                    TextField("Workout", text: $session.name)
                         .font(.marbleBody(32))
                         .foregroundStyle(Color("marblePrimary"))
                         .padding(.horizontal, 20)
                         .padding(.top, 64) // breathing room below floating buttons
                         .padding(.bottom, 6)
 
-                    Text(formattedTime)
+                    Text(session.formattedTime)
                         .font(.marbleMono(13))
                         .tracking(1)
                         .foregroundStyle(Color("marbleSecondary"))
@@ -101,16 +78,16 @@ struct ActiveWorkoutView: View {
                         .padding(.bottom, 40)
 
                     if draggingEntryID != nil {
-                        ForEach(entries) { entry in
+                        ForEach(session.entries) { entry in
                             reorderRow(entry: entry)
                         }
                     } else {
-                        ForEach($entries) { $entry in
+                        ForEach($session.entries) { $entry in
                             ExerciseSetTable(
                                 entry: $entry,
                                 onRemove: {
                                     withAnimation(.easeInOut(duration: 0.2)) {
-                                        entries.removeAll { $0.id == entry.id }
+                                        session.entries.removeAll { $0.id == entry.id }
                                     }
                                 },
                                 isWorkoutMode: true,
@@ -130,7 +107,7 @@ struct ActiveWorkoutView: View {
                     }
 
                     addExerciseButton
-                        .padding(.top, entries.isEmpty ? 0 : 4)
+                        .padding(.top, session.entries.isEmpty ? 0 : 4)
                         .padding(.horizontal, 20)
                         .padding(.bottom, 40)
                 }
@@ -147,21 +124,18 @@ struct ActiveWorkoutView: View {
                 to: nil, from: nil, for: nil
             )
         }
-        .onAppear { startWorkoutTimer() }
-        .onDisappear { stopWorkoutTimer(); restTimer.stop() }
         .sheet(isPresented: $showingLibrary) {
-            let selectedExercises = entries.map(\.exercise)
+            let selectedExercises = session.entries.map(\.exercise)
             ExerciseLibraryView(selectedExercises: selectedExercises) { exercise in
                 toggleExercise(exercise)
             }
         }
         .sheet(isPresented: $showingRestTimer) {
-            RestTimerModal(state: restTimer)
+            RestTimerModal(state: session.restTimer)
         }
         .alert("Discard this workout?", isPresented: $showingDiscardAlert) {
             Button("Discard", role: .destructive) {
-                stopWorkoutTimer()
-                restTimer.stop()
+                session.end()
                 dismiss()
             }
             Button("Cancel", role: .cancel) {}
@@ -170,8 +144,7 @@ struct ActiveWorkoutView: View {
         }
         .alert("No sets completed", isPresented: $showingEmptyFinishAlert) {
             Button("Discard", role: .destructive) {
-                stopWorkoutTimer()
-                restTimer.stop()
+                session.end()
                 dismiss()
             }
             Button("Keep going", role: .cancel) {}
@@ -184,14 +157,26 @@ struct ActiveWorkoutView: View {
 
     private var floatingToolbar: some View {
         HStack(spacing: 10) {
-            FloatingRestTimerButton(state: restTimer) {
+            // Minimize → mini-bar. Drops back to the underlying tab, keeps
+            // the workout running. Tap the mini-bar later to re-expand.
+            Button {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                session.minimize()
+                dismiss()
+            } label: {
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 15, weight: .medium))
+                    .marbleGlassCapsule(size: 44)
+            }
+            .buttonStyle(.plain)
+
+            FloatingRestTimerButton(state: session.restTimer) {
                 showingRestTimer = true
             }
 
             Spacer()
 
-            // Workout-level menu — discard lives here instead of as a
-            // persistent red bar at the bottom. Reachable but not loud.
+            // Workout-level menu — discard lives here.
             Menu {
                 Button(role: .destructive) {
                     showingDiscardAlert = true
@@ -216,11 +201,9 @@ struct ActiveWorkoutView: View {
         .padding(.top, 8)
     }
 
-    /// Gate FINISH on having at least one completed set. If the workout
-    /// has nothing in it, prompt to discard instead of silently saving an
-    /// empty record that would just get filtered out of the feed.
+    /// Gate FINISH on having at least one completed set.
     private func attemptFinish() {
-        let completedCount = entries.reduce(0) { acc, entry in
+        let completedCount = session.entries.reduce(0) { acc, entry in
             acc + entry.sets.filter(\.isCompleted).count
         }
         if completedCount == 0 {
@@ -254,36 +237,16 @@ struct ActiveWorkoutView: View {
         .buttonStyle(.plain)
     }
 
-    // MARK: - Workout Timer
-
-    private var formattedTime: String {
-        let minutes = elapsedSeconds / 60
-        let seconds = elapsedSeconds % 60
-        return String(format: "%d:%02d", minutes, seconds)
-    }
-
-    private func startWorkoutTimer() {
-        startDate = Date()
-        workoutTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
-            elapsedSeconds = Int(Date().timeIntervalSince(startDate))
-        }
-    }
-
-    private func stopWorkoutTimer() {
-        workoutTimer?.invalidate()
-        workoutTimer = nil
-    }
-
     // MARK: - Actions
 
     private func toggleExercise(_ exercise: Exercise) {
-        if let index = entries.firstIndex(where: { $0.exercise.id == exercise.id }) {
-            entries.remove(at: index)
+        if let index = session.entries.firstIndex(where: { $0.exercise.id == exercise.id }) {
+            session.entries.remove(at: index)
         } else {
             let entry = ExerciseEntry(exercise: exercise, sets: [
                 EditableSet(), EditableSet(), EditableSet()
             ])
-            entries.append(entry)
+            session.entries.append(entry)
         }
     }
 
@@ -327,43 +290,36 @@ struct ActiveWorkoutView: View {
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         }
 
-        guard let currentIndex = entries.firstIndex(where: { $0.id == entryID }) else { return }
+        guard let currentIndex = session.entries.firstIndex(where: { $0.id == entryID }) else { return }
         let delta = translation - lastSwapOffset
         let threshold: CGFloat = 50
 
-        if delta > threshold, currentIndex < entries.count - 1 {
+        if delta > threshold, currentIndex < session.entries.count - 1 {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             withAnimation(.easeInOut(duration: 0.2)) {
-                entries.move(fromOffsets: IndexSet(integer: currentIndex), toOffset: currentIndex + 2)
+                session.entries.move(fromOffsets: IndexSet(integer: currentIndex), toOffset: currentIndex + 2)
             }
             lastSwapOffset = translation
         } else if delta < -threshold, currentIndex > 0 {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             withAnimation(.easeInOut(duration: 0.2)) {
-                entries.move(fromOffsets: IndexSet(integer: currentIndex), toOffset: currentIndex - 1)
+                session.entries.move(fromOffsets: IndexSet(integer: currentIndex), toOffset: currentIndex - 1)
             }
             lastSwapOffset = translation
         }
     }
 
-    @AppStorage("defaultRestTimer") private var defaultRestTimer: Int = 90
-
-    private func startRestTimerIfNeeded() {
-        guard !restTimer.isActive else { return }
-        restTimer.start(duration: defaultRestTimer)
-    }
-
     private func finishWorkout() {
         UINotificationFeedbackGenerator().notificationOccurred(.success)
-        stopWorkoutTimer()
-        restTimer.stop()
+        session.stopTimer()
+        session.restTimer.stop()
 
-        let duration = Date().timeIntervalSince(startDate)
-        let workoutName = name.trimmingCharacters(in: .whitespaces)
+        let duration = Date().timeIntervalSince(session.startDate)
+        let workoutName = session.name.trimmingCharacters(in: .whitespaces)
 
         var exerciseLogs: [ExerciseLog] = []
 
-        for entry in entries {
+        for entry in session.entries {
             var workoutSets: [WorkoutSet] = []
             for set in entry.sets where set.isCompleted {
                 let weight = Double(set.weight) ?? 0
@@ -382,7 +338,7 @@ struct ActiveWorkoutView: View {
 
         let workout = Workout(
             name: workoutName.isEmpty ? "Workout" : workoutName,
-            date: startDate,
+            date: session.startDate,
             duration: duration,
             exerciseLogs: exerciseLogs
         )
@@ -395,163 +351,10 @@ struct ActiveWorkoutView: View {
             showingSummary = true
         }
     }
-
-    // MARK: - Workout Summary
-
-    private func workoutSummaryView(workout: Workout) -> some View {
-        VStack(spacing: 0) {
-            Spacer()
-
-            VStack(spacing: 32) {
-                // Checkmark
-                Image(systemName: "checkmark.circle")
-                    .font(.system(size: 56, weight: .thin))
-                    .foregroundStyle(Color("marblePrimary"))
-
-                // Title
-                Text("Workout Complete")
-                    .font(.marbleBody(24))
-                    .foregroundStyle(Color("marblePrimary"))
-
-                // Workout name
-                Text(workout.name)
-                    .font(.marbleBody(16))
-                    .foregroundStyle(Color("marbleSecondary"))
-
-                // Stats
-                VStack(spacing: 28) {
-                    summaryStatView(
-                        label: "DURATION",
-                        value: formattedDuration(workout.duration)
-                    )
-
-                    summaryStatView(
-                        label: "EXERCISES",
-                        value: "\(workout.exerciseLogs.count)"
-                    )
-
-                    summaryStatView(
-                        label: "SETS",
-                        value: "\(totalSets(workout))"
-                    )
-
-                    summaryStatView(
-                        label: "VOLUME",
-                        value: formattedVolume(workout)
-                    )
-                }
-                .padding(.top, 8)
-            }
-
-            Spacer()
-
-            // Capture / done buttons
-            VStack(spacing: 10) {
-                if capturedPhoto == nil {
-                    Button {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        showingPhotoCapture = true
-                    } label: {
-                        HStack(spacing: 8) {
-                            Image(systemName: "camera")
-                                .font(.system(size: 14, weight: .light))
-                            Text("MARK IT")
-                                .font(.marbleMono(12, weight: .medium))
-                                .tracking(2)
-                        }
-                        .foregroundStyle(Color("marblePrimary"))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .overlay(
-                            Capsule()
-                                .stroke(Color("marblePrimary").opacity(0.3), lineWidth: 0.5)
-                        )
-                    }
-                    .buttonStyle(.plain)
-                } else {
-                    HStack(spacing: 8) {
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 12, weight: .light))
-                        Text("MARKED")
-                            .font(.marbleMono(12, weight: .medium))
-                            .tracking(2)
-                    }
-                    .foregroundStyle(Color("marbleSecondary"))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                }
-
-                Button {
-                    dismiss()
-                } label: {
-                    Text("DONE")
-                        .font(.marbleBody(16))
-                        .foregroundStyle(Color("marbleBackground"))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(Color("marblePrimary"))
-                        .clipShape(Capsule())
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(.horizontal, 20)
-            .padding(.bottom, 40)
-        }
-        .background(Color("marbleBackground"))
-        .sheet(isPresented: $showingPhotoCapture) {
-            PhotoCaptureSheet(
-                workoutCloudID: workout.cloudID,
-                onCaptured: { photo in
-                    capturedPhoto = photo
-                }
-            )
-            .presentationDetents([.medium])
-            .presentationDragIndicator(.hidden)
-        }
-    }
-
-    private func summaryStatView(label: String, value: String) -> some View {
-        VStack(spacing: 6) {
-            Text(value)
-                .font(.marbleMono(32))
-                .foregroundStyle(Color("marblePrimary"))
-            Text(label)
-                .font(.marbleMono(10))
-                .tracking(1.5)
-                .foregroundStyle(Color("marbleSecondary"))
-        }
-    }
-
-    private func formattedDuration(_ interval: TimeInterval) -> String {
-        let totalMinutes = Int(interval) / 60
-        let hours = totalMinutes / 60
-        let minutes = totalMinutes % 60
-        if hours > 0 {
-            return "\(hours)h \(minutes)m"
-        }
-        return "\(minutes)m"
-    }
-
-    private func totalSets(_ workout: Workout) -> Int {
-        workout.exerciseLogs.reduce(0) { $0 + $1.sets.filter(\.isCompleted).count }
-    }
-
-    private func totalVolume(_ workout: Workout) -> Double {
-        workout.exerciseLogs.reduce(0.0) { total, log in
-            total + log.sets.filter(\.isCompleted).reduce(0.0) { $0 + $1.weight * Double($1.reps) }
-        }
-    }
-
-    private func formattedVolume(_ workout: Workout) -> String {
-        let volume = Int(totalVolume(workout))
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        let formatted = formatter.string(from: NSNumber(value: volume)) ?? "\(volume)"
-        return "\(formatted) lbs"
-    }
 }
 
 #Preview {
     ActiveWorkoutView()
+        .environment(WorkoutSession())
         .modelContainer(for: [Workout.self, Exercise.self], inMemory: true)
 }

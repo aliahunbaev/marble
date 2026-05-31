@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @State private var selectedTab = 1
+    @State private var workoutSession = WorkoutSession()
     @AppStorage("appTheme") private var appTheme: String = "system"
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
 
@@ -25,11 +26,14 @@ struct ContentView: View {
                 }
             }
         }
+        .environment(workoutSession)
         .preferredColorScheme(colorScheme)
     }
 
     private var mainAppView: some View {
-        ZStack(alignment: .bottom) {
+        @Bindable var session = workoutSession
+
+        return ZStack(alignment: .bottom) {
             // Content fills the full screen, including under the tab bar so
             // the bar's glass has something to refract.
             Group {
@@ -42,38 +46,99 @@ struct ContentView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            // Custom tab bar — glass refracts content scrolling beneath.
-            // Glass extends past screen edges so the bright vertical edge
-            // highlights end up off-screen rather than running down the
-            // sides of the bar.
-            HStack(spacing: 0) {
-                ForEach(0..<tabs.count, id: \.self) { index in
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.15)) {
-                            selectedTab = index
-                        }
-                    } label: {
-                        VStack(spacing: 6) {
-                            Text(tabs[index])
-                                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 11).weight(.medium))
-                                .tracking(1)
-                                .foregroundStyle(selectedTab == index ? Color("marblePrimary") : Color("marbleSecondary"))
-
-                            Circle()
-                                .fill(selectedTab == index ? Color("marblePrimary") : Color.clear)
-                                .frame(width: 4, height: 4)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.top, 16)
-                        .padding(.bottom, 8)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
+            VStack(spacing: 0) {
+                // Mini-bar — shown when a workout is active AND minimized.
+                // Tap to re-expand. Workout continues recording the whole
+                // time because the timer lives in WorkoutSession, not in
+                // ActiveWorkoutView.
+                if workoutSession.isActive && !workoutSession.isExpanded {
+                    WorkoutMiniBar(session: workoutSession)
+                        .padding(.horizontal, 12)
+                        .padding(.bottom, 6)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
+
+                // Custom tab bar — glass refracts content scrolling beneath.
+                HStack(spacing: 0) {
+                    ForEach(0..<tabs.count, id: \.self) { index in
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.15)) {
+                                selectedTab = index
+                            }
+                        } label: {
+                            VStack(spacing: 6) {
+                                Text(tabs[index])
+                                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 11).weight(.medium))
+                                    .tracking(1)
+                                    .foregroundStyle(selectedTab == index ? Color("marblePrimary") : Color("marbleSecondary"))
+
+                                Circle()
+                                    .fill(selectedTab == index ? Color("marblePrimary") : Color.clear)
+                                    .frame(width: 4, height: 4)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, 16)
+                            .padding(.bottom, 8)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .modifier(TabBarGlassModifier())
             }
-            .modifier(TabBarGlassModifier())
+            .animation(.spring(response: 0.4, dampingFraction: 0.85), value: workoutSession.isExpanded)
+            .animation(.spring(response: 0.4, dampingFraction: 0.85), value: workoutSession.isActive)
         }
         .ignoresSafeArea(.keyboard)
+        // Workout presented at the ContentView level so it survives tab
+        // changes and can be re-expanded from the mini-bar regardless of
+        // which tab is currently selected.
+        .fullScreenCover(isPresented: $session.isExpanded) {
+            ActiveWorkoutView()
+                .environment(workoutSession)
+        }
+    }
+}
+
+/// Mini-bar shown above the tab bar when a workout is in progress and
+/// minimized. Glass capsule, workout name + elapsed time. Tap → expand
+/// back to the full ActiveWorkoutView.
+private struct WorkoutMiniBar: View {
+    @Bindable var session: WorkoutSession
+
+    var body: some View {
+        Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            session.expand()
+        } label: {
+            HStack(spacing: 12) {
+                // Tiny pulsing dot — "live" indicator
+                Circle()
+                    .fill(Color("marblePrimary"))
+                    .frame(width: 6, height: 6)
+
+                Text(session.name.isEmpty ? "Workout" : session.name)
+                    .font(.marbleBody(15))
+                    .foregroundStyle(Color("marblePrimary"))
+                    .lineLimit(1)
+
+                Spacer()
+
+                Text(session.formattedTime)
+                    .font(.marbleMono(13))
+                    .monospacedDigit()
+                    .foregroundStyle(Color("marbleSecondary"))
+
+                Image(systemName: "chevron.up")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(Color("marbleSecondary"))
+            }
+            .padding(.horizontal, 16)
+            .frame(height: 52)
+            .frame(maxWidth: .infinity)
+            .marbleGlassPill(horizontalPadding: 0, height: 52)
+        }
+        .buttonStyle(.plain)
     }
 }
 

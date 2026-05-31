@@ -3,14 +3,13 @@ import SwiftData
 
 struct TrainView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(WorkoutSession.self) private var workoutSession
     @Query private var templates: [WorkoutTemplate]
     @Query(sort: \Workout.date, order: .reverse) private var workouts: [Workout]
 
     @State private var showingTemplateEditor = false
-    @State private var showingEmptyWorkout = false
     @State private var selectedTemplate: WorkoutTemplate?
     @State private var editingTemplate: WorkoutTemplate?
-    @State private var workoutTemplate: WorkoutTemplate?
 
     // Daily quotes — terse, classical, on-thesis
     private let quotes: [String] = [
@@ -69,15 +68,9 @@ struct TrainView: View {
                 TemplateDetailSheet(template: template) {
                     selectedTemplate = nil
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        workoutTemplate = template
+                        workoutSession.start(template: template)
                     }
                 }
-            }
-            .fullScreenCover(isPresented: $showingEmptyWorkout) {
-                ActiveWorkoutView()
-            }
-            .fullScreenCover(item: $workoutTemplate) { template in
-                ActiveWorkoutView(template: template)
             }
         }
     }
@@ -112,7 +105,7 @@ struct TrainView: View {
             // every "go" moment in the app.
             Button {
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                showingEmptyWorkout = true
+                workoutSession.start()
             } label: {
                 Text("Start Workout")
                     .font(.marbleBody(16))
