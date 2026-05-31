@@ -42,10 +42,10 @@ struct ContentView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            // Custom tab bar — taller, glass refracts content scrolling
-            // beneath, extends through the bottom safe area. Matches the
-            // Quran-app reference: the bar reads as a glass surface
-            // floating over content, not a small chrome strip.
+            // Custom tab bar — glass refracts content scrolling beneath.
+            // Glass extends past screen edges so the bright vertical edge
+            // highlights end up off-screen rather than running down the
+            // sides of the bar.
             HStack(spacing: 0) {
                 ForEach(0..<tabs.count, id: \.self) { index in
                     Button {
@@ -64,23 +64,23 @@ struct ContentView: View {
                                 .frame(width: 4, height: 4)
                         }
                         .frame(maxWidth: .infinity)
-                        .padding(.top, 20)
-                        .padding(.bottom, 6)
+                        .padding(.top, 16)
+                        .padding(.bottom, 8)
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                 }
             }
-            .padding(.bottom, 32) // breathing room above home indicator
             .modifier(TabBarGlassModifier())
         }
         .ignoresSafeArea(.keyboard)
     }
 }
 
-/// Applies real Liquid Glass to the tab bar on iOS 26+ via .glassEffect
-/// directly on the bar (proper refraction, edge highlight). Extends through
-/// the bottom safe area so the glass continues into the home indicator zone.
+/// Applies real Liquid Glass to the tab bar on iOS 26+. The glass background
+/// is sized wider than the screen so the bright vertical edge highlights end
+/// up off-screen, leaving only the subtle top edge visible. Also extends
+/// through the bottom safe area to cover the home indicator zone.
 /// Falls back to .ultraThinMaterial on iOS 17-25.
 private struct TabBarGlassModifier: ViewModifier {
     func body(content: Content) -> some View {
@@ -90,6 +90,7 @@ private struct TabBarGlassModifier: ViewModifier {
                     Rectangle()
                         .fill(Color.clear)
                         .glassEffect(.regular, in: Rectangle())
+                        .padding(.horizontal, -40) // push vertical edges off-screen
                         .ignoresSafeArea(edges: .bottom)
                 }
         } else {
