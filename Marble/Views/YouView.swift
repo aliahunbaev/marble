@@ -220,12 +220,7 @@ struct WorkoutEntry: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Photo hero — fills card width, 4:5 portrait aspect
-            if let hero = photos.first {
-                photoHero(hero)
-            }
-
-            // Text composition
+            // Text composition above (per user pref)
             VStack(alignment: .leading, spacing: 14) {
                 Text(dateString)
                     .font(.marbleMono(11))
@@ -237,12 +232,14 @@ struct WorkoutEntry: View {
                     .foregroundStyle(Color("marblePrimary"))
                     .lineLimit(2)
 
-                // Always 3-column stats with placeholders for consistency
-                HStack(alignment: .top, spacing: 28) {
-                    statColumn(label: "SETS", value: setsValue)
-                    statColumn(label: "TIME", value: timeValue)
-                    statColumn(label: "VOLUME", value: volumeValue)
-                    Spacer(minLength: 0)
+                // Only show stats columns that have real values
+                if !visibleStats.isEmpty {
+                    HStack(alignment: .top, spacing: 28) {
+                        ForEach(visibleStats, id: \.label) { stat in
+                            statColumn(label: stat.label, value: stat.value)
+                        }
+                        Spacer(minLength: 0)
+                    }
                 }
 
                 if let note = workout.notes?.trimmingCharacters(in: .whitespaces),
@@ -255,6 +252,11 @@ struct WorkoutEntry: View {
                 }
             }
             .padding(20)
+
+            // Photo below (per user pref) — flush with card bottom
+            if let hero = photos.first {
+                photoHero(hero)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.ultraThinMaterial)
@@ -265,6 +267,21 @@ struct WorkoutEntry: View {
         )
         .shadow(color: .black.opacity(0.04), radius: 12, x: 0, y: 4)
         .contentShape(RoundedRectangle(cornerRadius: cardCornerRadius))
+    }
+
+    /// Only stat columns with actual values — no '—' placeholders.
+    private var visibleStats: [(label: String, value: String)] {
+        var items: [(label: String, value: String)] = []
+        if totalSets > 0 {
+            items.append(("SETS", "\(totalSets)"))
+        }
+        if Int(workout.duration) / 60 >= 1 {
+            items.append(("TIME", formattedDuration))
+        }
+        if totalVolume > 0 {
+            items.append(("VOLUME", formattedVolume))
+        }
+        return items
     }
 
     // MARK: - Photo Hero (edge-to-edge magazine spread)
