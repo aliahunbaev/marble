@@ -11,6 +11,7 @@ import SwiftData
 /// Modularity was rejected on purpose. This is curation, not configuration.
 struct TrackView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.colorScheme) private var colorSchemeForGradient
     @Query(sort: \Workout.date, order: .reverse) private var workouts: [Workout]
     @Query(sort: \TrackedLift.displayOrder) private var trackedLifts: [TrackedLift]
 
@@ -18,17 +19,41 @@ struct TrackView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 40) {
-                    TheMonthHero(workouts: workouts)
-                        .padding(.top, 16)
+            ZStack {
+                // Tonal-only vertical gradient — same treatment as YOU tab.
+                // Without color variation behind them, the glass lift cards
+                // have nothing to refract and read as flat outlines.
+                Color("marbleBackground")
+                    .ignoresSafeArea()
 
-                    myLiftsSection
-                        .padding(.horizontal, 20)
+                LinearGradient(
+                    colors: colorSchemeForGradient == .dark
+                        ? [
+                            Color(red: 0.13, green: 0.12, blue: 0.11),
+                            Color("marbleBackground"),
+                            Color(red: 0.10, green: 0.10, blue: 0.11)
+                          ]
+                        : [
+                            Color(red: 0.97, green: 0.95, blue: 0.92),
+                            Color("marbleBackground"),
+                            Color(red: 0.94, green: 0.94, blue: 0.95)
+                          ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .ignoresSafeArea()
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 40) {
+                        TheMonthHero(workouts: workouts)
+                            .padding(.top, 16)
+
+                        myLiftsSection
+                            .padding(.horizontal, 20)
+                    }
+                    .padding(.bottom, 140) // breathing room above the tab bar glass
                 }
-                .padding(.bottom, 140) // breathing room above the tab bar glass
             }
-            .background(Color("marbleBackground"))
             .navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $showingAddLift) {
                 AddTrackedLiftSheet(trackedLifts: trackedLifts)
@@ -151,7 +176,7 @@ private struct MonthDotPage: View {
     let workoutDays: Set<Date>
 
     private let columnsPerRow = 10
-    private let cellSize: CGFloat = 12
+    private let cellSpacing: CGFloat = 6
 
     private var calendar: Calendar {
         var cal = Calendar(identifier: .iso8601)
@@ -216,20 +241,19 @@ private struct MonthDotPage: View {
                 .foregroundStyle(Color("marbleSecondary"))
                 .padding(.horizontal, 24)
 
-            // Cell grid — fixed 10 columns, rows scale with month length.
-            // Tight spacing so cells read as one cohesive surface.
+            // Cell grid — flexible 10 columns that span the full available
+            // width. Each cell is square (aspectRatio 1:1) and sized
+            // automatically by the LazyVGrid layout.
             LazyVGrid(
-                columns: Array(repeating: GridItem(.fixed(cellSize), spacing: 6), count: columnsPerRow),
-                alignment: .leading,
-                spacing: 6
+                columns: Array(repeating: GridItem(.flexible(), spacing: cellSpacing), count: columnsPerRow),
+                spacing: cellSpacing
             ) {
                 ForEach(1...daysInMonth, id: \.self) { dayNumber in
                     let cellDate = calendar.date(byAdding: .day, value: dayNumber - 1, to: monthAnchor) ?? monthAnchor
                     DayCell(
                         didWorkout: workoutDays.contains(cellDate),
                         isToday: calendar.isDate(cellDate, inSameDayAs: today),
-                        isFuture: cellDate > today,
-                        cellSize: cellSize
+                        isFuture: cellDate > today
                     )
                 }
             }
@@ -255,24 +279,17 @@ private struct DayCell: View {
     let didWorkout: Bool
     let isToday: Bool
     let isFuture: Bool
-    let cellSize: CGFloat
 
     var body: some View {
-        let radius: CGFloat = 2
+        let radius: CGFloat = 3
 
         ZStack {
-            if didWorkout {
-                RoundedRectangle(cornerRadius: radius, style: .continuous)
-                    .fill(Color("marblePrimary"))
-                    .frame(width: cellSize, height: cellSize)
-            } else {
-                // Empty cell — same shape, very low opacity. Future days
-                // look identical to past rest days; the today ring is the
-                // only "you are here" affordance.
-                RoundedRectangle(cornerRadius: radius, style: .continuous)
-                    .fill(Color("marblePrimary").opacity(isFuture ? 0.06 : 0.10))
-                    .frame(width: cellSize, height: cellSize)
-            }
+            RoundedRectangle(cornerRadius: radius, style: .continuous)
+                .fill(
+                    didWorkout
+                        ? Color("marblePrimary")
+                        : Color("marblePrimary").opacity(isFuture ? 0.06 : 0.10)
+                )
 
             // Today: hairline ring on top — visible regardless of workout state.
             if isToday {
@@ -283,10 +300,10 @@ private struct DayCell: View {
                             : Color("marblePrimary").opacity(0.5),
                         lineWidth: 0.75
                     )
-                    .frame(width: cellSize - 2, height: cellSize - 2)
+                    .padding(1)
             }
         }
-        .frame(width: cellSize, height: cellSize)
+        .aspectRatio(1, contentMode: .fit)
     }
 }
 
@@ -318,10 +335,10 @@ private struct LiftCardView: View {
 
             // Metric value — the hero
             Text(metricValue(metrics))
-                .font(.marbleBody(28))
+                .font(.marbleBody(32))
                 .foregroundStyle(Color("marblePrimary"))
                 .lineLimit(1)
-                .minimumScaleFactor(0.6)
+                .minimumScaleFactor(0.55)
 
             // Metric label
             Text(metricLabel)
@@ -331,12 +348,11 @@ private struct LiftCardView: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .frame(height: 130)
-        .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(Color("marblePrimary").opacity(0.10), lineWidth: 0.5)
-        )
-        .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .frame(height: 140)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .marbleLiquidGlassCard(cornerRadius: 16)
+        .shadow(color: .black.opacity(0.04), radius: 12, x: 0, y: 4)
+        .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
     private var metricLabel: String {
