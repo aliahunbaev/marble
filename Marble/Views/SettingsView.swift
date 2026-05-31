@@ -231,15 +231,8 @@ struct SettingsView: View {
             Button {
                 showingClearConfirmation = true
             } label: {
-                Text("Clear All Data")
-                    .font(.marbleMono(13))
-                    .foregroundStyle(.red)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 4)
-                            .stroke(Color.red.opacity(0.3), lineWidth: 0.5)
-                    )
+                Text("CLEAR ALL DATA")
+                    .marbleDestructiveButton()
             }
             .buttonStyle(.plain)
         }
@@ -251,19 +244,12 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 12) {
             SectionHeader(title: "ACCOUNT")
 
-            // Sign Out
+            // Sign Out — secondary, reversible
             Button {
                 showingSignOutConfirmation = true
             } label: {
-                Text("Sign Out")
-                    .font(.marbleMono(13))
-                    .foregroundStyle(Color("marblePrimary"))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 4)
-                            .stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5)
-                    )
+                Text("SIGN OUT")
+                    .marbleSecondaryButton()
             }
             .buttonStyle(.plain)
             .confirmationDialog("Sign Out", isPresented: $showingSignOutConfirmation) {
@@ -274,19 +260,12 @@ struct SettingsView: View {
                 Button("Cancel", role: .cancel) { }
             }
 
-            // Delete Account
+            // Delete Account — destructive, irreversible
             Button {
                 showingDeleteConfirmation = true
             } label: {
-                Text("Delete Account")
-                    .font(.marbleMono(13))
-                    .foregroundStyle(.red.opacity(0.7))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 4)
-                            .stroke(Color.red.opacity(0.2), lineWidth: 0.5)
-                    )
+                Text("DELETE ACCOUNT")
+                    .marbleDestructiveButton()
             }
             .buttonStyle(.plain)
             .alert("Delete Account", isPresented: $showingDeleteConfirmation) {

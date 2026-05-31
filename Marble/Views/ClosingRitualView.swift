@@ -8,6 +8,7 @@ struct ClosingRitualView: View {
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
 
     @State private var noteText: String = ""
     @State private var capturedImage: UIImage?
@@ -21,6 +22,27 @@ struct ClosingRitualView: View {
     var body: some View {
         ZStack {
             Color("marbleBackground").ignoresSafeArea()
+
+            // Tonal gradient matches the rest of the content surfaces. The
+            // reverence of the "Recorded." moment comes from typography +
+            // spacing, not from a flat background — the subtle warm wash
+            // actually enhances the ceremonial quality.
+            LinearGradient(
+                colors: colorScheme == .dark
+                    ? [
+                        Color(red: 0.13, green: 0.12, blue: 0.11),
+                        Color("marbleBackground"),
+                        Color(red: 0.10, green: 0.10, blue: 0.11)
+                      ]
+                    : [
+                        Color(red: 0.97, green: 0.95, blue: 0.92),
+                        Color("marbleBackground"),
+                        Color(red: 0.94, green: 0.94, blue: 0.95)
+                      ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
 
             if isRecorded {
                 recordedView
@@ -58,7 +80,7 @@ struct ClosingRitualView: View {
             ScrollView {
                 VStack(spacing: 28) {
                     Text(formattedDuration)
-                        .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 12).weight(.light))
+                        .font(.marbleMono(12))
                         .tracking(2)
                         .foregroundStyle(Color("marbleSecondary"))
                         .padding(.top, 24)
@@ -79,13 +101,8 @@ struct ClosingRitualView: View {
                 save(skipping: false)
             } label: {
                 Text("SAVE")
-                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 12).weight(.medium))
-                    .tracking(2)
-                    .foregroundStyle(Color("marbleBackground"))
+                    .marbleGlassPrimaryCapsule(horizontalPadding: 24, height: 52)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(Color("marblePrimary"))
-                    .clipShape(Capsule())
             }
             .buttonStyle(.plain)
             .padding(.horizontal, 20)
@@ -103,7 +120,7 @@ struct ClosingRitualView: View {
 
             VStack(spacing: 24) {
                 Text("MARBLE")
-                    .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 16).weight(.light))
+                    .font(.marbleBody(16))
                     .tracking(6)
                     .foregroundStyle(Color("marblePrimary"))
 
@@ -112,11 +129,11 @@ struct ClosingRitualView: View {
                     .frame(width: 24, height: 0.5)
 
                 Text("Recorded.")
-                    .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 32).weight(.light))
+                    .font(.marbleBody(32))
                     .foregroundStyle(Color("marblePrimary"))
 
                 Text(formattedDate)
-                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 11).weight(.light))
+                    .font(.marbleMono(11))
                     .tracking(2)
                     .foregroundStyle(Color("marbleSecondary"))
             }
@@ -129,15 +146,7 @@ struct ClosingRitualView: View {
                 dismiss()
             } label: {
                 Text("DONE")
-                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 12).weight(.medium))
-                    .tracking(2)
-                    .foregroundStyle(Color("marblePrimary"))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .overlay(
-                        Capsule()
-                            .stroke(Color("marblePrimary").opacity(0.3), lineWidth: 0.5)
-                    )
+                    .marbleSecondaryButton()
             }
             .buttonStyle(.plain)
             .padding(.horizontal, 20)
@@ -209,7 +218,7 @@ struct ClosingRitualView: View {
                 Image(systemName: icon)
                     .font(.system(size: 18, weight: .ultraLight))
                 Text(label)
-                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 10).weight(.light))
+                    .font(.marbleMono(10))
                     .tracking(1.5)
             }
             .foregroundStyle(Color("marbleSecondary"))
@@ -228,20 +237,20 @@ struct ClosingRitualView: View {
     private var noteZone: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("NOTE")
-                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 10).weight(.light))
+                .font(.marbleMono(10))
                 .tracking(1.5)
                 .foregroundStyle(Color("marbleSecondary"))
 
             ZStack(alignment: .topLeading) {
                 if noteText.isEmpty {
                     Text("A line about today.")
-                        .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 16).weight(.light))
+                        .font(.marbleBody(16))
                         .foregroundStyle(Color("marbleSecondary").opacity(0.4))
                         .padding(.top, 8)
                         .padding(.leading, 4)
                 }
                 TextEditor(text: $noteText)
-                    .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 16).weight(.light))
+                    .font(.marbleBody(16))
                     .foregroundStyle(Color("marblePrimary"))
                     .focused($noteFocused)
                     .scrollContentBackground(.hidden)

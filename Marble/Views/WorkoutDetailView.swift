@@ -1,9 +1,14 @@
 import SwiftUI
 import SwiftData
 
+/// Detail view for a workout entry from the YOU feed. Same cohesion treatment
+/// as the other content detail surfaces (BodyweightDetailView,
+/// ExerciseLiftDetailView): tonal gradient background, marble typography
+/// helpers, marbleDestructiveButton for the delete action.
 struct WorkoutDetailView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
     let workout: Workout
 
     @Query(sort: \ProgressPhoto.date, order: .reverse) private var allPhotos: [ProgressPhoto]
@@ -15,78 +20,91 @@ struct WorkoutDetailView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                // Header
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(workout.name)
-                        .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 24).weight(.light))
-                        .foregroundStyle(Color("marblePrimary"))
+        ZStack {
+            Color("marbleBackground")
+                .ignoresSafeArea()
 
-                    HStack(spacing: 12) {
-                        Text(formattedDate)
-                            .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 12).weight(.light))
-                            .foregroundStyle(Color("marbleSecondary"))
+            LinearGradient(
+                colors: colorScheme == .dark
+                    ? [
+                        Color(red: 0.13, green: 0.12, blue: 0.11),
+                        Color("marbleBackground"),
+                        Color(red: 0.10, green: 0.10, blue: 0.11)
+                      ]
+                    : [
+                        Color(red: 0.97, green: 0.95, blue: 0.92),
+                        Color("marbleBackground"),
+                        Color(red: 0.94, green: 0.94, blue: 0.95)
+                      ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
 
-                        Text(formattedDuration)
-                            .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 12).weight(.light))
-                            .foregroundStyle(Color("marbleSecondary"))
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    // Header
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(workout.name)
+                            .font(.marbleBody(28))
+                            .foregroundStyle(Color("marblePrimary"))
+
+                        HStack(spacing: 12) {
+                            Text(formattedDate)
+                                .font(.marbleMono(12))
+                                .foregroundStyle(Color("marbleSecondary"))
+
+                            Text(formattedDuration)
+                                .font(.marbleMono(12))
+                                .foregroundStyle(Color("marbleSecondary"))
+                        }
                     }
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 20)
-                .padding(.bottom, 28)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 20)
+                    .padding(.bottom, 28)
 
-                // Linked photos
-                if !linkedPhotos.isEmpty {
-                    photosStrip
-                        .padding(.bottom, 24)
-                }
+                    // Linked photos
+                    if !linkedPhotos.isEmpty {
+                        photosStrip
+                            .padding(.bottom, 24)
+                    }
 
-                // Note (if exists)
-                if let note = workout.notes, !note.isEmpty {
-                    Text(note)
-                        .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 16).weight(.light))
-                        .foregroundStyle(Color("marblePrimary"))
-                        .lineSpacing(4)
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 28)
-                }
-
-                // Exercise logs
-                ForEach(Array(workout.exerciseLogs.enumerated()), id: \.element.id) { index, log in
-                    exerciseSection(log: log)
-
-                    if index < workout.exerciseLogs.count - 1 {
-                        Rectangle()
-                            .fill(Color("marblePrimary").opacity(0.06))
-                            .frame(height: 0.5)
+                    // Note (if exists)
+                    if let note = workout.notes, !note.isEmpty {
+                        Text(note)
+                            .font(.marbleBody(16))
+                            .foregroundStyle(Color("marblePrimary"))
+                            .lineSpacing(4)
                             .padding(.horizontal, 20)
-                            .padding(.vertical, 20)
+                            .padding(.bottom, 28)
                     }
-                }
 
-                // Delete button
-                Button(role: .destructive) {
-                    showingDeleteConfirmation = true
-                } label: {
-                    Text("Delete Workout")
-                        .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 13).weight(.light))
-                        .foregroundStyle(.red)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 4)
-                                .stroke(Color.red.opacity(0.3), lineWidth: 0.5)
-                        )
+                    // Exercise logs
+                    ForEach(Array(workout.exerciseLogs.enumerated()), id: \.element.id) { index, log in
+                        exerciseSection(log: log)
+
+                        if index < workout.exerciseLogs.count - 1 {
+                            Rectangle()
+                                .fill(Color("marblePrimary").opacity(0.06))
+                                .frame(height: 0.5)
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 20)
+                        }
+                    }
+
+                    Button {
+                        showingDeleteConfirmation = true
+                    } label: {
+                        Text("DELETE WORKOUT")
+                            .marbleDestructiveButton()
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 32)
                 }
-                .buttonStyle(.plain)
-                .padding(.horizontal, 20)
-                .padding(.top, 32)
+                .padding(.bottom, 140)
             }
-            .padding(.bottom, 40)
         }
-        .background(Color("marbleBackground"))
         .navigationBarTitleDisplayMode(.inline)
         .alert("Delete this workout? This cannot be undone.", isPresented: $showingDeleteConfirmation) {
             Button("Cancel", role: .cancel) { }
@@ -140,14 +158,14 @@ struct WorkoutDetailView: View {
                 }
             }
             .clipped()
-            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
     private func exerciseSection(log: ExerciseLog) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             // Exercise name
             Text(log.exercise?.name ?? "Unknown")
-                .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 18).weight(.light))
+                .font(.marbleBody(18))
                 .foregroundStyle(Color("marblePrimary"))
                 .padding(.horizontal, 20)
                 .padding(.bottom, 12)
@@ -161,8 +179,8 @@ struct WorkoutDetailView: View {
                 Text("REPS")
                     .frame(maxWidth: .infinity)
             }
-            .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 10).weight(.light))
-            .tracking(0.5)
+            .font(.marbleMono(10))
+            .tracking(1)
             .foregroundStyle(Color("marbleSecondary"))
             .padding(.horizontal, 20)
             .padding(.bottom, 8)
@@ -172,17 +190,17 @@ struct WorkoutDetailView: View {
             ForEach(Array(completedSets.enumerated()), id: \.offset) { index, set in
                 HStack(spacing: 12) {
                     Text("\(index + 1)")
-                        .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 13).weight(.light))
+                        .font(.marbleMono(13))
                         .foregroundStyle(Color("marbleSecondary"))
                         .frame(width: 36, alignment: .center)
 
                     Text(formattedWeight(set.weight))
-                        .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 13).weight(.light))
+                        .font(.marbleMono(13))
                         .foregroundStyle(Color("marblePrimary"))
                         .frame(maxWidth: .infinity)
 
                     Text("\(set.reps)")
-                        .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 13).weight(.light))
+                        .font(.marbleMono(13))
                         .foregroundStyle(Color("marblePrimary"))
                         .frame(maxWidth: .infinity)
                 }

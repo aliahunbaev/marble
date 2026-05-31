@@ -1,10 +1,20 @@
 import SwiftUI
 import SwiftData
 
+/// Detail view a tracked lift's card opens into. Mirrors the structure of
+/// BodyweightDetailView so all detail surfaces feel cohesive:
+///   - Tonal gradient background (matches Track/Train/You)
+///   - Header: exercise name in editorial body typography
+///   - Metric tiles: 3 small glass cards for choosing which metric headlines
+///     the lift card back on the Track tab
+///   - Manual entry: editorial form for overriding the auto-computed value
+///   - History: chronological list of workout performances, swipe-to-delete
+///   - Remove: marbleDestructiveButton at the bottom
 struct ExerciseLiftDetailView: View {
     @Bindable var trackedLift: TrackedLift
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
     @Query(sort: \Workout.date, order: .reverse) private var workouts: [Workout]
 
     @State private var showingManualEntry = false
@@ -26,50 +36,62 @@ struct ExerciseLiftDetailView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                // Exercise name
-                if let exercise {
-                    Text(exercise.name)
-                        .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 24).weight(.light))
-                        .foregroundStyle(Color("marblePrimary"))
+        ZStack {
+            Color("marbleBackground")
+                .ignoresSafeArea()
+
+            LinearGradient(
+                colors: colorScheme == .dark
+                    ? [
+                        Color(red: 0.13, green: 0.12, blue: 0.11),
+                        Color("marbleBackground"),
+                        Color(red: 0.10, green: 0.10, blue: 0.11)
+                      ]
+                    : [
+                        Color(red: 0.97, green: 0.95, blue: 0.92),
+                        Color("marbleBackground"),
+                        Color(red: 0.94, green: 0.94, blue: 0.95)
+                      ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 32) {
+                    // Header
+                    if let exercise {
+                        Text(exercise.name)
+                            .font(.marbleBody(28))
+                            .foregroundStyle(Color("marblePrimary"))
+                            .padding(.horizontal, 20)
+                            .padding(.top, 16)
+                    }
+
+                    metricTilesSection
                         .padding(.horizontal, 20)
-                        .padding(.top, 16)
+
+                    manualEntrySection
+                        .padding(.horizontal, 20)
+
+                    historySection
+
+                    Button {
+                        let cloudID = trackedLift.cloudID
+                        modelContext.delete(trackedLift)
+                        try? modelContext.save()
+                        CloudSyncService.shared.deleteTrackedLift(cloudID: cloudID)
+                        dismiss()
+                    } label: {
+                        Text("REMOVE FROM TRACKING")
+                            .marbleDestructiveButton()
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal, 20)
                 }
-
-                // Metric cards
-                metricCardsSection
-
-                // Manual entry section
-                manualEntrySection
-
-                // History
-                historySection
-
-                // Remove button
-                Button(role: .destructive) {
-                    let cloudID = trackedLift.cloudID
-                    modelContext.delete(trackedLift)
-                    try? modelContext.save()
-                    CloudSyncService.shared.deleteTrackedLift(cloudID: cloudID)
-                    dismiss()
-                } label: {
-                    Text("Remove from Tracking")
-                        .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 13).weight(.light))
-                        .foregroundStyle(.red)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 4)
-                                .stroke(Color.red.opacity(0.3), lineWidth: 0.5)
-                        )
-                }
-                .buttonStyle(.plain)
-                .padding(.horizontal, 20)
+                .padding(.bottom, 140)
             }
-            .padding(.bottom, 40)
         }
-        .background(Color("marbleBackground"))
         .navigationBarTitleDisplayMode(.inline)
         .alert(manualEntryTitle, isPresented: $showingManualEntry) {
             manualEntryAlertContent
@@ -77,17 +99,19 @@ struct ExerciseLiftDetailView: View {
             Text("Enter value manually")
         }
         .onDisappear {
-            // Push any mutations made on this screen
             CloudSyncService.shared.uploadTrackedLift(trackedLift)
         }
     }
 
-    // MARK: - Metric Cards
+    // MARK: - Metric Tiles
 
-    private var metricCardsSection: some View {
-        HStack(spacing: 8) {
-            MetricTile(
-                title: "Best Weight",
+    /// Three small selectable tiles. The selected one drives what shows on
+    /// the lift card back on the Track tab. Glass treatment matches the
+    /// rest of the app's chrome.
+    private var metricTilesSection: some View {
+        HStack(spacing: 10) {
+            metricTile(
+                title: "BEST WEIGHT",
                 value: metrics.bestWeightFormatted,
                 isSelected: trackedLift.metricType == "bestWeight",
                 isManual: metrics.isManualBestWeight
@@ -96,8 +120,8 @@ struct ExerciseLiftDetailView: View {
                 try? modelContext.save()
             }
 
-            MetricTile(
-                title: "Est. 1RM",
+            metricTile(
+                title: "EST. 1RM",
                 value: metrics.oneRepMaxFormatted,
                 isSelected: trackedLift.metricType == "oneRepMax",
                 isManual: metrics.isManualOneRepMax
@@ -106,8 +130,8 @@ struct ExerciseLiftDetailView: View {
                 try? modelContext.save()
             }
 
-            MetricTile(
-                title: "Max Volume",
+            metricTile(
+                title: "MAX VOLUME",
                 value: metrics.maxVolumeFormatted,
                 isSelected: trackedLift.metricType == "maxVolume",
                 isManual: metrics.isManualMaxVolume
@@ -116,66 +140,112 @@ struct ExerciseLiftDetailView: View {
                 try? modelContext.save()
             }
         }
-        .padding(.horizontal, 20)
     }
 
-    // MARK: - Manual Entry Section
+    private func metricTile(
+        title: String,
+        value: String,
+        isSelected: Bool,
+        isManual: Bool,
+        onTap: @escaping () -> Void
+    ) -> some View {
+        Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            onTap()
+        } label: {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(value)
+                    .font(.marbleBody(18))
+                    .foregroundStyle(Color("marblePrimary"))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.55)
+
+                Spacer(minLength: 4)
+
+                HStack(spacing: 4) {
+                    Text(title)
+                        .font(.marbleMono(9))
+                        .tracking(1)
+                        .foregroundStyle(Color("marbleSecondary"))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                    if isManual {
+                        Text("·")
+                            .font(.marbleMono(9))
+                            .foregroundStyle(Color("marbleTertiary"))
+                        Text("MANUAL")
+                            .font(.marbleMono(9))
+                            .tracking(1)
+                            .foregroundStyle(Color("marbleSecondary"))
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(12)
+            .frame(height: 88)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .marbleLiquidGlassCard(cornerRadius: 12)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(
+                        isSelected ? Color("marblePrimary").opacity(0.4) : Color.clear,
+                        lineWidth: 1
+                    )
+            )
+            .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Manual Entry
 
     private var manualEntrySection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 10) {
             SectionHeader(title: "RECORD MANUALLY")
-                .padding(.horizontal, 20)
 
             VStack(spacing: 0) {
-                // Current metric manual entry
                 manualEntryRow
 
-                // Show auto value for comparison if manual exists
                 if hasManualValueForCurrentMetric {
                     Rectangle()
                         .fill(Color("marblePrimary").opacity(0.06))
                         .frame(height: 0.5)
-                        .padding(.leading, 14)
 
                     HStack {
                         Text("From workouts")
-                            .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 11).weight(.light))
+                            .font(.marbleMono(11))
                             .foregroundStyle(Color("marbleSecondary"))
                         Spacer()
                         Text(autoValueForCurrentMetric)
-                            .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 13).weight(.light))
+                            .font(.marbleMono(13))
                             .foregroundStyle(Color("marbleSecondary"))
                     }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
                 }
             }
-            .overlay(
-                RoundedRectangle(cornerRadius: 4)
-                    .stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5)
-            )
-            .padding(.horizontal, 20)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .marbleLiquidGlassCard(cornerRadius: 12)
         }
     }
 
     private var manualEntryRow: some View {
         HStack {
             if hasManualValueForCurrentMetric {
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 6) {
-                        Text(manualValueForCurrentMetric)
-                            .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 14).weight(.light))
-                            .foregroundStyle(Color("marblePrimary"))
-                        Text("Manual")
-                            .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 9).weight(.light))
-                            .foregroundStyle(Color("marbleSecondary"))
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 2)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 4)
-                                    .stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5)
-                            )
-                    }
+                HStack(spacing: 8) {
+                    Text(manualValueForCurrentMetric)
+                        .font(.marbleBody(15))
+                        .foregroundStyle(Color("marblePrimary"))
+                    Text("MANUAL")
+                        .font(.marbleMono(9))
+                        .tracking(1)
+                        .foregroundStyle(Color("marbleSecondary"))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 3)
+                                .stroke(Color("marblePrimary").opacity(0.18), lineWidth: 0.5)
+                        )
                 }
 
                 Spacer()
@@ -184,13 +254,8 @@ struct ExerciseLiftDetailView: View {
                     clearManualValue()
                 } label: {
                     Image(systemName: "xmark")
-                        .font(.system(size: 11, weight: .light))
-                        .foregroundStyle(Color("marbleSecondary"))
-                        .frame(width: 28, height: 28)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 4)
-                                .stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5)
-                        )
+                        .font(.system(size: 11, weight: .regular))
+                        .marbleGlassCapsule(size: 30)
                 }
                 .buttonStyle(.plain)
             } else {
@@ -200,19 +265,20 @@ struct ExerciseLiftDetailView: View {
                 } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "plus")
-                            .font(.system(size: 12, weight: .light))
-                        Text("Record \(currentMetricName)")
-                            .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 13).weight(.light))
+                            .font(.system(size: 12, weight: .regular))
+                        Text("RECORD \(currentMetricName.uppercased())")
+                            .font(.marbleMono(11))
+                            .tracking(1)
                     }
                     .foregroundStyle(Color("marblePrimary"))
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
+                    .padding(.vertical, 4)
                 }
                 .buttonStyle(.plain)
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
     }
 
     // MARK: - Manual Entry Helpers
@@ -240,23 +306,23 @@ struct ExerciseLiftDetailView: View {
         case "bestWeight":
             if let w = trackedLift.manualBestWeight, let r = trackedLift.manualBestWeightReps {
                 let ws = w == floor(w) ? "\(Int(w))" : String(format: "%.1f", w)
-                return "\(ws) x \(r)"
+                return "\(ws) × \(r)"
             }
-            return "-"
+            return "—"
         case "oneRepMax":
             if let v = trackedLift.manualOneRepMax {
-                return "\(Int(v)) lbs"
+                return "\(Int(v)) lb"
             }
-            return "-"
+            return "—"
         case "maxVolume":
             if let v = trackedLift.manualMaxVolume {
                 let formatter = NumberFormatter()
                 formatter.numberStyle = .decimal
                 formatter.maximumFractionDigits = 0
-                return "\(formatter.string(from: NSNumber(value: v)) ?? "0") lbs"
+                return "\(formatter.string(from: NSNumber(value: v)) ?? "0") lb"
             }
-            return "-"
-        default: return "-"
+            return "—"
+        default: return "—"
         }
     }
 
@@ -265,7 +331,7 @@ struct ExerciseLiftDetailView: View {
         case "bestWeight": return metrics.autoBestWeightFormatted
         case "oneRepMax": return metrics.autoOneRepMaxFormatted
         case "maxVolume": return metrics.autoMaxVolumeFormatted
-        default: return "-"
+        default: return "—"
         }
     }
 
@@ -282,7 +348,7 @@ struct ExerciseLiftDetailView: View {
     @ViewBuilder
     private var manualEntryAlertContent: some View {
         if trackedLift.metricType == "bestWeight" {
-            TextField("Weight (lbs)", text: $manualWeightText)
+            TextField("Weight (lb)", text: $manualWeightText)
                 .keyboardType(.decimalPad)
             TextField("Reps", text: $manualRepsText)
                 .keyboardType(.numberPad)
@@ -295,7 +361,7 @@ struct ExerciseLiftDetailView: View {
             }
             Button("Cancel", role: .cancel) {}
         } else {
-            TextField("Value (lbs)", text: $manualValueText)
+            TextField("Value (lb)", text: $manualValueText)
                 .keyboardType(.decimalPad)
             Button("Save") {
                 if let v = Double(manualValueText) {
@@ -330,49 +396,45 @@ struct ExerciseLiftDetailView: View {
     // MARK: - History
 
     private var historySection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 0) {
             SectionHeader(title: "HISTORY")
                 .padding(.horizontal, 20)
+                .padding(.bottom, 8)
 
             let performances = computePerformances()
 
             if performances.isEmpty {
                 Text("No data yet")
-                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 13).weight(.light))
+                    .font(.marbleMono(13))
                     .foregroundStyle(Color("marbleSecondary"))
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 40)
+                    .padding(.vertical, 32)
             } else {
                 VStack(spacing: 0) {
                     ForEach(Array(performances.enumerated()), id: \.offset) { index, perf in
-                        HStack(alignment: .top) {
+                        HStack(alignment: .top, spacing: 16) {
                             Text(perf.dateString)
-                                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 12).weight(.light))
+                                .font(.marbleMono(13))
                                 .foregroundStyle(Color("marbleSecondary"))
-                                .frame(width: 56, alignment: .leading)
+                                .frame(width: 68, alignment: .leading)
 
                             Text(perf.setsDescription)
-                                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 12).weight(.light))
+                                .font(.marbleBody(15))
                                 .foregroundStyle(Color("marblePrimary"))
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .lineLimit(3)
                         }
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 10)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 14)
 
                         if index < performances.count - 1 {
                             Rectangle()
                                 .fill(Color("marblePrimary").opacity(0.06))
                                 .frame(height: 0.5)
-                                .padding(.leading, 14)
+                                .padding(.horizontal, 20)
                         }
                     }
                 }
-                .overlay(
-                    RoundedRectangle(cornerRadius: 4)
-                        .stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5)
-                )
-                .padding(.horizontal, 20)
             }
         }
     }
@@ -382,13 +444,18 @@ struct ExerciseLiftDetailView: View {
         let sets: [(weight: Double, reps: Int)]
 
         var dateString: String {
+            let calendar = Calendar.current
+            if calendar.isDateInToday(date) { return "TODAY" }
+            if calendar.isDateInYesterday(date) { return "YESTERDAY" }
+            let days = calendar.dateComponents([.day], from: date, to: Date()).day ?? 0
+            if days < 7 { return "\(days)D AGO" }
             let formatter = DateFormatter()
             formatter.dateFormat = "MMM d"
-            return formatter.string(from: date)
+            return formatter.string(from: date).uppercased()
         }
 
         var setsDescription: String {
-            // Group identical sets: "3x225x8, 2x225x6"
+            // Group identical sets: "3 × 225 × 8, 2 × 225 × 6"
             var grouped: [(count: Int, weight: Double, reps: Int)] = []
             for s in sets {
                 if let lastIdx = grouped.indices.last,
@@ -400,7 +467,7 @@ struct ExerciseLiftDetailView: View {
             }
             return grouped.map { g in
                 let w = g.weight == floor(g.weight) ? "\(Int(g.weight))" : String(format: "%.1f", g.weight)
-                return "\(g.count)x\(w)x\(g.reps)"
+                return "\(g.count) × \(w) × \(g.reps)"
             }.joined(separator: ", ")
         }
     }
@@ -420,47 +487,6 @@ struct ExerciseLiftDetailView: View {
         }
 
         return entries
-    }
-}
-
-// MARK: - Metric Tile
-
-private struct MetricTile: View {
-    let title: String
-    let value: String
-    let isSelected: Bool
-    let isManual: Bool
-    let onTap: () -> Void
-
-    var body: some View {
-        VStack(spacing: 4) {
-            Text(value)
-                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 14).weight(.light))
-                .foregroundStyle(Color("marblePrimary"))
-                .lineLimit(1)
-                .minimumScaleFactor(0.6)
-
-            Text(title)
-                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 9).weight(.light))
-                .foregroundStyle(Color("marbleSecondary"))
-                .lineLimit(1)
-
-            if isManual {
-                Text("Manual")
-                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 8).weight(.light))
-                    .foregroundStyle(Color("marbleAccent"))
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
-        .padding(.horizontal, 6)
-        .overlay(
-            RoundedRectangle(cornerRadius: 4)
-                .stroke(isSelected ? Color("marbleAccent") : Color("marblePrimary").opacity(0.12), lineWidth: 0.5)
-        )
-        .onTapGesture {
-            onTap()
-        }
     }
 }
 
