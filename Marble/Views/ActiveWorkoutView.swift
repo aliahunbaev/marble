@@ -96,7 +96,6 @@ struct ActiveWorkoutView: View {
         .sheet(isPresented: $showingLibrary, onDismiss: {
             replacingEntryID = nil
         }) {
-            let selectedExercises = session.entries.map(\.exercise)
             let replacingName: String? = {
                 guard let id = replacingEntryID,
                       let entry = session.entries.first(where: { $0.id == id })
@@ -104,9 +103,9 @@ struct ActiveWorkoutView: View {
                 return entry.exercise.name
             }()
             ExerciseLibraryView(
-                selectedExercises: selectedExercises,
-                onToggle: { exercise in
-                    if let replaceID = replacingEntryID {
+                onPick: { picked in
+                    if let replaceID = replacingEntryID, let exercise = picked.first {
+                        // Replace mode: swap in place, preserve sets.
                         if let idx = session.entries.firstIndex(where: { $0.id == replaceID }) {
                             let preservedSets = session.entries[idx].sets
                             session.entries[idx] = ExerciseEntry(
@@ -114,10 +113,15 @@ struct ActiveWorkoutView: View {
                                 sets: preservedSets
                             )
                         }
-                        replacingEntryID = nil
-                        showingLibrary = false
                     } else {
-                        toggleExercise(exercise)
+                        // Add mode: append all picked. Each appended
+                        // exercise gets the default 3 empty sets.
+                        for exercise in picked {
+                            let entry = ExerciseEntry(exercise: exercise, sets: [
+                                EditableSet(), EditableSet(), EditableSet()
+                            ])
+                            session.entries.append(entry)
+                        }
                     }
                 },
                 replacingExerciseName: replacingName
@@ -301,13 +305,15 @@ struct ActiveWorkoutView: View {
                 : Color.clear
         )
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            // Text-only label (no trash icon) on the system red background.
+            // Cleaner, more editorial than the default labeled-with-icon.
             Button(role: .destructive) {
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
                     entry.wrappedValue.sets.removeAll { $0.id == set.wrappedValue.id }
                 }
             } label: {
-                Label("Delete", systemImage: "trash")
+                Text("Delete")
             }
         }
     }
@@ -389,17 +395,6 @@ struct ActiveWorkoutView: View {
     }
 
     // MARK: - Actions
-
-    private func toggleExercise(_ exercise: Exercise) {
-        if let index = session.entries.firstIndex(where: { $0.exercise.id == exercise.id }) {
-            session.entries.remove(at: index)
-        } else {
-            let entry = ExerciseEntry(exercise: exercise, sets: [
-                EditableSet(), EditableSet(), EditableSet()
-            ])
-            session.entries.append(entry)
-        }
-    }
 
     private func finishWorkout() {
         UINotificationFeedbackGenerator().notificationOccurred(.success)

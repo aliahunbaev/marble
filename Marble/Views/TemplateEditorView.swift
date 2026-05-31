@@ -95,10 +95,18 @@ struct TemplateEditorView: View {
         .background(Color("marbleBackground"))
         .scrollDismissesKeyboard(.interactively)
         .sheet(isPresented: $showingLibrary) {
-            let selectedExercises = entries.map(\.exercise)
-            ExerciseLibraryView(selectedExercises: selectedExercises) { exercise in
-                toggleExercise(exercise)
-            }
+            ExerciseLibraryView(onPick: { picked in
+                // Add mode — append each picked exercise to the template
+                // with 3 default empty sets. Same as ActiveWorkoutView's
+                // add behavior, just into a template instead of a
+                // session.
+                for exercise in picked {
+                    let entry = ExerciseEntry(exercise: exercise, sets: [
+                        EditableSet(), EditableSet(), EditableSet()
+                    ])
+                    entries.append(entry)
+                }
+            })
         }
     }
 
@@ -210,17 +218,6 @@ struct TemplateEditorView: View {
                 entries.move(fromOffsets: IndexSet(integer: currentIndex), toOffset: currentIndex - 1)
             }
             lastSwapOffset = translation
-        }
-    }
-
-    private func toggleExercise(_ exercise: Exercise) {
-        if let index = entries.firstIndex(where: { $0.exercise.id == exercise.id }) {
-            entries.remove(at: index)
-        } else {
-            let entry = ExerciseEntry(exercise: exercise, sets: [
-                EditableSet(), EditableSet(), EditableSet()
-            ])
-            entries.append(entry)
         }
     }
 

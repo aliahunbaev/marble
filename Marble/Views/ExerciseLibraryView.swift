@@ -1,6 +1,17 @@
 import SwiftUI
 import SwiftData
 
+/// Library picker for adding (or replacing) exercises into a workout.
+///
+/// Two modes, distinguished by `replacingExerciseName`:
+///   - **Add mode** (default): multi-select. Tapping a row highlights it
+///     as part of this pick session. Tapping Add commits all highlighted
+///     exercises to the workout. The same exercise can be added repeatedly
+///     across separate pick sessions — the library shows no awareness of
+///     what's already in the workout.
+///   - **Replace mode**: single-select. Tapping a row commits immediately
+///     and dismisses. The nav title reads "Replace [exercise name]" for
+///     explicit context.
 struct ExerciseLibraryView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
@@ -10,15 +21,21 @@ struct ExerciseLibraryView: View {
     @State private var showingCreate = false
     @State private var newName = ""
     @State private var newMuscleGroup = ""
+    /// Local selection state for add mode — set of exercise IDs the
+    /// user has tapped in this pick session. Cleared on dismiss.
+    @State private var selectedIDs: Set<PersistentIdentifier> = []
 
-    let selectedExercises: [Exercise]
-    let onToggle: (Exercise) -> Void
-    /// When non-nil, the picker is in "replace" mode: title bar says
-    /// "Replace [name]", checkmarks are hidden (the existing tracked set
-    /// is irrelevant when you're swapping ONE exercise), and tapping
-    /// any row immediately commits and dismisses — no second tap on Done
-    /// or Add is required.
+    /// Commits the picked exercises back to the caller.
+    /// - In add mode, fires when the user taps Add with the current
+    ///   selection (may be 0..N exercises).
+    /// - In replace mode, fires with exactly one exercise the moment
+    ///   the user taps any row.
+    let onPick: ([Exercise]) -> Void
+
+    /// When non-nil, the picker is in replace mode (see type comment).
     var replacingExerciseName: String? = nil
+
+    private var isReplaceMode: Bool { replacingExerciseName != nil }
 
     private var filteredExercises: [Exercise] {
         if searchText.isEmpty { return allExercises }
@@ -68,18 +85,23 @@ struct ExerciseLibraryView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button { dismiss() } label: {
+                    Button {
+                        dismiss()
+                    } label: {
                         Image(systemName: "xmark")
                             .font(.system(size: 14, weight: .medium))
                             .foregroundStyle(Color("marblePrimary"))
                     }
                 }
-                // "Done" / "Add" only meaningful in toggle mode; replace
-                // mode commits on selection and dismisses immediately.
-                if replacingExerciseName == nil {
+                // Add button only appears in add mode. Replace mode
+                // commits immediately on row tap; no batch confirmation.
+                if !isReplaceMode {
                     ToolbarItem(placement: .confirmationAction) {
-                        Button("Done") { dismiss() }
-                            .font(.marbleMono(14))
+                        Button(addButtonLabel) {
+                            commitAddSelection()
+                        }
+                        .font(.marbleMono(14, weight: .medium))
+                        .disabled(selectedIDs.isEmpty)
                     }
                 }
                 ToolbarItem(placement: .primaryAction) {
@@ -101,6 +123,19 @@ struct ExerciseLibraryView: View {
                 }
             }
         }
+    }
+
+    /// "Exercises" / "Replace [name]" — context-aware title.
+    private var navTitle: String {
+        if let name = replacingExerciseName {
+            return "Replace \(name)"
+        }
+        return "Exercises"
+    }
+
+    /// "Add" / "Add 3" — show count when more than one is selected.
+    private var addButtonLabel: String {
+        selectedIDs.count > 1 ? "Add \(selectedIDs.count)" : "Add"
     }
 
     private func muscleGroupSection(_ group: String, exercises: [Exercise]) -> some View {
@@ -136,31 +171,22 @@ struct ExerciseLibraryView: View {
         }
     }
 
-    /// Title shown in the nav bar — context-aware. Replace mode tells
-    /// the user exactly which exercise they're swapping out.
-    private var navTitle: String {
-        if let name = replacingExerciseName {
-            return "Replace \(name)"
-        }
-        return "Exercises"
-    }
-
     private func exerciseRow(_ exercise: Exercise) -> some View {
-        // In toggle mode, show a checkmark on already-tracked exercises.
-        // In replace mode, checkmarks are irrelevant (we're swapping ONE
-        // exercise, not curating a set) — hide them entirely.
-        let isSelected = selectedExercises.contains(where: { $0.id == exercise.id })
-        let showCheckmark = isSelected && replacingExerciseName == nil
+        // Highlight only reflects the user's in-session selection (add
+        // mode), never what's already in the workout. The picker is
+        // intentionally unaware of workout state — you can add the same
+        // exercise multiple times across separate pick sessions.
+        let isPicked = selectedIDs.contains(exercise.persistentModelID)
         return Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            onToggle(exercise)
+            handleRowTap(exercise)
         } label: {
             HStack {
                 Text(exercise.name)
                     .font(.marbleBody(17))
                     .foregroundStyle(Color("marblePrimary"))
                 Spacer()
-                if showCheckmark {
+                if isPicked && !isReplaceMode {
                     Image(systemName: "checkmark")
                         .font(.system(size: 15, weight: .medium))
                         .foregroundStyle(Color("marblePrimary"))
@@ -168,9 +194,42 @@ struct ExerciseLibraryView: View {
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 18)
+            .background(
+                // Warm-bone wash when picked. Matches the completed-set
+                // tint vocabulary so "selected" reads consistently.
+                isPicked && !isReplaceMode
+                    ? Color("marblePrimary").opacity(0.06)
+                    : Color.clear
+            )
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+    }
+
+    /// Tap behavior depends on mode:
+    /// - Replace: commit immediately with this single exercise + dismiss.
+    /// - Add: toggle selection state.
+    private func handleRowTap(_ exercise: Exercise) {
+        if isReplaceMode {
+            onPick([exercise])
+            dismiss()
+        } else {
+            let id = exercise.persistentModelID
+            if selectedIDs.contains(id) {
+                selectedIDs.remove(id)
+            } else {
+                selectedIDs.insert(id)
+            }
+        }
+    }
+
+    /// Commit the in-session add selection — fires onPick with the
+    /// chosen exercises in stable order, then dismisses.
+    private func commitAddSelection() {
+        let picked = allExercises.filter { selectedIDs.contains($0.persistentModelID) }
+        guard !picked.isEmpty else { return }
+        onPick(picked)
+        dismiss()
     }
 
     private var emptyState: some View {
@@ -207,13 +266,21 @@ struct ExerciseLibraryView: View {
         let group = newMuscleGroup.trimmingCharacters(in: .whitespaces)
         let exercise = Exercise(name: trimmed, muscleGroup: group.isEmpty ? "General" : group)
         modelContext.insert(exercise)
-        onToggle(exercise)
+        // Newly-created exercises auto-select in add mode so the user
+        // doesn't have to find and tap them in the list afterward.
+        if !isReplaceMode {
+            selectedIDs.insert(exercise.persistentModelID)
+        } else {
+            // Replace mode: pick it immediately
+            onPick([exercise])
+            dismiss()
+        }
         newName = ""
         newMuscleGroup = ""
     }
 }
 
 #Preview {
-    ExerciseLibraryView(selectedExercises: []) { _ in }
+    ExerciseLibraryView(onPick: { _ in })
         .modelContainer(for: Exercise.self, inMemory: true)
 }
