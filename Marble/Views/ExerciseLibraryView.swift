@@ -127,29 +127,27 @@ struct ExerciseLibraryView: View {
     }
 
     private func exerciseRow(_ exercise: Exercise) -> some View {
+        // Drop the inline muscle group label — it's redundant because the
+        // section header already groups by muscle. The exercise name gets
+        // to breathe at a tactile size with more vertical room.
         let isSelected = selectedExercises.contains(where: { $0.id == exercise.id })
         return Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             onToggle(exercise)
         } label: {
             HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(exercise.name)
-                        .font(.marbleBody(14))
-                        .foregroundStyle(Color("marblePrimary"))
-                    Text(exercise.muscleGroup)
-                        .font(.marbleMono(11))
-                        .foregroundStyle(Color("marbleSecondary"))
-                }
+                Text(exercise.name)
+                    .font(.marbleBody(17))
+                    .foregroundStyle(Color("marblePrimary"))
                 Spacer()
                 if isSelected {
                     Image(systemName: "checkmark")
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.system(size: 15, weight: .medium))
                         .foregroundStyle(Color("marblePrimary"))
                 }
             }
             .padding(.horizontal, 20)
-            .padding(.vertical, 12)
+            .padding(.vertical, 18)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

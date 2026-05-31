@@ -71,6 +71,46 @@ struct MarbleGlassCapsule: ViewModifier {
     }
 }
 
+// MARK: - Untinted text glass pill
+
+/// A pill-shaped glass control for chrome actions where the label is text,
+/// not an icon — sibling to MarbleGlassCapsule (which is for icons in a
+/// fixed-size circle). Used for FINISH on the workout toolbar so it reads
+/// as equal-weight chrome alongside the rest timer's glass pill, instead
+/// of competing with the work via a tinted primary treatment.
+struct MarbleGlassPill: ViewModifier {
+    var horizontalPadding: CGFloat = 20
+    var height: CGFloat = 44
+
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content
+                .font(.marbleMono(13, weight: .regular))
+                .tracking(1)
+                .foregroundStyle(Color("marblePrimary"))
+                .padding(.horizontal, horizontalPadding)
+                .frame(height: height)
+                .glassEffect(.regular, in: Capsule())
+                .contentShape(Capsule())
+                .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
+        } else {
+            content
+                .font(.marbleMono(13, weight: .regular))
+                .tracking(1)
+                .foregroundStyle(Color("marblePrimary"))
+                .padding(.horizontal, horizontalPadding)
+                .frame(height: height)
+                .background(.ultraThinMaterial, in: Capsule())
+                .overlay(
+                    Capsule()
+                        .stroke(Color("marblePrimary").opacity(0.08), lineWidth: 0.5)
+                )
+                .contentShape(Capsule())
+                .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
+        }
+    }
+}
+
 // MARK: - Tinted primary capsule
 
 /// A pill-shaped glass control tinted with marbleInk — for primary commit
@@ -178,6 +218,14 @@ extension View {
     /// glass surface. Default size is 36pt.
     func marbleGlassCapsule(size: CGFloat = 36) -> some View {
         modifier(MarbleGlassCapsule(size: size))
+    }
+
+    /// Wraps text in an untinted glass pill — for chrome actions where
+    /// the label is text (FINISH, etc.). Equal-weight sibling to the
+    /// rest timer's glass pill. Use marbleGlassPrimaryCapsule when you
+    /// want the tinted "primary commit" treatment instead.
+    func marbleGlassPill(horizontalPadding: CGFloat = 20, height: CGFloat = 44) -> some View {
+        modifier(MarbleGlassPill(horizontalPadding: horizontalPadding, height: height))
     }
 
     /// Wraps text in a tinted glass capsule for primary commit actions

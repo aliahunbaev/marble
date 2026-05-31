@@ -20,6 +20,7 @@ struct ActiveWorkoutView: View {
     @State private var capturedPhoto: ProgressPhoto?
     @State private var draggingEntryID: UUID?
     @State private var lastSwapOffset: CGFloat = 0
+    @State private var showingEmptyFinishAlert = false
 
     private let sourceTemplate: WorkoutTemplate?
 
@@ -140,6 +141,16 @@ struct ActiveWorkoutView: View {
         } message: {
             Text("All progress will be lost.")
         }
+        .alert("No sets completed", isPresented: $showingEmptyFinishAlert) {
+            Button("Discard", role: .destructive) {
+                stopWorkoutTimer()
+                restTimer.stop()
+                dismiss()
+            }
+            Button("Keep going", role: .cancel) {}
+        } message: {
+            Text("There's nothing to save yet. Discard the workout, or keep going.")
+        }
     }
 
     // MARK: - Floating Toolbar (iOS-26 liquid glass)
@@ -153,15 +164,30 @@ struct ActiveWorkoutView: View {
             Spacer()
 
             Button {
-                finishWorkout()
+                attemptFinish()
             } label: {
                 Text("FINISH")
-                    .marbleGlassPrimaryCapsule()
+                    .marbleGlassPill()
             }
             .buttonStyle(.plain)
         }
         .padding(.horizontal, 16)
         .padding(.top, 8)
+    }
+
+    /// Gate FINISH on having at least one completed set. If the workout
+    /// has nothing in it, prompt to discard instead of silently saving an
+    /// empty record that would just get filtered out of the feed.
+    private func attemptFinish() {
+        let completedCount = entries.reduce(0) { acc, entry in
+            acc + entry.sets.filter(\.isCompleted).count
+        }
+        if completedCount == 0 {
+            UINotificationFeedbackGenerator().notificationOccurred(.warning)
+            showingEmptyFinishAlert = true
+        } else {
+            finishWorkout()
+        }
     }
 
     // MARK: - Shared Components

@@ -365,7 +365,7 @@ struct ExerciseSetTable: View {
                         onComplete: onSetCompleted
                     )
                     .padding(.horizontal, 20)
-                    .padding(.vertical, 6)
+                    .padding(.vertical, 8)
                     .background(
                         set.isCompleted && isWorkoutMode
                             ? Color("marbleCompletedRow")
@@ -397,9 +397,10 @@ struct ExerciseSetTable: View {
     }
 
     private var columnHeaders: some View {
-        HStack(spacing: 12) {
+        // Header widths track SetRowView field sizes (32/84/84/44).
+        HStack(spacing: 14) {
             Text("SET")
-                .frame(width: 28, alignment: .center)
+                .frame(width: 32, alignment: .center)
             if showPrevious {
                 Text("LAST")
                     .frame(maxWidth: .infinity)
@@ -407,23 +408,30 @@ struct ExerciseSetTable: View {
                 Spacer()
             }
             Text("LBS")
-                .frame(width: 72, alignment: .center)
+                .frame(width: 84, alignment: .center)
             Text("REPS")
-                .frame(width: 72, alignment: .center)
+                .frame(width: 84, alignment: .center)
             if isWorkoutMode {
                 Image(systemName: "checkmark")
                     .font(.system(size: 11, weight: .light))
-                    .frame(width: 36, alignment: .center)
+                    .frame(width: 44, alignment: .center)
             }
         }
-        .font(.marbleMono(13))
-        .tracking(1)
+        .font(.marbleMono(11))
+        .tracking(1.5)
         .foregroundStyle(Color("marbleSecondary"))
     }
 }
 
 // MARK: - Set Row
 
+/// One set row in an exercise table. Sculptural rather than spreadsheet —
+/// taller height, larger fields, sculpted glass-tinted depressions for
+/// inputs, sharper visual distinction between completed and incomplete
+/// states. Each row reads as an object instead of a cell.
+///
+/// Focus state: when a field is being edited, it gets a hairline ring
+/// affordance so you can see exactly where you are.
 struct SetRowView: View {
     let setNumber: Int
     @Binding var weight: String
@@ -436,54 +444,76 @@ struct SetRowView: View {
     @State private var checkScale: CGFloat = 1.0
     @State private var weightInvalid = false
     @State private var repsInvalid = false
+    @FocusState private var weightFocused: Bool
+    @FocusState private var repsFocused: Bool
+
+    private let fieldHeight: CGFloat = 48
+    private let fieldWidth: CGFloat = 84
+    private let checkSize: CGFloat = 44
 
     var body: some View {
-        HStack(spacing: 12) {
-            // Set number
+        HStack(spacing: 14) {
+            // Set number — larger, body type for tactile weight
             Text("\(setNumber)")
-                .font(.marbleMono(13))
-                .foregroundStyle(Color("marblePrimary").opacity(isCompleted ? 0.9 : 0.55))
-                .frame(width: 28, height: 36, alignment: .center)
+                .font(.marbleBody(20))
+                .foregroundStyle(Color("marblePrimary").opacity(isCompleted ? 0.95 : 0.5))
+                .frame(width: 32, height: fieldHeight, alignment: .center)
 
-            // Last (previous performance) — matches input typography
+            // Previous performance — same height as fields, dimmer when no data
             if showCheckmark || previousText != nil {
                 Text(previousText ?? "—")
-                    .font(.marbleMono(15))
+                    .font(.marbleMono(14))
                     .foregroundStyle(Color("marbleSecondary"))
-                    .frame(height: 36)
+                    .frame(height: fieldHeight)
                     .frame(maxWidth: .infinity)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
             } else {
                 Spacer()
             }
 
             // Weight
-            fieldView(text: $weight, keyboard: .decimalPad, invalid: weightInvalid)
+            fieldView(
+                text: $weight,
+                keyboard: .decimalPad,
+                invalid: weightInvalid,
+                focused: $weightFocused
+            )
 
             // Reps
-            fieldView(text: $reps, keyboard: .numberPad, invalid: repsInvalid)
+            fieldView(
+                text: $reps,
+                keyboard: .numberPad,
+                invalid: repsInvalid,
+                focused: $repsFocused
+            )
 
-            // Checkmark button — bleeds into row when completed, no harsh fill
+            // Checkmark — bigger tap target, sharper contrast between states
             if showCheckmark {
                 Button {
                     handleComplete()
                 } label: {
                     ZStack {
-                        RoundedRectangle(cornerRadius: 6)
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
                             .fill(isCompleted
                                 ? Color.clear
-                                : Color("marblePrimary").opacity(0.06))
+                                : Color("marblePrimary").opacity(0.08))
                         Image(systemName: "checkmark")
-                            .font(.system(size: 14, weight: .medium))
+                            .font(.system(size: 17, weight: .medium))
                             .foregroundStyle(isCompleted
                                 ? Color("marblePrimary")
-                                : Color("marblePrimary").opacity(0.22))
+                                : Color("marblePrimary").opacity(0.2))
                     }
-                    .frame(width: 36, height: 36)
+                    .frame(width: checkSize, height: checkSize)
                     .scaleEffect(checkScale)
                 }
                 .buttonStyle(.plain)
             }
         }
+        // Whole-row affordance: completed rows feel "settled" via reduced
+        // opacity on the set number; incomplete rows feel "in progress"
+        // via the field tints below. Together this signals state without
+        // needing a separate column or label.
     }
 
     private func handleComplete() {
@@ -514,7 +544,9 @@ struct SetRowView: View {
             return
         }
 
-        // Complete
+        // Complete — dismiss keyboard so the next set is reachable
+        weightFocused = false
+        repsFocused = false
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         withAnimation(.easeInOut(duration: 0.15)) {
             isCompleted = true
@@ -530,17 +562,36 @@ struct SetRowView: View {
         onComplete?()
     }
 
-    /// Field — tinted background, no stroke, consistent weight, no transition glitch.
-    private func fieldView(text: Binding<String>, keyboard: UIKeyboardType, invalid: Bool) -> some View {
+    /// Field — sculpted depression aesthetic. Larger numerals, more visible
+    /// tint when incomplete, clean text when complete, hairline focus ring
+    /// when the field is being edited.
+    private func fieldView(
+        text: Binding<String>,
+        keyboard: UIKeyboardType,
+        invalid: Bool,
+        focused: FocusState<Bool>.Binding
+    ) -> some View {
         TextField("", text: text)
-            .font(.marbleMono(15))
+            .font(.marbleMono(20))
             .foregroundStyle(Color("marblePrimary"))
             .multilineTextAlignment(.center)
             .keyboardType(keyboard)
-            .frame(width: 72, height: 36)
+            .focused(focused)
+            .frame(width: fieldWidth, height: fieldHeight)
             .background(
-                RoundedRectangle(cornerRadius: 6)
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
                     .fill(backgroundColor(invalid: invalid))
+            )
+            .overlay(
+                // Focus ring — visible only while editing this field
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(
+                        focused.wrappedValue
+                            ? Color("marblePrimary").opacity(0.4)
+                            : Color.clear,
+                        lineWidth: 1
+                    )
+                    .animation(.easeInOut(duration: 0.15), value: focused.wrappedValue)
             )
     }
 
@@ -549,9 +600,13 @@ struct SetRowView: View {
             return Color.red.opacity(0.18)
         }
         if isCompleted {
+            // Completed: clean, no fill. The row's overall completed tint
+            // (applied at the ExerciseSetTable level) carries the state.
             return .clear
         }
-        return Color("marblePrimary").opacity(0.06)
+        // Incomplete: stronger tint than before (0.06 → 0.10) so the
+        // depressions read clearly as places to type into.
+        return Color("marblePrimary").opacity(0.10)
     }
 }
 
