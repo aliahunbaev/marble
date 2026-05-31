@@ -300,17 +300,6 @@ struct ActiveWorkoutView: View {
         .listRowInsets(EdgeInsets())
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
-        // Long-press an exercise header → enter reorder mode. The sets
-        // collapse, native List drag handles appear via .editMode, and
-        // the user can immediately drag titles to reorder. Tap Done in
-        // the toolbar to exit.
-        .onLongPressGesture(minimumDuration: 0.45) {
-            guard !isReordering else { return }
-            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-            withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-                isReordering = true
-            }
-        }
     }
 
     /// + SET row at the end of each exercise's set list.
@@ -425,8 +414,18 @@ struct ActiveWorkoutView: View {
 
             Spacer()
 
-            // Workout-level menu — discard lives here.
+            // Workout-level menu — reorder + discard live here.
             Menu {
+                Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+                        isReordering = true
+                    }
+                } label: {
+                    Label("Reorder exercises", systemImage: "arrow.up.arrow.down")
+                }
+                .disabled(session.entries.count < 2)
+
                 Button(role: .destructive) {
                     showingDiscardAlert = true
                 } label: {
