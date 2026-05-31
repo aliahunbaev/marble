@@ -43,6 +43,13 @@ struct YouView: View {
                             emptyFeed
                         } else {
                             ForEach(Array(visibleWorkouts.enumerated()), id: \.element.id) { index, workout in
+                                if index > 0 {
+                                    Rectangle()
+                                        .fill(Color("marblePrimary").opacity(0.12))
+                                        .frame(height: 0.5)
+                                        .padding(.horizontal, 20)
+                                        .padding(.vertical, 28)
+                                }
                                 NavigationLink {
                                     WorkoutDetailView(workout: workout)
                                 } label: {
@@ -52,7 +59,6 @@ struct YouView: View {
                                     )
                                 }
                                 .buttonStyle(.plain)
-                                .padding(.top, index == 0 ? 0 : 36)
                             }
                         }
                     }
@@ -216,14 +222,6 @@ struct WorkoutEntry: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Small editorial mark — subtle differentiator from generic
-            // photo feeds. A short hairline at the start of each section.
-            Rectangle()
-                .fill(Color("marblePrimary").opacity(0.35))
-                .frame(width: 22, height: 0.5)
-                .padding(.horizontal, 20)
-                .padding(.bottom, 14)
-
             // Text composition ABOVE the visual (Strava-style)
             VStack(alignment: .leading, spacing: 14) {
                 Text(dateString)
