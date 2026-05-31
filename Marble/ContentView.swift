@@ -29,8 +29,9 @@ struct ContentView: View {
     }
 
     private var mainAppView: some View {
-        VStack(spacing: 0) {
-            // Content
+        ZStack(alignment: .bottom) {
+            // Content fills the full screen, including under the tab bar so
+            // the bar's glass has something to refract.
             Group {
                 switch selectedTab {
                 case 0: TrackView()
@@ -41,9 +42,10 @@ struct ContentView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            // Custom tab bar — real iOS 26 Liquid Glass that refracts
-            // content scrolling beneath. On iOS 17-25, falls back to
-            // .ultraThinMaterial which is the closest available equivalent.
+            // Custom tab bar — taller, glass refracts content scrolling
+            // beneath, extends through the bottom safe area. Matches the
+            // Quran-app reference: the bar reads as a glass surface
+            // floating over content, not a small chrome strip.
             HStack(spacing: 0) {
                 ForEach(0..<tabs.count, id: \.self) { index in
                     Button {
@@ -62,14 +64,14 @@ struct ContentView: View {
                                 .frame(width: 4, height: 4)
                         }
                         .frame(maxWidth: .infinity)
-                        .padding(.top, 14)
-                        .padding(.bottom, 8)
+                        .padding(.top, 20)
+                        .padding(.bottom, 6)
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                 }
             }
-            .padding(.bottom, 16)
+            .padding(.bottom, 32) // breathing room above home indicator
             .modifier(TabBarGlassModifier())
         }
         .ignoresSafeArea(.keyboard)
@@ -77,16 +79,22 @@ struct ContentView: View {
 }
 
 /// Applies real Liquid Glass to the tab bar on iOS 26+ via .glassEffect
-/// directly on the bar (proper refraction, edge highlight). Falls back to
-/// .ultraThinMaterial on iOS 17-25.
+/// directly on the bar (proper refraction, edge highlight). Extends through
+/// the bottom safe area so the glass continues into the home indicator zone.
+/// Falls back to .ultraThinMaterial on iOS 17-25.
 private struct TabBarGlassModifier: ViewModifier {
     func body(content: Content) -> some View {
         if #available(iOS 26.0, *) {
             content
-                .glassEffect(.regular, in: Rectangle())
+                .background {
+                    Rectangle()
+                        .fill(Color.clear)
+                        .glassEffect(.regular, in: Rectangle())
+                        .ignoresSafeArea(edges: .bottom)
+                }
         } else {
             content
-                .background(.ultraThinMaterial)
+                .background(.ultraThinMaterial.opacity(0.95))
         }
     }
 }

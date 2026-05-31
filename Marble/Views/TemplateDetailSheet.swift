@@ -17,23 +17,20 @@ struct TemplateDetailSheet: View {
                     .padding(.horizontal, 24)
                     .padding(.bottom, 20)
 
-                // Exercise list
+                // Exercise list — names only. Muscle group was redundant
+                // (the template name already says it); set count is flat
+                // (templates default to 3). Names breathe instead.
                 ScrollView {
                     VStack(spacing: 0) {
                         ForEach(Array(template.exercises.enumerated()), id: \.element.id) { index, exercise in
                             HStack {
                                 Text(exercise.name)
-                                    .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 14))
-                                    .fontWeight(.light)
+                                    .font(.marbleBody(15))
                                     .foregroundStyle(Color("marblePrimary"))
                                 Spacer()
-                                Text(exercise.muscleGroup)
-                                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 11))
-                                    .fontWeight(.light)
-                                    .foregroundStyle(Color("marbleSecondary"))
                             }
                             .padding(.horizontal, 24)
-                            .padding(.vertical, 14)
+                            .padding(.vertical, 16)
 
                             if index < template.exercises.count - 1 {
                                 Rectangle()
@@ -91,16 +88,24 @@ struct TemplateDetailSheet: View {
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.hidden)
         .presentationCornerRadius(28)
-        .presentationBackground {
-            if #available(iOS 26.0, *) {
-                // Real Liquid Glass background — refracts the content
-                // behind the sheet, picks up the bright edge highlights
-                // around the corner radius.
-                Color.clear
-                    .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
-            } else {
-                Color("marbleBackground")
-            }
+        // On iOS 26+, leaving the presentation background to the system
+        // gives us proper Liquid Glass automatically (the sheet itself
+        // becomes a Liquid Glass surface). On older iOS we explicitly use
+        // .ultraThinMaterial as the closest available equivalent.
+        .modifier(SheetGlassBackgroundModifier())
+    }
+}
+
+/// On iOS 17-25, applies .ultraThinMaterial as the sheet presentation
+/// background. On iOS 26+, intentionally does nothing — the system gives
+/// sheets Liquid Glass by default, and overriding it with a custom view
+/// for .presentationBackground prevents the proper glass treatment.
+private struct SheetGlassBackgroundModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content
+        } else {
+            content.presentationBackground(.ultraThinMaterial)
         }
     }
 }
