@@ -14,7 +14,6 @@ struct ExerciseLiftDetailView: View {
     @Bindable var trackedLift: TrackedLift
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.colorScheme) private var colorScheme
     @Query(sort: \Workout.date, order: .reverse) private var workouts: [Workout]
 
     @State private var showingManualEntry = false
@@ -36,62 +35,41 @@ struct ExerciseLiftDetailView: View {
     }
 
     var body: some View {
-        ZStack {
-            Color("marbleBackground")
-                .ignoresSafeArea()
-
-            LinearGradient(
-                colors: colorScheme == .dark
-                    ? [
-                        Color(red: 0.13, green: 0.12, blue: 0.11),
-                        Color("marbleBackground"),
-                        Color(red: 0.10, green: 0.10, blue: 0.11)
-                      ]
-                    : [
-                        Color(red: 0.97, green: 0.95, blue: 0.92),
-                        Color("marbleBackground"),
-                        Color(red: 0.94, green: 0.94, blue: 0.95)
-                      ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
-
-            ScrollView {
-                VStack(alignment: .leading, spacing: 32) {
-                    // Header
-                    if let exercise {
-                        Text(exercise.name)
-                            .font(.marbleBody(28))
-                            .foregroundStyle(Color("marblePrimary"))
-                            .padding(.horizontal, 20)
-                            .padding(.top, 16)
-                    }
-
-                    metricTilesSection
+        ScrollView {
+            VStack(alignment: .leading, spacing: 32) {
+                // Header
+                if let exercise {
+                    Text(exercise.name)
+                        .font(.marbleBody(28))
+                        .foregroundStyle(Color("marblePrimary"))
                         .padding(.horizontal, 20)
-
-                    manualEntrySection
-                        .padding(.horizontal, 20)
-
-                    historySection
-
-                    Button {
-                        let cloudID = trackedLift.cloudID
-                        modelContext.delete(trackedLift)
-                        try? modelContext.save()
-                        CloudSyncService.shared.deleteTrackedLift(cloudID: cloudID)
-                        dismiss()
-                    } label: {
-                        Text("REMOVE FROM TRACKING")
-                            .marbleDestructiveButton()
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.horizontal, 20)
+                        .padding(.top, 16)
                 }
-                .padding(.bottom, 140)
+
+                metricTilesSection
+                    .padding(.horizontal, 20)
+
+                manualEntrySection
+                    .padding(.horizontal, 20)
+
+                historySection
+
+                Button {
+                    let cloudID = trackedLift.cloudID
+                    modelContext.delete(trackedLift)
+                    try? modelContext.save()
+                    CloudSyncService.shared.deleteTrackedLift(cloudID: cloudID)
+                    dismiss()
+                } label: {
+                    Text("REMOVE FROM TRACKING")
+                        .marbleDestructiveButton()
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 20)
             }
+            .padding(.bottom, 140)
         }
+        .marbleAtmosphereBackground()
         .navigationBarTitleDisplayMode(.inline)
         .alert(manualEntryTitle, isPresented: $showingManualEntry) {
             manualEntryAlertContent

@@ -8,7 +8,6 @@ struct ClosingRitualView: View {
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.colorScheme) private var colorScheme
 
     @State private var noteText: String = ""
     @State private var capturedImage: UIImage?
@@ -20,36 +19,14 @@ struct ClosingRitualView: View {
     @FocusState private var noteFocused: Bool
 
     var body: some View {
-        ZStack {
-            Color("marbleBackground").ignoresSafeArea()
-
-            // Tonal gradient matches the rest of the content surfaces. The
-            // reverence of the "Recorded." moment comes from typography +
-            // spacing, not from a flat background — the subtle warm wash
-            // actually enhances the ceremonial quality.
-            LinearGradient(
-                colors: colorScheme == .dark
-                    ? [
-                        Color(red: 0.13, green: 0.12, blue: 0.11),
-                        Color("marbleBackground"),
-                        Color(red: 0.10, green: 0.10, blue: 0.11)
-                      ]
-                    : [
-                        Color(red: 0.97, green: 0.95, blue: 0.92),
-                        Color("marbleBackground"),
-                        Color(red: 0.94, green: 0.94, blue: 0.95)
-                      ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
-
+        Group {
             if isRecorded {
                 recordedView
             } else {
                 ritualView
             }
         }
+        .marbleAtmosphereBackground()
         .sheet(isPresented: $showingCamera) {
             CameraPicker { image in
                 if let image { handleImage(image) }

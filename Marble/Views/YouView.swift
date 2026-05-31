@@ -4,7 +4,6 @@ import SwiftData
 struct YouView: View {
     @EnvironmentObject private var auth: AuthenticationService
     @Environment(\.modelContext) private var modelContext
-    @Environment(\.colorScheme) private var colorSchemeForGradient
 
     @Query(sort: \Workout.date, order: .reverse) private var workouts: [Workout]
     @Query(sort: \ProgressPhoto.date, order: .reverse) private var allPhotos: [ProgressPhoto]
@@ -14,62 +13,35 @@ struct YouView: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                // Tonal-only vertical gradient — stays in the bone/warm-neutral
-                // family with no hue introduction. The glass cards pick up
-                // subtle warm→cool shift as you scroll, which preserves the
-                // "real glass" feel, but the variation is low-contrast enough
-                // that no part of it fogs content. No radial accents — those
-                // created focal hotspots that bled through cards as a color wash.
-                Color("marbleBackground")
-                    .ignoresSafeArea()
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    profileHeader
+                        .padding(.horizontal, 24)
+                        .padding(.top, 12)
+                        .padding(.bottom, 24)
 
-                LinearGradient(
-                    colors: colorSchemeForGradient == .dark
-                        ? [
-                            Color(red: 0.13, green: 0.12, blue: 0.11),
-                            Color("marbleBackground"),
-                            Color(red: 0.10, green: 0.10, blue: 0.11)
-                          ]
-                        : [
-                            Color(red: 0.97, green: 0.95, blue: 0.92),
-                            Color("marbleBackground"),
-                            Color(red: 0.94, green: 0.94, blue: 0.95)
-                          ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .ignoresSafeArea()
-
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 0) {
-                        profileHeader
-                            .padding(.horizontal, 24)
-                            .padding(.top, 12)
-                            .padding(.bottom, 24)
-
-                        if visibleWorkouts.isEmpty {
-                            emptyFeed
-                        } else {
-                            VStack(spacing: 16) {
-                                ForEach(visibleWorkouts) { workout in
-                                    NavigationLink {
-                                        WorkoutDetailView(workout: workout)
-                                    } label: {
-                                        WorkoutEntry(
-                                            workout: workout,
-                                            photos: photosFor(workout)
-                                        )
-                                    }
-                                    .buttonStyle(.plain)
+                    if visibleWorkouts.isEmpty {
+                        emptyFeed
+                    } else {
+                        VStack(spacing: 16) {
+                            ForEach(visibleWorkouts) { workout in
+                                NavigationLink {
+                                    WorkoutDetailView(workout: workout)
+                                } label: {
+                                    WorkoutEntry(
+                                        workout: workout,
+                                        photos: photosFor(workout)
+                                    )
                                 }
+                                .buttonStyle(.plain)
                             }
-                            .padding(.horizontal, 16)
                         }
+                        .padding(.horizontal, 16)
                     }
-                    .padding(.bottom, 40)
                 }
+                .padding(.bottom, 40)
             }
+            .marbleAtmosphereBackground()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {

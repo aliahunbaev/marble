@@ -115,9 +115,58 @@ struct MarbleGlassPrimaryCapsule: ViewModifier {
     }
 }
 
+// MARK: - Atmosphere background
+
+/// The single source of truth for Marble's "content atmosphere" — a subtle
+/// tonal vertical gradient (warm-cream top → bone middle → cool-bone bottom
+/// on light; warm-charcoal → bone → cool-charcoal on dark). Used on every
+/// content surface: the three primary tabs (Track/Train/You) and every
+/// detail view (Workout/Lift/Bodyweight/ClosingRitual). Utility surfaces
+/// (Settings) and work surfaces (ActiveWorkout, TemplateEditor) intentionally
+/// stay plain — gradient signals "content to look at," plain signals "work
+/// to do" or "configuration."
+private struct MarbleAtmosphereBackground: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+
+    func body(content: Content) -> some View {
+        ZStack {
+            Color("marbleBackground")
+                .ignoresSafeArea()
+
+            LinearGradient(
+                colors: colorScheme == .dark
+                    ? [
+                        Color(red: 0.13, green: 0.12, blue: 0.11),
+                        Color("marbleBackground"),
+                        Color(red: 0.10, green: 0.10, blue: 0.11)
+                      ]
+                    : [
+                        Color(red: 0.97, green: 0.95, blue: 0.92),
+                        Color("marbleBackground"),
+                        Color(red: 0.94, green: 0.94, blue: 0.95)
+                      ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+
+            content
+        }
+    }
+}
+
 // MARK: - View extensions
 
 extension View {
+    /// Wraps a content surface in Marble's standard atmosphere — the tonal
+    /// vertical gradient used on Track/Train/You and all content detail
+    /// views. Defined once, applied via this modifier everywhere, so tweaks
+    /// land in one place. Do NOT use on utility or work surfaces — those
+    /// should stay plain to signal their different role.
+    func marbleAtmosphereBackground() -> some View {
+        modifier(MarbleAtmosphereBackground())
+    }
+
     /// Wraps a card-shaped container in Liquid Glass (iOS 26) or its
     /// material fallback. Pair with .clipShape on the wrapped VStack if
     /// the content extends to the card edges.

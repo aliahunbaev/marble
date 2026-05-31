@@ -3,7 +3,6 @@ import SwiftData
 
 struct TrainView: View {
     @Environment(\.modelContext) private var modelContext
-    @Environment(\.colorScheme) private var colorScheme
     @Query private var templates: [WorkoutTemplate]
     @Query(sort: \Workout.date, order: .reverse) private var workouts: [Workout]
 
@@ -40,46 +39,28 @@ struct TrainView: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                // Background with subtle warm radial gradient
-                Color("marbleBackground")
-                    .ignoresSafeArea()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    // Hero zone — quote + start button
+                    heroSection
+                        .padding(.horizontal, 20)
+                        .padding(.top, 20)
+                        .padding(.bottom, 40)
 
-                RadialGradient(
-                    colors: [
-                        colorScheme == .dark
-                            ? Color("marbleTertiary").opacity(0.5)
-                            : Color.white.opacity(0.6),
-                        Color("marbleBackground").opacity(0)
-                    ],
-                    center: .top,
-                    startRadius: 0,
-                    endRadius: 600
-                )
-                .ignoresSafeArea()
+                    // Divider
+                    Rectangle()
+                        .fill(Color("marblePrimary").opacity(0.06))
+                        .frame(height: 0.5)
+                        .padding(.horizontal, 20)
 
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 0) {
-                        // Hero zone — quote + start button
-                        heroSection
-                            .padding(.horizontal, 20)
-                            .padding(.top, 20)
-                            .padding(.bottom, 40)
-
-                        // Divider
-                        Rectangle()
-                            .fill(Color("marblePrimary").opacity(0.06))
-                            .frame(height: 0.5)
-                            .padding(.horizontal, 20)
-
-                        // Programs list
-                        programsSection
-                            .padding(.horizontal, 20)
-                            .padding(.top, 24)
-                            .padding(.bottom, 40)
-                    }
+                    // Programs list
+                    programsSection
+                        .padding(.horizontal, 20)
+                        .padding(.top, 24)
+                        .padding(.bottom, 40)
                 }
             }
+            .marbleAtmosphereBackground()
             .navigationBarTitleDisplayMode(.inline)
             .fullScreenCover(isPresented: $showingTemplateEditor) {
                 TemplateEditorView(template: editingTemplate)

@@ -11,7 +11,6 @@ import SwiftData
 /// Modularity was rejected on purpose. This is curation, not configuration.
 struct TrackView: View {
     @Environment(\.modelContext) private var modelContext
-    @Environment(\.colorScheme) private var colorSchemeForGradient
     @Query(sort: \Workout.date, order: .reverse) private var workouts: [Workout]
     @Query(sort: \TrackedLift.displayOrder) private var trackedLifts: [TrackedLift]
     @Query(sort: \BodyweightEntry.date, order: .reverse) private var bodyweightEntries: [BodyweightEntry]
@@ -22,41 +21,17 @@ struct TrackView: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                // Tonal-only vertical gradient — same treatment as YOU tab.
-                // Without color variation behind them, the glass lift cards
-                // have nothing to refract and read as flat outlines.
-                Color("marbleBackground")
-                    .ignoresSafeArea()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 32) {
+                    TheMonthHero(workouts: workouts)
+                        .padding(.top, 16)
 
-                LinearGradient(
-                    colors: colorSchemeForGradient == .dark
-                        ? [
-                            Color(red: 0.13, green: 0.12, blue: 0.11),
-                            Color("marbleBackground"),
-                            Color(red: 0.10, green: 0.10, blue: 0.11)
-                          ]
-                        : [
-                            Color(red: 0.97, green: 0.95, blue: 0.92),
-                            Color("marbleBackground"),
-                            Color(red: 0.94, green: 0.94, blue: 0.95)
-                          ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .ignoresSafeArea()
-
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 32) {
-                        TheMonthHero(workouts: workouts)
-                            .padding(.top, 16)
-
-                        metricsSection
-                            .padding(.horizontal, 20)
-                    }
-                    .padding(.bottom, 140) // breathing room above the tab bar glass
+                    metricsSection
+                        .padding(.horizontal, 20)
                 }
+                .padding(.bottom, 140) // breathing room above the tab bar glass
             }
+            .marbleAtmosphereBackground()
             .navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $showingAddLift) {
                 AddTrackedLiftSheet(trackedLifts: trackedLifts)
@@ -968,37 +943,13 @@ struct LiftMetrics {
 /// to add a new entry. Swipe-to-delete on rows.
 struct BodyweightDetailView: View {
     @Environment(\.modelContext) private var modelContext
-    @Environment(\.colorScheme) private var colorScheme
     @Query(sort: \BodyweightEntry.date, order: .reverse) private var entries: [BodyweightEntry]
     @AppStorage("weightUnit") private var weightUnit: String = "lbs"
 
     @State private var showingLog = false
 
     var body: some View {
-        ZStack {
-            // Same gradient atmosphere as Track/Train/You so detail views
-            // feel like first-class content surfaces, not utility sheets.
-            Color("marbleBackground")
-                .ignoresSafeArea()
-
-            LinearGradient(
-                colors: colorScheme == .dark
-                    ? [
-                        Color(red: 0.13, green: 0.12, blue: 0.11),
-                        Color("marbleBackground"),
-                        Color(red: 0.10, green: 0.10, blue: 0.11)
-                      ]
-                    : [
-                        Color(red: 0.97, green: 0.95, blue: 0.92),
-                        Color("marbleBackground"),
-                        Color(red: 0.94, green: 0.94, blue: 0.95)
-                      ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
-
-            ScrollView {
+        ScrollView {
                 VStack(alignment: .leading, spacing: 32) {
                     // Hero: current weight + trend
                     VStack(alignment: .leading, spacing: 16) {
@@ -1068,9 +1019,9 @@ struct BodyweightDetailView: View {
                         }
                     }
                 }
-                .padding(.bottom, 140)
-            }
+            .padding(.bottom, 140)
         }
+        .marbleAtmosphereBackground()
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
