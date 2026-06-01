@@ -1,7 +1,7 @@
 import SwiftUI
 import SwiftData
 
-// MARK: - Editing State
+// MARK: - Editing State (shared with ActiveWorkoutView)
 
 struct EditableSet: Identifiable {
     let id = UUID()
@@ -17,6 +17,20 @@ struct ExerciseEntry: Identifiable {
 }
 
 // MARK: - Template Editor
+//
+// Mirrors ActiveWorkoutView's architecture so the two surfaces feel
+// like the same canvas. Same native List structure, same flat row
+// layout (no Sections — exercise headers scroll naturally), same
+// `.swipeActions` per-set delete, same menu-driven reorder pattern,
+// same floating glass toolbar.
+//
+// What's different from ActiveWorkoutView:
+//   - No timer / rest timer / mini-bar (templates aren't "live")
+//   - SAVE replaces FINISH (no completed-set gate)
+//   - Workout-level menu only has Reorder (no Discard — dismiss == undo)
+//
+// Template data model only persists `name + exercises`. The set rows
+// shown in the editor are demonstrational — values aren't saved.
 
 struct TemplateEditorView: View {
     @Environment(\.modelContext) private var modelContext
@@ -25,8 +39,11 @@ struct TemplateEditorView: View {
     @State private var name: String
     @State private var entries: [ExerciseEntry]
     @State private var showingLibrary = false
-    @State private var draggingEntryID: UUID?
-    @State private var lastSwapOffset: CGFloat = 0
+    @State private var isReordering: Bool = false
+    /// When set, the next exercise picked from the library replaces this
+    /// entry instead of being appended. Cleared after a successful
+    /// replace. Same pattern as ActiveWorkoutView.
+    @State private var replacingEntryID: UUID?
 
     private let existingTemplate: WorkoutTemplate?
 
@@ -42,79 +59,267 @@ struct TemplateEditorView: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    TextField("Template", text: $name)
-                        .font(.marbleBody(32))
-                        .foregroundStyle(Color("marblePrimary"))
-                        .padding(.horizontal, 20)
-                        .padding(.top, 64) // breathing room under floating buttons
-                        .padding(.bottom, 40)
+            List {
+                templateHeaderRow
 
-                    if draggingEntryID != nil {
-                        ForEach(entries) { entry in
-                            reorderRow(entry: entry)
-                        }
-                    } else {
-                        ForEach($entries) { $entry in
-                            ExerciseSetTable(
-                                entry: $entry,
-                                onRemove: {
-                                    withAnimation(.easeInOut(duration: 0.2)) {
-                                        entries.removeAll { $0.id == entry.id }
-                                    }
-                                },
-                                showPrevious: false,
-                                dragHandle: true,
-                                onDragChanged: { translation in
-                                    withAnimation(.easeInOut(duration: 0.2)) {
-                                        handleDrag(entryID: entry.id, translation: translation)
-                                    }
-                                },
-                                onDragEnded: {
-                                    withAnimation(.easeInOut(duration: 0.25)) {
-                                        draggingEntryID = nil
-                                    }
-                                    lastSwapOffset = 0
-                                }
-                            )
-                            exerciseDivider
-                        }
-                    }
-
-                    addExerciseButton
-                        .padding(.top, entries.isEmpty ? 0 : 4)
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 40)
+                if isReordering {
+                    reorderingHeadersForEach
+                } else {
+                    expandedExercisesContent
+                    addExerciseRow
                 }
             }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .scrollDismissesKeyboard(.interactively)
+            .environment(\.defaultMinListRowHeight, 0)
+            .environment(\.editMode, .constant(isReordering ? .active : .inactive))
 
-            // Floating glass toolbar (matches ActiveWorkoutView)
             floatingToolbar
         }
         .background(Color("marbleBackground"))
-        .scrollDismissesKeyboard(.interactively)
-        .sheet(isPresented: $showingLibrary) {
-            ExerciseLibraryView(onPick: { picked in
-                // Add mode — append each picked exercise to the template
-                // with 3 default empty sets. Same as ActiveWorkoutView's
-                // add behavior, just into a template instead of a
-                // session.
-                for exercise in picked {
-                    let entry = ExerciseEntry(exercise: exercise, sets: [
-                        EditableSet(), EditableSet(), EditableSet()
-                    ])
-                    entries.append(entry)
-                }
-            })
+        .sheet(isPresented: $showingLibrary, onDismiss: {
+            replacingEntryID = nil
+        }) {
+            let replacingName: String? = {
+                guard let id = replacingEntryID,
+                      let entry = entries.first(where: { $0.id == id })
+                else { return nil }
+                return entry.exercise.name
+            }()
+            ExerciseLibraryView(
+                onPick: { picked in
+                    if let replaceID = replacingEntryID, let exercise = picked.first {
+                        if let idx = entries.firstIndex(where: { $0.id == replaceID }) {
+                            let preservedSets = entries[idx].sets
+                            entries[idx] = ExerciseEntry(
+                                exercise: exercise,
+                                sets: preservedSets
+                            )
+                        }
+                    } else {
+                        for exercise in picked {
+                            let entry = ExerciseEntry(exercise: exercise, sets: [
+                                EditableSet(), EditableSet(), EditableSet()
+                            ])
+                            entries.append(entry)
+                        }
+                    }
+                },
+                replacingExerciseName: replacingName
+            )
         }
     }
 
-    // MARK: - Floating Toolbar (matches ActiveWorkoutView)
+    // MARK: - List Rows
 
+    /// Template name field as the first list row. Extra top padding
+    /// gives breathing room below the floating toolbar.
+    private var templateHeaderRow: some View {
+        TextField("Template", text: $name)
+            .font(.marbleBody(32))
+            .foregroundStyle(Color("marblePrimary"))
+            .padding(.horizontal, 20)
+            .padding(.top, 52)
+            .padding(.bottom, 32)
+            .listRowInsets(EdgeInsets())
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
+    }
+
+    private var exerciseDividerRow: some View {
+        Rectangle()
+            .fill(Color("marblePrimary").opacity(0.06))
+            .frame(height: 0.5)
+            .listRowInsets(EdgeInsets(top: 20, leading: 20, bottom: 20, trailing: 20))
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
+    }
+
+    @ViewBuilder
+    private var expandedExercisesContent: some View {
+        ForEach(Array($entries.enumerated()), id: \.element.id) { index, $entry in
+            if index > 0 {
+                exerciseDividerRow
+            }
+            exerciseHeaderRow(entry: $entry)
+            ForEach($entry.sets) { $set in
+                setRowItem(entry: $entry, set: $set)
+            }
+            addSetRow(entry: $entry)
+        }
+    }
+
+    @ViewBuilder
+    private var reorderingHeadersForEach: some View {
+        ForEach($entries) { $entry in
+            reorderingTitleRow(entry: $entry)
+        }
+        .onMove { from, to in
+            entries.move(fromOffsets: from, toOffset: to)
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        }
+    }
+
+    private func reorderingTitleRow(entry: Binding<ExerciseEntry>) -> some View {
+        Text(entry.wrappedValue.exercise.name)
+            .font(.marbleBody(22))
+            .foregroundStyle(Color("marblePrimary"))
+            .padding(.horizontal, 20)
+            .padding(.vertical, 18)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .listRowInsets(EdgeInsets())
+            .listRowSeparator(.visible, edges: .bottom)
+            .listRowSeparatorTint(Color("marblePrimary").opacity(0.08))
+            .listRowBackground(Color.clear)
+    }
+
+    /// Exercise header — name + ⋯ menu (Replace / Remove). Same ID-
+    /// capture pattern as ActiveWorkoutView to avoid the Binding-into-
+    /// closure footgun (binding becomes invalid the moment the entries
+    /// array mutates → crash).
+    @ViewBuilder
+    private func exerciseHeaderRow(entry: Binding<ExerciseEntry>) -> some View {
+        let entryID = entry.wrappedValue.id
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Text(entry.wrappedValue.exercise.name)
+                    .font(.marbleBody(22))
+                    .foregroundStyle(Color("marblePrimary"))
+
+                Spacer()
+
+                Menu {
+                    Button {
+                        DispatchQueue.main.async {
+                            replacingEntryID = entryID
+                            showingLibrary = true
+                        }
+                    } label: {
+                        Label("Replace exercise", systemImage: "arrow.triangle.2.circlepath")
+                    }
+                    Button(role: .destructive) {
+                        DispatchQueue.main.async {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                                entries.removeAll { $0.id == entryID }
+                            }
+                        }
+                    } label: {
+                        Label("Remove", systemImage: "trash")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 13, weight: .medium))
+                        .marbleGlassCapsule(size: 32)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 14)
+
+            // Column headers — widths track SetRowView field sizes. No
+            // checkmark column here since templates don't have a
+            // "completed" concept.
+            HStack(spacing: 14) {
+                Text("SET").frame(width: 32, alignment: .center)
+                Spacer()
+                Text("LBS").frame(width: 100, alignment: .center)
+                Text("REPS").frame(width: 100, alignment: .center)
+            }
+            .font(.marbleMono(11))
+            .tracking(1.5)
+            .foregroundStyle(Color("marbleSecondary"))
+            .padding(.horizontal, 20)
+            .padding(.bottom, 8)
+        }
+        .listRowInsets(EdgeInsets())
+        .listRowSeparator(.hidden)
+        .listRowBackground(Color.clear)
+    }
+
+    @ViewBuilder
+    private func setRowItem(
+        entry: Binding<ExerciseEntry>,
+        set: Binding<EditableSet>
+    ) -> some View {
+        let index = entry.wrappedValue.sets.firstIndex(where: { $0.id == set.wrappedValue.id }) ?? 0
+
+        SetRowView(
+            setNumber: index + 1,
+            weight: set.weight,
+            reps: set.reps,
+            isCompleted: set.isCompleted,
+            // No previous performance in template editor — these are
+            // demonstrational rows, not a live workout.
+            previousWeight: nil,
+            previousReps: nil,
+            showCheckmark: false,
+            onComplete: nil
+        )
+        .listRowInsets(EdgeInsets(top: 10, leading: 20, bottom: 10, trailing: 20))
+        .listRowSeparator(.hidden)
+        .listRowBackground(Color.clear)
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            Button(role: .destructive) {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                    entry.wrappedValue.sets.removeAll { $0.id == set.wrappedValue.id }
+                }
+            } label: {
+                Text("Delete")
+            }
+        }
+    }
+
+    /// + SET row at the end of each exercise's set list.
+    private func addSetRow(entry: Binding<ExerciseEntry>) -> some View {
+        Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.82)) {
+                entry.wrappedValue.sets.append(EditableSet())
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Text("+")
+                Text("SET").tracking(1)
+            }
+            .marbleSecondaryButton()
+        }
+        .buttonStyle(.plain)
+        .listRowInsets(EdgeInsets(top: 12, leading: 20, bottom: 8, trailing: 20))
+        .listRowSeparator(.hidden)
+        .listRowBackground(Color.clear)
+    }
+
+    private var addExerciseRow: some View {
+        Button {
+            showingLibrary = true
+        } label: {
+            HStack(spacing: 6) {
+                Text("+")
+                Text("EXERCISE").tracking(1)
+            }
+            .marbleSecondaryButton()
+        }
+        .buttonStyle(.plain)
+        .listRowInsets(EdgeInsets(top: 24, leading: 20, bottom: 120, trailing: 20))
+        .listRowSeparator(.hidden)
+        .listRowBackground(Color.clear)
+    }
+
+    // MARK: - Floating Toolbar
+
+    @ViewBuilder
     private var floatingToolbar: some View {
-        HStack {
-            // Close — glass circle, mirrors FloatingRestTimerButton idle state
+        if isReordering {
+            reorderingToolbar
+        } else {
+            normalToolbar
+        }
+    }
+
+    private var normalToolbar: some View {
+        HStack(spacing: 10) {
             Button {
                 dismiss()
             } label: {
@@ -126,100 +331,61 @@ struct TemplateEditorView: View {
 
             Spacer()
 
-            // SAVE — tinted glass capsule, mirrors the FINISH button
+            // Template-level menu — only Reorder for now (no Discard,
+            // since dismiss == undo for an unsaved template).
+            Menu {
+                Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+                        isReordering = true
+                    }
+                } label: {
+                    Label("Reorder exercises", systemImage: "arrow.up.arrow.down")
+                }
+                .disabled(entries.count < 2)
+            } label: {
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 15, weight: .medium))
+                    .marbleGlassCapsule(size: 44)
+            }
+            .buttonStyle(.plain)
+
+            // SAVE — glass pill, mirrors FINISH on ActiveWorkoutView so
+            // both commits look like the same gesture. Disabled when the
+            // template name is empty.
             Button {
                 save()
             } label: {
                 Text("SAVE")
-                    .marbleGlassPrimaryCapsule()
+                    .marbleGlassPill()
             }
             .buttonStyle(.plain)
             .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
-            .opacity(name.trimmingCharacters(in: .whitespaces).isEmpty ? 0.3 : 1)
+            .opacity(name.trimmingCharacters(in: .whitespaces).isEmpty ? 0.4 : 1)
         }
         .padding(.horizontal, 16)
         .padding(.top, 8)
     }
 
-    private var exerciseDivider: some View {
-        Rectangle()
-            .fill(Color("marblePrimary").opacity(0.06))
-            .frame(height: 0.5)
-            .padding(.horizontal, 20)
-            .padding(.vertical, 20)
-    }
-
-    private var addExerciseButton: some View {
-        Button {
-            showingLibrary = true
-        } label: {
-            HStack(spacing: 6) {
-                Text("+")
-                Text("EXERCISE").tracking(1)
-            }
-            .marbleSecondaryButton()
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func reorderRow(entry: ExerciseEntry) -> some View {
+    private var reorderingToolbar: some View {
         HStack {
-            Image(systemName: "line.3.horizontal")
-                .font(.system(size: 12, weight: .light))
-                .foregroundStyle(Color("marbleTertiary"))
-                .padding(.trailing, 6)
-
-            Text(entry.exercise.name)
-                .font(.marbleBody(16))
-                .foregroundStyle(Color("marblePrimary"))
-
             Spacer()
-
-            Text("\(entry.sets.count) sets")
-                .font(.marbleMono(11))
-                .foregroundStyle(Color("marbleSecondary"))
+            Button {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+                    isReordering = false
+                }
+            } label: {
+                Text("DONE")
+                    .marbleGlassPill()
+            }
+            .buttonStyle(.plain)
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 14)
-        .background(draggingEntryID == entry.id ? Color("marblePrimary").opacity(0.06) : Color.clear)
-        .gesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { value in
-                    handleDrag(entryID: entry.id, translation: value.translation.height)
-                }
-                .onEnded { _ in
-                    withAnimation(.easeInOut(duration: 0.25)) {
-                        draggingEntryID = nil
-                    }
-                    lastSwapOffset = 0
-                }
-        )
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
     }
 
-    private func handleDrag(entryID: UUID, translation: CGFloat) {
-        if draggingEntryID == nil {
-            draggingEntryID = entryID
-            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        }
-
-        guard let currentIndex = entries.firstIndex(where: { $0.id == entryID }) else { return }
-        let delta = translation - lastSwapOffset
-        let threshold: CGFloat = 50
-
-        if delta > threshold, currentIndex < entries.count - 1 {
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            withAnimation(.easeInOut(duration: 0.2)) {
-                entries.move(fromOffsets: IndexSet(integer: currentIndex), toOffset: currentIndex + 2)
-            }
-            lastSwapOffset = translation
-        } else if delta < -threshold, currentIndex > 0 {
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            withAnimation(.easeInOut(duration: 0.2)) {
-                entries.move(fromOffsets: IndexSet(integer: currentIndex), toOffset: currentIndex - 1)
-            }
-            lastSwapOffset = translation
-        }
-    }
+    // MARK: - Save
 
     private func save() {
         let trimmedName = name.trimmingCharacters(in: .whitespaces)
@@ -244,208 +410,16 @@ struct TemplateEditorView: View {
     }
 }
 
-// MARK: - Exercise Set Table (Reusable)
-
-// MARK: - Reorder Gesture (invisible long-press + drag)
-
-/// Attaches a long-press-then-drag reorder gesture to a view, but only when
-/// `enabled` is true. Lets the template editor support reorder without a
-/// visible drag handle icon — the user just presses-and-holds the exercise
-/// name area, then drags.
-struct ReorderGestureModifier: ViewModifier {
-    let enabled: Bool
-    let onChanged: ((CGFloat) -> Void)?
-    let onEnded: (() -> Void)?
-
-    func body(content: Content) -> some View {
-        if enabled {
-            content
-                .contentShape(Rectangle())
-                .gesture(
-                    LongPressGesture(minimumDuration: 0.3)
-                        .sequenced(before: DragGesture(minimumDistance: 0))
-                        .onChanged { value in
-                            if case .second(true, let drag?) = value {
-                                onChanged?(drag.translation.height)
-                            }
-                        }
-                        .onEnded { _ in
-                            onEnded?()
-                        }
-                )
-        } else {
-            content
-        }
-    }
-}
-
-struct ExerciseSetTable: View {
-    @Environment(\.modelContext) private var modelContext
-    @Binding var entry: ExerciseEntry
-    var onRemove: (() -> Void)? = nil
-    var showPrevious: Bool = true
-    var isWorkoutMode: Bool = false
-    var onSetCompleted: (() -> Void)? = nil
-    var onStartRestTimer: (() -> Void)? = nil
-    var onReplaceExercise: (() -> Void)? = nil
-    var dragHandle: Bool = false
-    var onDragChanged: ((CGFloat) -> Void)? = nil
-    var onDragEnded: (() -> Void)? = nil
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Exercise name header — name is plain text (no tap target).
-            // Long-press on the name triggers reorder. A separate ⋯ button
-            // on the right exposes Replace / Remove. Reintroduced after
-            // the tap-name-opens-menu pattern fought the long-press
-            // reorder gesture on the same element.
-            HStack {
-                Text(entry.exercise.name)
-                    .font(.marbleBody(22))
-                    .foregroundStyle(Color("marblePrimary"))
-
-                Spacer()
-
-                if onRemove != nil {
-                    Menu {
-                        if isWorkoutMode {
-                            Button {
-                                onReplaceExercise?()
-                            } label: {
-                                Label("Replace exercise", systemImage: "arrow.triangle.2.circlepath")
-                            }
-                        }
-                        Button(role: .destructive) {
-                            onRemove?()
-                        } label: {
-                            Label("Remove", systemImage: "trash")
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis")
-                            .font(.system(size: 13, weight: .medium))
-                            .marbleGlassCapsule(size: 32)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, 20)
-            .padding(.bottom, 14)
-            // Long-press the exercise name area to enter reorder mode,
-            // then drag to move. The name has no tap action, so no
-            // gesture conflict — long-press is unambiguous here.
-            .modifier(ReorderGestureModifier(
-                enabled: dragHandle,
-                onChanged: onDragChanged,
-                onEnded: onDragEnded
-            ))
-
-            // Column headers
-            columnHeaders
-                .padding(.horizontal, 20)
-                .padding(.bottom, 8)
-
-            // Set rows — append/remove animates with spring + opacity for
-            // a smoother feel than the default snap-in/snap-out.
-            ForEach($entry.sets) { $set in
-                let index = entry.sets.firstIndex(where: { $0.id == set.id }) ?? 0
-                let prev: (weight: String?, reps: String?) = showPrevious
-                    ? PreviousPerformance.previousComponents(
-                        for: entry.exercise,
-                        setIndex: index,
-                        context: modelContext
-                    )
-                    : (nil, nil)
-                SwipeToDeleteRow {
-                    SetRowView(
-                        setNumber: index + 1,
-                        weight: $set.weight,
-                        reps: $set.reps,
-                        isCompleted: $set.isCompleted,
-                        previousWeight: prev.weight,
-                        previousReps: prev.reps,
-                        showCheckmark: isWorkoutMode,
-                        onComplete: onSetCompleted
-                    )
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 10)
-                    .background(
-                        // Subtle warm wash on completed rows — reads as
-                        // "settled / polished marble" instead of "selected
-                        // spreadsheet row." Bone-warm, not green. Only
-                        // applies in workout mode; template editor mode
-                        // doesn't have a "completed" concept.
-                        set.isCompleted && isWorkoutMode
-                            ? Color("marblePrimary").opacity(0.04)
-                            : Color.clear
-                    )
-                } onDelete: {
-                    // The SwipeToDeleteRow already handled the collapse
-                    // animation + haptic; we just commit the data mutation.
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                        entry.sets.removeAll { $0.id == set.id }
-                    }
-                }
-                // Opacity-only transition so new rows fade in at their
-                // final position; the layout below shifts smoothly via
-                // implicit animation rather than the new row sliding
-                // down from above (which caused visible overlap).
-                .transition(.opacity)
-            }
-
-            // + SET button — append wrapped in spring so the new row
-            // materializes with a soft fade + slide-in instead of a snap.
-            Button {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                withAnimation(.spring(response: 0.4, dampingFraction: 0.82)) {
-                    entry.sets.append(EditableSet())
-                }
-            } label: {
-                HStack(spacing: 6) {
-                    Text("+")
-                    Text("SET").tracking(1)
-                }
-                .marbleSecondaryButton()
-            }
-            .buttonStyle(.plain)
-            .padding(.horizontal, 20)
-            .padding(.top, 8)
-        }
-    }
-
-    private var columnHeaders: some View {
-        // LAST column dropped — previous values live as ghost-text inside
-        // the LBS and REPS fields. Header widths track SetRowView field
-        // sizes (32 set num / flexible spacer / 100 / 100 / 44 check).
-        HStack(spacing: 14) {
-            Text("SET")
-                .frame(width: 32, alignment: .center)
-            Spacer()
-            Text("LBS")
-                .frame(width: 100, alignment: .center)
-            Text("REPS")
-                .frame(width: 100, alignment: .center)
-            if isWorkoutMode {
-                Image(systemName: "checkmark")
-                    .font(.system(size: 11, weight: .light))
-                    .frame(width: 44, alignment: .center)
-            }
-        }
-        .font(.marbleMono(11))
-        .tracking(1.5)
-        .foregroundStyle(Color("marbleSecondary"))
-    }
-}
-
-// MARK: - Set Row
+// MARK: - Set Row (shared between TemplateEditorView and ActiveWorkoutView)
 
 /// One set row in an exercise table. Sculptural rather than spreadsheet —
 /// taller height, larger fields, sculpted depressions for inputs, sharper
 /// visual distinction between completed and incomplete states. Each row
 /// reads as an object instead of a cell.
 ///
-/// LAST column eliminated: previous workout's value now lives as ghost-
-/// text placeholder inside each input. Tap checkmark with empty fields
-/// to auto-accept the suggested values, or type to override.
+/// LAST column eliminated: previous workout's value lives as ghost-text
+/// placeholder inside each input. Tap checkmark with empty fields to
+/// auto-accept the suggested values, or type to override.
 ///
 /// Focus state: when a field is being edited, it gets a hairline ring
 /// affordance so you can see exactly where you are.
@@ -454,12 +428,7 @@ struct SetRowView: View {
     @Binding var weight: String
     @Binding var reps: String
     @Binding var isCompleted: Bool
-    /// Previous workout's weight for this set index, as a string. Shown
-    /// as ghost placeholder in the LBS field when the user hasn't typed
-    /// anything yet. Auto-fills on checkmark if the field is empty.
     var previousWeight: String? = nil
-    /// Previous workout's reps for this set index, as a string. Same
-    /// ghost-placeholder + auto-fill behavior as previousWeight.
     var previousReps: String? = nil
     var showCheckmark: Bool = false
     var onComplete: (() -> Void)? = nil
@@ -467,7 +436,6 @@ struct SetRowView: View {
     @State private var checkScale: CGFloat = 1.0
     @State private var weightInvalid = false
     @State private var repsInvalid = false
-    /// Brief scale flash on completion — felt micro-settle.
     @State private var completionFlash: Bool = false
     @FocusState private var weightFocused: Bool
     @FocusState private var repsFocused: Bool
@@ -478,7 +446,6 @@ struct SetRowView: View {
 
     var body: some View {
         HStack(spacing: 14) {
-            // Set number — larger, body type for tactile weight
             Text("\(setNumber)")
                 .font(.marbleBody(20))
                 .foregroundStyle(Color("marblePrimary").opacity(isCompleted ? 0.95 : 0.5))
@@ -486,7 +453,6 @@ struct SetRowView: View {
 
             Spacer()
 
-            // Weight — previous value lives inside as ghost placeholder
             fieldView(
                 text: $weight,
                 placeholder: previousWeight,
@@ -495,7 +461,6 @@ struct SetRowView: View {
                 focused: $weightFocused
             )
 
-            // Reps — same ghost-placeholder treatment
             fieldView(
                 text: $reps,
                 placeholder: previousReps,
@@ -504,7 +469,6 @@ struct SetRowView: View {
                 focused: $repsFocused
             )
 
-            // Checkmark — bigger tap target, sharper contrast between states
             if showCheckmark {
                 Button {
                     handleComplete()
@@ -531,7 +495,6 @@ struct SetRowView: View {
 
     private func handleComplete() {
         if isCompleted {
-            // Toggle off — always allowed
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             withAnimation(.easeInOut(duration: 0.15)) {
                 isCompleted = false
@@ -539,9 +502,6 @@ struct SetRowView: View {
             return
         }
 
-        // Auto-fill from ghost placeholders before validating. If the user
-        // tapped checkmark with empty fields but there's a previous value
-        // suggested in the placeholder, accept it as the value.
         let weightTrimmed = weight.trimmingCharacters(in: .whitespaces)
         let repsTrimmed = reps.trimmingCharacters(in: .whitespaces)
         if weightTrimmed.isEmpty, let suggested = previousWeight {
@@ -551,7 +511,6 @@ struct SetRowView: View {
             reps = suggested
         }
 
-        // Re-validate after auto-fill
         let weightEmpty = weight.trimmingCharacters(in: .whitespaces).isEmpty
         let repsEmpty = reps.trimmingCharacters(in: .whitespaces).isEmpty
         if weightEmpty || repsEmpty {
@@ -569,7 +528,6 @@ struct SetRowView: View {
             return
         }
 
-        // Complete — dismiss keyboard so the next set is reachable
         weightFocused = false
         repsFocused = false
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
@@ -579,7 +537,6 @@ struct SetRowView: View {
         withAnimation(.spring(response: 0.2, dampingFraction: 0.5)) {
             checkScale = 1.2
         }
-        // Brief row "settle" flash — momentary scale up that springs back.
         withAnimation(.spring(response: 0.25, dampingFraction: 0.55)) {
             completionFlash = true
         }
@@ -592,10 +549,6 @@ struct SetRowView: View {
         onComplete?()
     }
 
-    /// Field — sculpted depression aesthetic. Inner shadow at the top edge
-    /// suggests the field is carved into the row (Noguchi, not floating
-    /// rectangles). Ghost-text placeholder shows the previous workout's
-    /// value when the field is empty. Hairline focus ring when editing.
     private func fieldView(
         text: Binding<String>,
         placeholder: String?,
@@ -617,10 +570,6 @@ struct SetRowView: View {
                 ZStack {
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
                         .fill(backgroundColor(invalid: invalid))
-                    // Inner shadow at the top edge — Noguchi-style depth.
-                    // The depression reads as carved-into rather than
-                    // filled-on-top. Only shown for incomplete (active)
-                    // fields; completed fields are clean.
                     if !isCompleted {
                         RoundedRectangle(cornerRadius: 10, style: .continuous)
                             .stroke(
@@ -642,7 +591,6 @@ struct SetRowView: View {
                 }
             )
             .overlay(
-                // Focus ring — visible only while editing this field
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
                     .stroke(
                         focused.wrappedValue
@@ -659,151 +607,11 @@ struct SetRowView: View {
             return Color.red.opacity(0.18)
         }
         if isCompleted {
-            // Completed: clean, no fill. The row's overall completed tint
-            // (applied at the ExerciseSetTable level) carries the state.
             return .clear
         }
-        // Incomplete: visible depression tint.
         return Color("marblePrimary").opacity(0.10)
     }
 }
-
-// MARK: - Swipe to Delete
-
-/// Swipe a row left to reveal a delete affordance. Two interactions:
-///   - Partial swipe past `deleteThreshold` → row settles at threshold,
-///     revealing the Delete label. Tap the label OR tap anywhere on the
-///     row to dismiss.
-///   - Full swipe past `fullSwipeThreshold` → row commits to delete
-///     immediately (collapses + fades) without needing the second tap.
-///
-/// Spring physics throughout instead of easeOut so the row's release
-/// feels like material, not a mechanical cursor.
-/// Swipe left to reveal a DELETE affordance, or swipe further to commit
-/// the delete in one motion. Key behaviors:
-///   - Drag tracking is baseline-aware: if the row is already partially
-///     revealed (isSwiped), additional drag adds onto the threshold, not
-///     onto 0. Prevents the "snaps back to small offset" bug.
-///   - simultaneousGesture instead of .gesture so the drag wins over the
-///     TextField focus handler that lives inside the row content. Lets
-///     you swipe to delete even when starting the swipe over a field.
-///   - Full opacity on the delete background once visible. No proportional
-///     fade — the affordance is either there or not.
-///   - Spring snap on release.
-struct SwipeToDeleteRow<Content: View>: View {
-    let content: () -> Content
-    let onDelete: () -> Void
-
-    @State private var offset: CGFloat = 0
-    @State private var isSwiped = false
-    @State private var isDeleting = false
-
-    private let deleteThreshold: CGFloat = -88
-    private let fullSwipeThreshold: CGFloat = -200
-
-    init(@ViewBuilder content: @escaping () -> Content, onDelete: @escaping () -> Void) {
-        self.content = content
-        self.onDelete = onDelete
-    }
-
-    var body: some View {
-        ZStack(alignment: .trailing) {
-            // DELETE affordance — full opacity once any drag has occurred.
-            HStack {
-                Spacer()
-                Button {
-                    commitDelete()
-                } label: {
-                    Text("DELETE")
-                        .font(.marbleMono(11, weight: .medium))
-                        .tracking(1.5)
-                        .foregroundStyle(Color.white)
-                        .padding(.horizontal, 24)
-                }
-                .buttonStyle(.plain)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color.red.opacity(0.9))
-            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-            .padding(.horizontal, 4)
-            .opacity(offset < 0 ? 1 : 0)
-
-            content()
-                .background(Color("marbleBackground"))
-                .offset(x: offset)
-                .opacity(isDeleting ? 0 : 1)
-                .simultaneousGesture(
-                    DragGesture(minimumDistance: 15, coordinateSpace: .local)
-                        .onChanged { value in
-                            // Only treat clearly-horizontal drags as swipes.
-                            // Vertical drags shouldn't slide the row sideways.
-                            guard abs(value.translation.width) > abs(value.translation.height) else {
-                                return
-                            }
-                            let baseline: CGFloat = isSwiped ? deleteThreshold : 0
-                            let raw = baseline + value.translation.width
-                            if raw < 0 {
-                                if raw < fullSwipeThreshold {
-                                    // Rubber-band past full-swipe threshold
-                                    let over = fullSwipeThreshold - raw
-                                    offset = fullSwipeThreshold - sqrt(over) * 4
-                                } else {
-                                    offset = raw
-                                }
-                            } else {
-                                offset = 0
-                            }
-                        }
-                        .onEnded { value in
-                            // If the gesture was mostly vertical, ignore.
-                            guard abs(value.translation.width) > abs(value.translation.height) else {
-                                snapBack()
-                                return
-                            }
-                            if offset < fullSwipeThreshold {
-                                commitDelete()
-                            } else if offset < deleteThreshold {
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                                    offset = deleteThreshold
-                                }
-                                isSwiped = true
-                            } else {
-                                snapBack()
-                            }
-                        }
-                )
-                .onTapGesture {
-                    if isSwiped {
-                        snapBack()
-                    }
-                }
-        }
-        // Collapse height as the row fades on delete, so following rows
-        // smoothly take its place instead of jumping.
-        .frame(maxHeight: isDeleting ? 0 : nil)
-        .clipped()
-    }
-
-    private func snapBack() {
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-            offset = 0
-        }
-        isSwiped = false
-    }
-
-    /// Row collapses (opacity + height) over a spring, then delete fires.
-    private func commitDelete() {
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
-            isDeleting = true
-            offset = -UIScreen.main.bounds.width
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.28) {
-            onDelete()
-        }
-    }
-}
-
 
 #Preview {
     TemplateEditorView()
