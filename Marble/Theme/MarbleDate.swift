@@ -9,20 +9,17 @@ import Foundation
 /// strings ready to drop into `.font(.marbleMono(...))`.
 extension Date {
 
-    /// Relative day string for history lists and feeds.
-    ///   - "TODAY"          (same calendar day)
-    ///   - "YESTERDAY"      (previous day)
-    ///   - "5D AGO"         (under a week)
-    ///   - "MAY 12"         (current year, older than a week)
+    /// Absolute date string for history lists, feeds, and photo metadata.
+    ///   - "MAY 12"         (current year)
     ///   - "MAY 12, 2024"   (prior years)
+    ///
+    /// The name is kept for backwards compatibility with call sites but
+    /// the relative forms (TODAY / YESTERDAY / Nd AGO) were removed —
+    /// shifting dates feel jittery in a journal-style app where the
+    /// same row says one thing today and another tomorrow. Absolute is
+    /// quieter and more editorial.
     func marbleRelative() -> String {
         let calendar = Calendar.current
-        if calendar.isDateInToday(self) { return "TODAY" }
-        if calendar.isDateInYesterday(self) { return "YESTERDAY" }
-
-        let days = calendar.dateComponents([.day], from: self, to: Date()).day ?? 0
-        if days < 7 && days > 0 { return "\(days)D AGO" }
-
         let formatter = DateFormatter()
         let thisYear = calendar.component(.year, from: Date())
         let dateYear = calendar.component(.year, from: self)

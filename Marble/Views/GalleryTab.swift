@@ -81,18 +81,12 @@ struct GalleryTabContent: View {
         let firstPhoto = photos[firstIndex]
         return HStack(spacing: 12) {
             PhotoThumbnail(photo: firstPhoto, aspectRatio: 4.0 / 5.0)
-                .frame(width: 40, height: 50)
-                .clipShape(RoundedRectangle(cornerRadius: 4))
+                .frame(width: 36, height: 45)
+                .clipShape(RoundedRectangle(cornerRadius: 3))
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Comparing with \(firstPhoto.date.marbleRelative())")
-                    .font(.marbleBody(14))
-                    .foregroundStyle(Color("marblePrimary"))
-                Text("Pick another photo")
-                    .font(.marbleMono(10))
-                    .tracking(1)
-                    .foregroundStyle(Color("marbleSecondary"))
-            }
+            Text("Comparing with \(firstPhoto.date.marbleRelative())")
+                .font(.marbleBody(14))
+                .foregroundStyle(Color("marblePrimary"))
 
             Spacer()
 
@@ -102,14 +96,17 @@ struct GalleryTabContent: View {
                     pickingSecondFor = nil
                 }
             } label: {
-                Text("CANCEL")
-                    .font(.marbleMono(11, weight: .medium))
-                    .tracking(1.5)
+                Image(systemName: "xmark")
+                    .font(.system(size: 11, weight: .light))
                     .foregroundStyle(Color("marbleSecondary"))
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
         }
-        .padding(12)
+        .padding(.leading, 10)
+        .padding(.trailing, 6)
+        .padding(.vertical, 8)
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .fill(Color("marbleCard"))
@@ -178,6 +175,44 @@ struct GalleryTabContent: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 60)
+    }
+}
+
+// MARK: - Date chip (chrome)
+
+/// Small glass-pill date label for photo viewers. Sized smaller than the
+/// standard marbleGlassPill (which is for tappable controls) — this is a
+/// label, not a button, so it sits at 24pt height with tighter padding.
+/// Uses the same glass language so it reads as part of the chrome layer.
+struct PhotoDateChip: View {
+    let date: Date
+
+    var body: some View {
+        Text(date.marbleRelative())
+            .font(.marbleMono(10))
+            .tracking(1)
+            .foregroundStyle(Color("marblePrimary"))
+            .padding(.horizontal, 10)
+            .frame(height: 24)
+            .modifier(GlassChipBackground())
+    }
+}
+
+/// Background-only glass treatment for the date chip. Same iOS 26
+/// availability gating as MarbleGlassCapsule but in a capsule shape
+/// and without the chrome-button frame.
+private struct GlassChipBackground: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content.glassEffect(.regular, in: Capsule())
+        } else {
+            content
+                .background(.ultraThinMaterial, in: Capsule())
+                .overlay(
+                    Capsule()
+                        .stroke(Color("marblePrimary").opacity(0.08), lineWidth: 0.5)
+                )
+        }
     }
 }
 
@@ -328,10 +363,7 @@ struct MultiPhotoBrowserView: View {
                 Spacer()
 
                 if photos.indices.contains(currentIndex) {
-                    Text(photos[currentIndex].date.marbleRelative())
-                        .font(.marbleMono(11))
-                        .tracking(1)
-                        .foregroundStyle(Color("marbleTertiary"))
+                    PhotoDateChip(date: photos[currentIndex].date)
                         .padding(.bottom, 32)
                 }
             }
@@ -406,7 +438,7 @@ struct PhotoComparisonView: View {
     }
 
     var body: some View {
-        ZStack(alignment: .topTrailing) {
+        ZStack(alignment: .topLeading) {
             neutralBackground.ignoresSafeArea()
 
             // Two halves, scaledToFill + clipped — each takes exactly
@@ -414,19 +446,20 @@ struct PhotoComparisonView: View {
             // small bg gap between halves (6pt) reads as "two moments"
             // without a hairline divider's "two panels" feeling.
             VStack(spacing: 6) {
-                comparisonHalf(index: $topIndex, alignment: .bottom)
-                comparisonHalf(index: $bottomIndex, alignment: .top)
+                comparisonHalf(index: $topIndex, alignment: .bottomLeading)
+                comparisonHalf(index: $bottomIndex, alignment: .topLeading)
             }
 
-            // Chrome — just the close button. Date stamps overlay each
-            // half. Toggles with the rest of the chrome.
+            // Chrome — just the close button, top-left to match the other
+            // photo viewers. Date stamps overlay each half. Toggles with
+            // the rest of the chrome.
             Button { dismiss() } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 14, weight: .light))
             }
             .marbleGlassCapsule(size: 44)
             .padding(.top, 8)
-            .padding(.trailing, 16)
+            .padding(.leading, 16)
             .opacity(chromeVisible ? 1 : 0)
             .allowsHitTesting(chromeVisible)
         }
@@ -444,11 +477,13 @@ struct PhotoComparisonView: View {
 
     /// One half of the comparison — full bleed, scaledToFill + clipped
     /// so the photo fills the half-screen rect without aspect bands.
-    /// Date stamp is positioned near the *gap* (top-half: bottom-aligned,
-    /// bottom-half: top-aligned) so both stamps sit near the center seam.
+    /// Date chip is positioned near the *gap*: top half's chip is
+    /// bottom-left, bottom half's chip is top-left. Both sit on the
+    /// same left margin near the center seam — the reader's natural
+    /// scan line as they look across the two photos.
     @ViewBuilder
     private func comparisonHalf(index: Binding<Int>, alignment: Alignment) -> some View {
-        let dateEdgePadding: CGFloat = 8
+        let isTopHalf = (alignment == .bottomLeading)
         ZStack(alignment: alignment) {
             TabView(selection: index) {
                 ForEach(Array(photos.enumerated()), id: \.element.id) { i, photo in
@@ -459,15 +494,9 @@ struct PhotoComparisonView: View {
             .tabViewStyle(.page(indexDisplayMode: .never))
 
             if photos.indices.contains(index.wrappedValue) {
-                Text(photos[index.wrappedValue].date.marbleRelative())
-                    .font(.marbleMono(11))
-                    .tracking(1)
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(Color.black.opacity(0.35), in: Capsule())
-                    .padding(alignment == .bottom ? .bottom : .top, dateEdgePadding)
-                    .padding(.horizontal, 12)
+                PhotoDateChip(date: photos[index.wrappedValue].date)
+                    .padding(isTopHalf ? .bottom : .top, 10)
+                    .padding(.leading, 16)
                     .opacity(chromeVisible ? 1 : 0)
                     .allowsHitTesting(false)
             }

@@ -194,17 +194,14 @@ struct PhotoViewerView: View {
 
                 Spacer()
 
-                VStack(spacing: 4) {
-                    Text(photo.date.marbleFullDate())
-                        .font(.marbleMono(11))
-                        .tracking(1)
-                        .foregroundStyle(Color("marbleTertiary"))
+                VStack(spacing: 6) {
+                    PhotoDateChip(date: photo.date)
 
                     if let workout {
                         Text(workout.name.uppercased())
                             .font(.marbleMono(10))
                             .tracking(1.5)
-                            .foregroundStyle(Color("marbleTertiary").opacity(0.6))
+                            .foregroundStyle(Color("marbleSecondary"))
                     }
                 }
                 .padding(.bottom, 32)
