@@ -143,14 +143,34 @@ struct PhotoViewerView: View {
     let onDelete: () -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
     @State private var image: UIImage?
     @State private var showingDeleteConfirmation = false
     @State private var dragOffset: CGFloat = 0
+    @State private var chromeVisible: Bool = true
+
+    private var neutralBackground: Color {
+        colorScheme == .dark ? .black : Color("marbleBackground")
+    }
 
     var body: some View {
         ZStack {
+            neutralBackground.ignoresSafeArea()
+
+            // Photo (always present, natural aspect)
+            if let image {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .offset(y: dragOffset)
+            } else {
+                ProgressView()
+                    .tint(Color("marbleSecondary"))
+            }
+
+            // Chrome layer
             VStack(spacing: 0) {
-                // Top bar
                 HStack {
                     Button { dismiss() } label: {
                         Image(systemName: "xmark")
@@ -174,38 +194,30 @@ struct PhotoViewerView: View {
 
                 Spacer()
 
-                // Photo
-                if let image {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(maxWidth: .infinity)
-                        .offset(y: dragOffset)
-                } else {
-                    ProgressView()
-                        .tint(Color("marbleSecondary"))
-                }
-
-                Spacer()
-
-                // Metadata
                 VStack(spacing: 4) {
                     Text(photo.date.marbleFullDate())
-                        .font(.marbleMono(12))
-                        .tracking(1.5)
-                        .foregroundStyle(Color("marbleSecondary"))
+                        .font(.marbleMono(11))
+                        .tracking(1)
+                        .foregroundStyle(Color("marbleTertiary"))
 
                     if let workout {
                         Text(workout.name.uppercased())
                             .font(.marbleMono(10))
                             .tracking(1.5)
-                            .foregroundStyle(Color("marbleTertiary"))
+                            .foregroundStyle(Color("marbleTertiary").opacity(0.6))
                     }
                 }
                 .padding(.bottom, 32)
             }
+            .opacity(chromeVisible ? 1 : 0)
+            .allowsHitTesting(chromeVisible)
         }
-        .marbleAtmosphereBackground()
+        .contentShape(Rectangle())
+        .onTapGesture {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                chromeVisible.toggle()
+            }
+        }
         .gesture(
             DragGesture()
                 .onChanged { value in

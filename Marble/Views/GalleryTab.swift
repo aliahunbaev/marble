@@ -15,6 +15,11 @@ struct GalleryTabContent: View {
     /// comparison. The Int is the index of the first-picked photo.
     @State private var pickingSecondFor: Int?
 
+    /// Namespace for the iOS 18+ zoom transition. The thumbnail in the
+    /// grid is the source; the photo at `initialIndex` inside the browser
+    /// is the destination — SwiftUI animates the expand-from-cell.
+    @Namespace private var photoZoom
+
     private let columns = [
         GridItem(.flexible(), spacing: 6),
         GridItem(.flexible(), spacing: 6),
@@ -53,6 +58,10 @@ struct GalleryTabContent: View {
                     }
                 }
             )
+            .modifier(ZoomNavigationModifier(
+                sourceID: photos[wrapper.value].id,
+                namespace: photoZoom
+            ))
         }
         .fullScreenCover(item: $comparisonPair) { pair in
             PhotoComparisonView(
@@ -134,6 +143,7 @@ struct GalleryTabContent: View {
                 .opacity(isPicking && !isFirstPick ? 0.55 : 1.0)
         }
         .buttonStyle(.plain)
+        .modifier(ZoomSourceModifier(id: photo.id, namespace: photoZoom))
     }
 
     private func handleTap(index: Int) {
@@ -168,6 +178,39 @@ struct GalleryTabContent: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 60)
+    }
+}
+
+// MARK: - iOS 18+ zoom transition modifiers
+
+/// Wraps the iOS 18 `matchedTransitionSource` API behind an availability
+/// check. On iOS < 18 the modifier is a no-op — the photo opens with the
+/// default fullScreenCover slide-up animation instead of the zoom.
+private struct ZoomSourceModifier: ViewModifier {
+    let id: PersistentIdentifier
+    let namespace: Namespace.ID
+
+    func body(content: Content) -> some View {
+        if #available(iOS 18.0, *) {
+            content.matchedTransitionSource(id: id, in: namespace)
+        } else {
+            content
+        }
+    }
+}
+
+/// Wraps the iOS 18 `.navigationTransition(.zoom(...))` modifier behind
+/// an availability check. Same fallback semantics as the source modifier.
+private struct ZoomNavigationModifier: ViewModifier {
+    let sourceID: PersistentIdentifier
+    let namespace: Namespace.ID
+
+    func body(content: Content) -> some View {
+        if #available(iOS 18.0, *) {
+            content.navigationTransition(.zoom(sourceID: sourceID, in: namespace))
+        } else {
+            content
+        }
     }
 }
 
@@ -218,10 +261,23 @@ struct MultiPhotoBrowserView: View {
 
     @State private var currentIndex: Int = 0
     @State private var dragOffset: CGFloat = 0
+    /// Chrome (top bar + date stamp) shows by default and toggles off on
+    /// tap. Apple-Photos-ish pattern — gives the user an uninterrupted
+    /// view of the image when they want it.
+    @State private var chromeVisible: Bool = true
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
+
+    /// Pure neutral so the photo is the loudest thing on screen. Black
+    /// in dark mode, marble bone in light mode — no atmosphere gradient.
+    private var neutralBackground: Color {
+        colorScheme == .dark ? .black : Color("marbleBackground")
+    }
 
     var body: some View {
         ZStack {
+            neutralBackground.ignoresSafeArea()
+
             TabView(selection: $currentIndex) {
                 ForEach(Array(photos.enumerated()), id: \.element.id) { index, photo in
                     BrowserPhotoView(photo: photo)
@@ -230,8 +286,16 @@ struct MultiPhotoBrowserView: View {
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
             .offset(y: dragOffset)
+            // Tap toggles chrome. .contentShape ensures the tap area is
+            // the whole TabView, not just the photo's fitted rect.
+            .contentShape(Rectangle())
+            .onTapGesture {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    chromeVisible.toggle()
+                }
+            }
 
-            // Top bar
+            // Chrome layer
             VStack {
                 HStack(alignment: .center, spacing: 10) {
                     Button { dismiss() } label: {
@@ -263,17 +327,17 @@ struct MultiPhotoBrowserView: View {
 
                 Spacer()
 
-                // Date stamp
                 if photos.indices.contains(currentIndex) {
                     Text(photos[currentIndex].date.marbleRelative())
-                        .font(.marbleMono(12))
-                        .tracking(1.5)
-                        .foregroundStyle(Color("marbleSecondary"))
+                        .font(.marbleMono(11))
+                        .tracking(1)
+                        .foregroundStyle(Color("marbleTertiary"))
                         .padding(.bottom, 32)
                 }
             }
+            .opacity(chromeVisible ? 1 : 0)
+            .allowsHitTesting(chromeVisible)
         }
-        .marbleAtmosphereBackground()
         .onAppear { currentIndex = initialIndex }
         // Drag down to dismiss
         .gesture(
@@ -333,20 +397,29 @@ struct PhotoComparisonView: View {
 
     @State private var topIndex: Int = 0
     @State private var bottomIndex: Int = 0
+    @State private var chromeVisible: Bool = true
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var neutralBackground: Color {
+        colorScheme == .dark ? .black : Color("marbleBackground")
+    }
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
-            VStack(spacing: 0) {
-                comparisonHalf(index: $topIndex)
+            neutralBackground.ignoresSafeArea()
 
-                Rectangle()
-                    .fill(Color("marblePrimary").opacity(0.12))
-                    .frame(height: 1)
-
-                comparisonHalf(index: $bottomIndex)
+            // Two halves, scaledToFill + clipped — each takes exactly
+            // half the available height for full-bleed comparison. A
+            // small bg gap between halves (6pt) reads as "two moments"
+            // without a hairline divider's "two panels" feeling.
+            VStack(spacing: 6) {
+                comparisonHalf(index: $topIndex, alignment: .bottom)
+                comparisonHalf(index: $bottomIndex, alignment: .top)
             }
 
+            // Chrome — just the close button. Date stamps overlay each
+            // half. Toggles with the rest of the chrome.
             Button { dismiss() } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 14, weight: .light))
@@ -354,20 +427,32 @@ struct PhotoComparisonView: View {
             .marbleGlassCapsule(size: 44)
             .padding(.top, 8)
             .padding(.trailing, 16)
+            .opacity(chromeVisible ? 1 : 0)
+            .allowsHitTesting(chromeVisible)
         }
-        .marbleAtmosphereBackground()
+        .contentShape(Rectangle())
+        .onTapGesture {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                chromeVisible.toggle()
+            }
+        }
         .onAppear {
             topIndex = initialTopIndex
             bottomIndex = initialBottomIndex
         }
     }
 
+    /// One half of the comparison — full bleed, scaledToFill + clipped
+    /// so the photo fills the half-screen rect without aspect bands.
+    /// Date stamp is positioned near the *gap* (top-half: bottom-aligned,
+    /// bottom-half: top-aligned) so both stamps sit near the center seam.
     @ViewBuilder
-    private func comparisonHalf(index: Binding<Int>) -> some View {
-        ZStack(alignment: .bottom) {
+    private func comparisonHalf(index: Binding<Int>, alignment: Alignment) -> some View {
+        let dateEdgePadding: CGFloat = 8
+        ZStack(alignment: alignment) {
             TabView(selection: index) {
                 ForEach(Array(photos.enumerated()), id: \.element.id) { i, photo in
-                    BrowserPhotoView(photo: photo)
+                    ComparisonHalfPhotoView(photo: photo)
                         .tag(i)
                 }
             }
@@ -376,11 +461,46 @@ struct PhotoComparisonView: View {
             if photos.indices.contains(index.wrappedValue) {
                 Text(photos[index.wrappedValue].date.marbleRelative())
                     .font(.marbleMono(11))
-                    .tracking(1.5)
-                    .foregroundStyle(Color("marbleSecondary"))
-                    .padding(.bottom, 12)
+                    .tracking(1)
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(Color.black.opacity(0.35), in: Capsule())
+                    .padding(alignment == .bottom ? .bottom : .top, dateEdgePadding)
+                    .padding(.horizontal, 12)
+                    .opacity(chromeVisible ? 1 : 0)
+                    .allowsHitTesting(false)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .clipped()
+    }
+}
+
+/// One half-screen comparison photo. Unlike BrowserPhotoView which uses
+/// scaledToFit (preserves natural aspect, shows bg bands), this fills
+/// the entire half-screen rect via scaledToFill + clipped — no empty
+/// space, no inconsistent aspect bands across mixed-aspect photos.
+struct ComparisonHalfPhotoView: View {
+    let photo: ProgressPhoto
+    @State private var image: UIImage?
+
+    var body: some View {
+        GeometryReader { geo in
+            Group {
+                if let image {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                } else {
+                    Color.clear
+                }
+            }
+            .frame(width: geo.size.width, height: geo.size.height)
+            .clipped()
+        }
+        .task {
+            image = PhotoStorageService.shared.image(for: photo)
+        }
     }
 }
