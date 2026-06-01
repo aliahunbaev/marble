@@ -116,11 +116,15 @@ struct TemplateEditorView: View {
     /// Template name field as the first list row. Extra top padding
     /// gives breathing room below the floating toolbar.
     private var templateHeaderRow: some View {
+        // Top padding clears the floating toolbar (8pt offset + 44pt
+        // button = 52pt bottom edge) with 36pt of breathing room
+        // beneath. A title pressed against the toolbar reads as
+        // crowded; this restores the editorial generosity.
         TextField("Template", text: $name)
             .font(.marbleBody(32))
             .foregroundStyle(Color("marblePrimary"))
             .padding(.horizontal, 20)
-            .padding(.top, 52)
+            .padding(.top, 88)
             .padding(.bottom, 32)
             .listRowInsets(EdgeInsets())
             .listRowSeparator(.hidden)

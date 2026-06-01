@@ -1,15 +1,37 @@
 import SwiftUI
 import SwiftData
 
+/// Target for the template editor cover — either creating fresh or
+/// editing a specific template. Modeling both cases as one Identifiable
+/// state lets us drive the cover via `fullScreenCover(item:)` instead
+/// of the bool+optional pair that captured stale state.
+enum TemplateEditorTarget: Identifiable {
+    case create
+    case edit(WorkoutTemplate)
+
+    var id: String {
+        switch self {
+        case .create: return "__create__"
+        case .edit(let t): return "edit-\(t.cloudID)"
+        }
+    }
+}
+
 struct TrainView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(WorkoutSession.self) private var workoutSession
     @Query private var templates: [WorkoutTemplate]
     @Query(sort: \Workout.date, order: .reverse) private var workouts: [Workout]
 
-    @State private var showingTemplateEditor = false
     @State private var selectedTemplate: WorkoutTemplate?
-    @State private var editingTemplate: WorkoutTemplate?
+    /// Drives the template editor cover. Using item-based presentation
+    /// (rather than two pieces of state — bool + optional template) so
+    /// the cover always reads the *current* target at construction
+    /// time. The previous pattern captured a stale `editingTemplate`
+    /// during the open transition, which made edit-save look like a
+    /// no-op (the editor was operating on whatever template had been
+    /// set the time before).
+    @State private var editorTarget: TemplateEditorTarget?
 
     // Daily quotes — terse, classical, on-thesis
     private let quotes: [String] = [
@@ -61,8 +83,13 @@ struct TrainView: View {
             }
             .marbleAtmosphereBackground()
             .navigationBarTitleDisplayMode(.inline)
-            .fullScreenCover(isPresented: $showingTemplateEditor) {
-                TemplateEditorView(template: editingTemplate)
+            .fullScreenCover(item: $editorTarget) { target in
+                switch target {
+                case .create:
+                    TemplateEditorView(template: nil)
+                case .edit(let template):
+                    TemplateEditorView(template: template)
+                }
             }
             .sheet(item: $selectedTemplate) { template in
                 TemplateDetailSheet(template: template) {
@@ -140,8 +167,7 @@ struct TrainView: View {
                 SectionHeader(title: "PROGRAMS")
                 Spacer()
                 Button {
-                    editingTemplate = nil
-                    showingTemplateEditor = true
+                    editorTarget = .create
                 } label: {
                     Image(systemName: "plus")
                         .font(.system(size: 14, weight: .regular))
@@ -167,8 +193,7 @@ struct TrainView: View {
                         .buttonStyle(.plain)
                         .contextMenu {
                             Button {
-                                editingTemplate = template
-                                showingTemplateEditor = true
+                                editorTarget = .edit(template)
                             } label: {
                                 Label("Edit", systemImage: "pencil")
                             }

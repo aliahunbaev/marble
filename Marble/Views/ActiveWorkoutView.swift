@@ -172,7 +172,7 @@ struct ActiveWorkoutView: View {
                 .foregroundStyle(Color("marbleSecondary"))
         }
         .padding(.horizontal, 20)
-        .padding(.top, 52)
+        .padding(.top, 88)
         .padding(.bottom, 32)
         .listRowInsets(EdgeInsets())
         .listRowSeparator(.hidden)
