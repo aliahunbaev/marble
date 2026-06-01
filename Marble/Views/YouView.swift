@@ -11,10 +11,20 @@ struct YouView: View {
     @State private var showingSignIn = false
     @State private var showingSettings = false
     @State private var activeTab: YouTab = .record
+    @State private var editingName = false
+    @State private var editedName: String = ""
+    @FocusState private var nameFieldFocused: Bool
 
     enum YouTab: String, CaseIterable {
         case record = "RECORD"
         case gallery = "GALLERY"
+
+        var iconName: String {
+            switch self {
+            case .record: return "list.bullet"
+            case .gallery: return "square.grid.3x3"
+            }
+        }
     }
 
     var body: some View {
@@ -27,7 +37,6 @@ struct YouView: View {
                         .padding(.bottom, 20)
 
                     tabSwitcher
-                        .padding(.horizontal, 24)
                         .padding(.bottom, 24)
 
                     if activeTab == .record {
@@ -64,42 +73,54 @@ struct YouView: View {
 
     // MARK: - Tab switcher
 
-    /// Two-tab segmented control under the profile header. RECORD shows
-    /// the chronological workout feed (the original YOU surface).
-    /// GALLERY shows progress photos as the artifact, decoupled from
-    /// workout context.
+    /// Full-width two-tab control. Each tab is half the screen wide for
+    /// a generous touch target (~44pt tall). Icon + tiny mono label,
+    /// with an underline indicator under the active tab. Instagram-ish
+    /// shape but with Marble's editorial restraint (mono labels, no
+    /// color, just opacity).
     private var tabSwitcher: some View {
-        HStack(spacing: 24) {
-            ForEach(YouTab.allCases, id: \.self) { tab in
-                Button {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        activeTab = tab
-                    }
-                } label: {
-                    VStack(spacing: 6) {
-                        Text(tab.rawValue)
-                            .font(.marbleMono(11, weight: .medium))
-                            .tracking(1.5)
-                            .foregroundStyle(
-                                activeTab == tab
-                                    ? Color("marblePrimary")
-                                    : Color("marbleSecondary")
-                            )
-                        Rectangle()
-                            .fill(
-                                activeTab == tab
-                                    ? Color("marblePrimary")
-                                    : Color.clear
-                            )
-                            .frame(height: 1)
-                    }
-                    .fixedSize(horizontal: true, vertical: false)
+        ZStack(alignment: .bottom) {
+            // Full-width hairline track that the active underline sits on
+            Rectangle()
+                .fill(Color("marblePrimary").opacity(0.08))
+                .frame(height: 0.5)
+
+            HStack(spacing: 0) {
+                ForEach(YouTab.allCases, id: \.self) { tab in
+                    tabButton(tab)
                 }
-                .buttonStyle(.plain)
             }
-            Spacer()
         }
+    }
+
+    private func tabButton(_ tab: YouTab) -> some View {
+        let isActive = activeTab == tab
+        return Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            withAnimation(.easeInOut(duration: 0.2)) {
+                activeTab = tab
+            }
+        } label: {
+            VStack(spacing: 6) {
+                Image(systemName: tab.iconName)
+                    .font(.system(size: 18, weight: .regular))
+                Text(tab.rawValue)
+                    .font(.marbleMono(10, weight: .medium))
+                    .tracking(1.5)
+            }
+            .foregroundStyle(
+                isActive ? Color("marblePrimary") : Color("marbleSecondary")
+            )
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .contentShape(Rectangle())
+            .overlay(alignment: .bottom) {
+                Rectangle()
+                    .fill(isActive ? Color("marblePrimary") : Color.clear)
+                    .frame(height: 1.5)
+            }
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Record (workout feed) content
@@ -134,9 +155,7 @@ struct YouView: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 if auth.isAuthenticated, let profile = auth.userProfile {
-                    Text(profile.name)
-                        .font(.marbleBody(22))
-                        .foregroundStyle(Color("marblePrimary"))
+                    editableName(currentName: profile.name)
                     if let joinDate = joinDateString(profile.joinDate) {
                         Text(joinDate)
                             .font(.marbleMono(11))
@@ -160,6 +179,50 @@ struct YouView: View {
             }
             Spacer()
         }
+    }
+
+    /// Inline editable name. Tap the text → flips to a TextField that
+    /// commits on submit (return key) or blur. Saves to UserProfile +
+    /// pushes the update through AuthenticationService.
+    @ViewBuilder
+    private func editableName(currentName: String) -> some View {
+        if editingName {
+            TextField("", text: $editedName)
+                .font(.marbleBody(22))
+                .foregroundStyle(Color("marblePrimary"))
+                .focused($nameFieldFocused)
+                .textInputAutocapitalization(.words)
+                .autocorrectionDisabled()
+                .submitLabel(.done)
+                .onSubmit { commitName() }
+                .onChange(of: nameFieldFocused) { _, focused in
+                    // Blur → commit. Same UX as Apple Contacts.
+                    if !focused { commitName() }
+                }
+        } else {
+            Button {
+                editedName = currentName
+                editingName = true
+                DispatchQueue.main.async {
+                    nameFieldFocused = true
+                }
+            } label: {
+                Text(currentName)
+                    .font(.marbleBody(22))
+                    .foregroundStyle(Color("marblePrimary"))
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private func commitName() {
+        let trimmed = editedName.trimmingCharacters(in: .whitespacesAndNewlines)
+        editingName = false
+        nameFieldFocused = false
+        guard !trimmed.isEmpty,
+              trimmed != auth.userProfile?.name else { return }
+        Task { await auth.updateName(trimmed) }
     }
 
     private var avatarName: String {
