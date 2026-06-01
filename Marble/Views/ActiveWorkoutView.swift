@@ -26,12 +26,6 @@ struct ActiveWorkoutView: View {
     /// sets to titles-only so the user can drag-reorder. The Done glass
     /// pill in the toolbar exits the mode.
     @State private var isReordering: Bool = false
-    /// Workout-level actions (Reorder / Discard) — uses a confirmation
-    /// dialog instead of Menu because the toolbar's Menu trigger was
-    /// rendering iOS's default rounded-rect press visualization behind
-    /// the glass capsule, leaving a visible "gray box" through the
-    /// Menu's transition animation.
-    @State private var showingWorkoutActions = false
 
     @AppStorage("defaultRestTimer") private var defaultRestTimer: Int = 90
 
@@ -421,33 +415,33 @@ struct ActiveWorkoutView: View {
 
             Spacer()
 
-            // Workout-level actions — Button + confirmationDialog instead
-            // of Menu. See showingWorkoutActions declaration for why.
-            Button {
-                showingWorkoutActions = true
+            // Workout-level menu — reorder + discard live here.
+            // Note: iOS 26's Liquid Glass Menu transition animation can
+            // briefly show the trigger's elevation/shadow state during
+            // open/close. It's a platform rendering artifact that's hard
+            // to fully suppress without losing the native Menu UX.
+            Menu {
+                Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+                        isReordering = true
+                    }
+                } label: {
+                    Label("Reorder exercises", systemImage: "arrow.up.arrow.down")
+                }
+                .disabled(session.entries.count < 2)
+
+                Button(role: .destructive) {
+                    showingDiscardAlert = true
+                } label: {
+                    Label("Discard workout", systemImage: "trash")
+                }
             } label: {
                 Image(systemName: "ellipsis")
                     .font(.system(size: 15, weight: .medium))
                     .marbleGlassCapsule(size: 44)
             }
             .buttonStyle(.plain)
-            .confirmationDialog(
-                "Workout",
-                isPresented: $showingWorkoutActions,
-                titleVisibility: .hidden
-            ) {
-                if session.entries.count >= 2 {
-                    Button("Reorder exercises") {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-                            isReordering = true
-                        }
-                    }
-                }
-                Button("Discard workout", role: .destructive) {
-                    showingDiscardAlert = true
-                }
-            }
 
             Button {
                 attemptFinish()
