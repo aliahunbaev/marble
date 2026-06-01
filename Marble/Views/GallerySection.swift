@@ -99,6 +99,9 @@ struct GallerySection: View {
 
 struct PhotoThumbnail: View {
     let photo: ProgressPhoto
+    /// width/height — defaults to 1.0 (square). Pass 4.0/5.0 for portrait
+    /// gallery thumbs that match the natural progress-photo aspect ratio.
+    var aspectRatio: CGFloat = 1.0
     @State private var image: UIImage?
 
     var body: some View {
@@ -112,7 +115,7 @@ struct PhotoThumbnail: View {
                     Color("marbleFieldBackground")
                 }
             }
-            .frame(width: geo.size.width, height: geo.size.width)
+            .frame(width: geo.size.width, height: geo.size.width / aspectRatio)
             .clipped()
             .overlay(alignment: .topTrailing) {
                 if photo.uploadPending {
@@ -124,7 +127,7 @@ struct PhotoThumbnail: View {
                 }
             }
         }
-        .aspectRatio(1, contentMode: .fit)
+        .aspectRatio(aspectRatio, contentMode: .fit)
         .clipShape(RoundedRectangle(cornerRadius: 4))
         .task {
             image = PhotoStorageService.shared.image(for: photo)

@@ -1,23 +1,23 @@
 import SwiftUI
 import SwiftData
 
-/// The GALLERY tab content on YOU — chronological grid of progress photos
-/// with a Compare entry pill that lets the user pick two photos for a
-/// side-by-side viewer. Independent of the workout feed (which lives in
-/// the RECORD tab); this surface treats photos as the artifact, not as
-/// context-for-workouts.
+/// The GALLERY tab content on YOU — 2-column grid of portrait progress
+/// photos. Tap any photo → opens the browser. Inside the browser, a
+/// "Compare" pill returns to the grid in pick-second mode, where the
+/// next tap opens the side-by-side comparison view. Decoupled from
+/// the workout feed; photos here are the artifact, not workout context.
 struct GalleryTabContent: View {
     let photos: [ProgressPhoto]
 
     @State private var browsingFromIndex: Int?
     @State private var comparisonPair: ComparisonStart?
-    @State private var isCompareMode = false
-    @State private var firstPickIndex: Int?
+    /// When non-nil, the user is picking the second photo for a
+    /// comparison. The Int is the index of the first-picked photo.
+    @State private var pickingSecondFor: Int?
 
     private let columns = [
-        GridItem(.flexible(), spacing: 4),
-        GridItem(.flexible(), spacing: 4),
-        GridItem(.flexible(), spacing: 4),
+        GridItem(.flexible(), spacing: 6),
+        GridItem(.flexible(), spacing: 6),
     ]
 
     var body: some View {
@@ -25,11 +25,14 @@ struct GalleryTabContent: View {
             if photos.isEmpty {
                 emptyState
             } else {
-                headerBar
-                    .padding(.horizontal, 24)
-                    .padding(.bottom, 14)
+                if let firstIndex = pickingSecondFor,
+                   photos.indices.contains(firstIndex) {
+                    pickSecondBanner(firstIndex: firstIndex)
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 12)
+                }
 
-                LazyVGrid(columns: columns, spacing: 4) {
+                LazyVGrid(columns: columns, spacing: 6) {
                     ForEach(Array(photos.enumerated()), id: \.element.id) { index, photo in
                         photoCell(photo: photo, index: index)
                     }
@@ -40,7 +43,15 @@ struct GalleryTabContent: View {
         .fullScreenCover(item: $browsingFromIndex.toFullScreenCoverItem) { wrapper in
             MultiPhotoBrowserView(
                 photos: photos,
-                initialIndex: wrapper.value
+                initialIndex: wrapper.value,
+                onCompareRequested: { index in
+                    // Browser dismissed itself via dismiss(); we pick up the
+                    // first-comparison index and enter pick-second mode on
+                    // the next runloop tick so the cover transition finishes.
+                    DispatchQueue.main.async {
+                        pickingSecondFor = index
+                    }
+                }
             )
         }
         .fullScreenCover(item: $comparisonPair) { pair in
@@ -52,45 +63,61 @@ struct GalleryTabContent: View {
         }
     }
 
-    // MARK: - Header / Compare entry
+    // MARK: - Pick-second banner
 
-    /// Small bar above the grid. Shows label + Compare pill, or compare-mode
-    /// instructional text + Cancel when in compare mode.
-    private var headerBar: some View {
-        HStack {
-            Text(isCompareMode ? "PICK TWO TO COMPARE" : "\(photos.count) PHOTOS")
-                .font(.marbleMono(11))
-                .tracking(1.5)
-                .foregroundStyle(Color("marbleSecondary"))
+    /// Shown above the grid when the user has hit "Compare" from inside
+    /// the photo browser. Reminds them which photo they picked first and
+    /// gives a Cancel affordance.
+    private func pickSecondBanner(firstIndex: Int) -> some View {
+        let firstPhoto = photos[firstIndex]
+        return HStack(spacing: 12) {
+            PhotoThumbnail(photo: firstPhoto, aspectRatio: 4.0 / 5.0)
+                .frame(width: 40, height: 50)
+                .clipShape(RoundedRectangle(cornerRadius: 4))
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Comparing with \(firstPhoto.date.marbleRelative())")
+                    .font(.marbleBody(14))
+                    .foregroundStyle(Color("marblePrimary"))
+                Text("Pick another photo")
+                    .font(.marbleMono(10))
+                    .tracking(1)
+                    .foregroundStyle(Color("marbleSecondary"))
+            }
 
             Spacer()
 
             Button {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 withAnimation(.easeInOut(duration: 0.2)) {
-                    isCompareMode.toggle()
-                    firstPickIndex = nil
+                    pickingSecondFor = nil
                 }
             } label: {
-                Text(isCompareMode ? "CANCEL" : "COMPARE")
+                Text("CANCEL")
                     .font(.marbleMono(11, weight: .medium))
                     .tracking(1.5)
-                    .foregroundStyle(Color("marblePrimary"))
+                    .foregroundStyle(Color("marbleSecondary"))
             }
             .buttonStyle(.plain)
         }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(Color("marblePrimary").opacity(0.05))
+        )
     }
 
     // MARK: - Cells
 
     @ViewBuilder
     private func photoCell(photo: ProgressPhoto, index: Int) -> some View {
-        let isFirstPick = (firstPickIndex == index)
+        let isFirstPick = (pickingSecondFor == index)
+        let isPicking = (pickingSecondFor != nil)
         Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             handleTap(index: index)
         } label: {
-            PhotoThumbnail(photo: photo)
+            PhotoThumbnail(photo: photo, aspectRatio: 4.0 / 5.0)
                 .overlay(
                     RoundedRectangle(cornerRadius: 4)
                         .stroke(
@@ -98,27 +125,27 @@ struct GalleryTabContent: View {
                             lineWidth: 2
                         )
                 )
-                .opacity(isCompareMode && !isFirstPick ? 0.6 : 1.0)
+                // Dim non-pickable cells when in pick-second mode so the
+                // "I'm picking a second photo" state reads clearly.
+                .opacity(isPicking && !isFirstPick ? 0.55 : 1.0)
         }
         .buttonStyle(.plain)
     }
 
     private func handleTap(index: Int) {
-        if isCompareMode {
-            if let first = firstPickIndex {
-                if first == index {
-                    // Tap same photo again → deselect
-                    firstPickIndex = nil
-                } else {
-                    // Second photo picked → open comparison
-                    comparisonPair = ComparisonStart(first: first, second: index)
-                    firstPickIndex = nil
-                    isCompareMode = false
+        if let first = pickingSecondFor {
+            if first == index {
+                // Tapped first-pick again → deselect
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    pickingSecondFor = nil
                 }
             } else {
-                firstPickIndex = index
+                // Second pick → open comparison
+                comparisonPair = ComparisonStart(first: first, second: index)
+                pickingSecondFor = nil
             }
         } else {
+            // Normal tap → browser
             browsingFromIndex = index
         }
     }
@@ -172,11 +199,18 @@ private extension Binding where Value == Int? {
 // MARK: - Multi-photo browser
 
 /// Full-screen photo browser that supports horizontal swipe between
-/// photos. Uses TabView(.page) which gives native iOS swipe + page
-/// indicator behavior for free.
+/// photos. Uses TabView(.page) for native iOS swipe behavior.
+///
+/// Compare entry lives here, not on the grid. Tapping the Compare pill
+/// dismisses the browser and tells the caller which index to pick second
+/// against — the user lands back on the grid in pick-second mode.
 struct MultiPhotoBrowserView: View {
     let photos: [ProgressPhoto]
     let initialIndex: Int
+    /// Called with the currently-shown photo's index when the user taps
+    /// the Compare pill. The browser dismisses itself; the caller then
+    /// enters its own pick-second flow.
+    var onCompareRequested: ((Int) -> Void)? = nil
 
     @State private var currentIndex: Int = 0
     @State private var dragOffset: CGFloat = 0
@@ -195,25 +229,54 @@ struct MultiPhotoBrowserView: View {
             .tabViewStyle(.page(indexDisplayMode: .never))
             .offset(y: dragOffset)
 
-            // Top bar — close
+            // Top bar
             VStack {
-                HStack {
+                HStack(alignment: .center) {
                     Button {
                         dismiss()
                     } label: {
                         Image(systemName: "xmark")
                             .font(.system(size: 14, weight: .light))
-                            .foregroundStyle(.white.opacity(0.8))
+                            .foregroundStyle(.white.opacity(0.85))
                             .frame(width: 44, height: 44)
                     }
+
                     Spacer()
+
+                    // Compare pill — only relevant when 2+ photos exist
+                    if photos.count >= 2 {
+                        Button {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            let idx = currentIndex
+                            dismiss()
+                            onCompareRequested?(idx)
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "rectangle.split.1x2")
+                                    .font(.system(size: 12, weight: .regular))
+                                Text("COMPARE")
+                                    .font(.marbleMono(11, weight: .medium))
+                                    .tracking(1.5)
+                            }
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 14)
+                            .frame(height: 36)
+                            .background(Color.white.opacity(0.15), in: Capsule())
+                            .overlay(
+                                Capsule()
+                                    .stroke(Color.white.opacity(0.25), lineWidth: 0.5)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.trailing, 12)
+                    }
                 }
                 .padding(.horizontal, 12)
                 .padding(.top, 8)
 
                 Spacer()
 
-                // Bottom: date stamp
+                // Date stamp
                 if photos.indices.contains(currentIndex) {
                     Text(photos[currentIndex].date.marbleRelative())
                         .font(.marbleMono(12))
@@ -224,8 +287,7 @@ struct MultiPhotoBrowserView: View {
             }
         }
         .onAppear { currentIndex = initialIndex }
-        // Drag down to dismiss — same gesture as PhotoViewerView so the
-        // dismissal pattern is consistent across photo viewers.
+        // Drag down to dismiss
         .gesture(
             DragGesture()
                 .onChanged { value in
@@ -247,9 +309,8 @@ struct MultiPhotoBrowserView: View {
     }
 }
 
-/// One photo at full-screen-ish size with the standard scaledToFit
-/// treatment. Extracted so MultiPhotoBrowserView and the comparison
-/// halves can share the same image-loading affordances.
+/// One photo at full-screen-ish size. Shared between browser and the
+/// comparison halves.
 struct BrowserPhotoView: View {
     let photo: ProgressPhoto
     @State private var image: UIImage?
@@ -274,10 +335,9 @@ struct BrowserPhotoView: View {
 
 // MARK: - Side-by-side comparison
 
-/// Two photos stacked vertically, each with its own horizontal swipe.
-/// Swiping the top half changes the top photo without affecting the
-/// bottom, and vice versa — the user finds "before" on one half and
-/// "after" on the other by scrubbing independently.
+/// Two photos stacked vertically, each with independent horizontal
+/// swipe. The user finds "before" on one half and "after" on the other
+/// by scrubbing each side independently.
 struct PhotoComparisonView: View {
     let photos: [ProgressPhoto]
     let initialTopIndex: Int
@@ -301,13 +361,13 @@ struct PhotoComparisonView: View {
                 comparisonHalf(index: $bottomIndex)
             }
 
-            // Close button
+            // Close
             Button {
                 dismiss()
             } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 14, weight: .light))
-                    .foregroundStyle(.white.opacity(0.8))
+                    .foregroundStyle(.white.opacity(0.85))
                     .frame(width: 44, height: 44)
                     .background(Color.black.opacity(0.4), in: Circle())
             }
@@ -331,7 +391,6 @@ struct PhotoComparisonView: View {
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
 
-            // Date label for the currently-shown photo on this half
             if photos.indices.contains(index.wrappedValue) {
                 Text(photos[index.wrappedValue].date.marbleRelative())
                     .font(.marbleMono(11))
