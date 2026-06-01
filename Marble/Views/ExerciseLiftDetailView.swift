@@ -233,7 +233,7 @@ struct ExerciseLiftDetailView: View {
                 } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 11, weight: .regular))
-                        .marbleGlassCapsule(size: 30)
+                        .marbleGlassCapsule(size: 32)
                 }
                 .buttonStyle(.plain)
             } else {

@@ -103,7 +103,11 @@ struct GalleryTabContent: View {
         .padding(12)
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(Color("marblePrimary").opacity(0.05))
+                .fill(Color("marbleCard"))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5)
         )
     }
 
@@ -218,8 +222,6 @@ struct MultiPhotoBrowserView: View {
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
-
             TabView(selection: $currentIndex) {
                 ForEach(Array(photos.enumerated()), id: \.element.id) { index, photo in
                     BrowserPhotoView(photo: photo)
@@ -231,19 +233,15 @@ struct MultiPhotoBrowserView: View {
 
             // Top bar
             VStack {
-                HStack(alignment: .center) {
-                    Button {
-                        dismiss()
-                    } label: {
+                HStack(alignment: .center, spacing: 10) {
+                    Button { dismiss() } label: {
                         Image(systemName: "xmark")
                             .font(.system(size: 14, weight: .light))
-                            .foregroundStyle(.white.opacity(0.85))
-                            .frame(width: 44, height: 44)
                     }
+                    .marbleGlassCapsule(size: 44)
 
                     Spacer()
 
-                    // Compare pill — only relevant when 2+ photos exist
                     if photos.count >= 2 {
                         Button {
                             UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -253,25 +251,14 @@ struct MultiPhotoBrowserView: View {
                         } label: {
                             HStack(spacing: 6) {
                                 Image(systemName: "rectangle.split.1x2")
-                                    .font(.system(size: 12, weight: .regular))
+                                    .font(.system(size: 12, weight: .light))
                                 Text("COMPARE")
-                                    .font(.marbleMono(11, weight: .medium))
-                                    .tracking(1.5)
                             }
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 14)
-                            .frame(height: 36)
-                            .background(Color.white.opacity(0.15), in: Capsule())
-                            .overlay(
-                                Capsule()
-                                    .stroke(Color.white.opacity(0.25), lineWidth: 0.5)
-                            )
                         }
-                        .buttonStyle(.plain)
-                        .padding(.trailing, 12)
+                        .marbleGlassPill(horizontalPadding: 18, height: 44)
                     }
                 }
-                .padding(.horizontal, 12)
+                .padding(.horizontal, 16)
                 .padding(.top, 8)
 
                 Spacer()
@@ -281,11 +268,12 @@ struct MultiPhotoBrowserView: View {
                     Text(photos[currentIndex].date.marbleRelative())
                         .font(.marbleMono(12))
                         .tracking(1.5)
-                        .foregroundStyle(.white.opacity(0.7))
+                        .foregroundStyle(Color("marbleSecondary"))
                         .padding(.bottom, 32)
                 }
             }
         }
+        .marbleAtmosphereBackground()
         .onAppear { currentIndex = initialIndex }
         // Drag down to dismiss
         .gesture(
@@ -323,7 +311,7 @@ struct BrowserPhotoView: View {
                     .scaledToFit()
             } else {
                 ProgressView()
-                    .tint(.white.opacity(0.5))
+                    .tint(Color("marbleSecondary"))
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -349,31 +337,25 @@ struct PhotoComparisonView: View {
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
-            Color.black.ignoresSafeArea()
-
             VStack(spacing: 0) {
                 comparisonHalf(index: $topIndex)
 
                 Rectangle()
-                    .fill(Color.white.opacity(0.18))
+                    .fill(Color("marblePrimary").opacity(0.12))
                     .frame(height: 1)
 
                 comparisonHalf(index: $bottomIndex)
             }
 
-            // Close
-            Button {
-                dismiss()
-            } label: {
+            Button { dismiss() } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 14, weight: .light))
-                    .foregroundStyle(.white.opacity(0.85))
-                    .frame(width: 44, height: 44)
-                    .background(Color.black.opacity(0.4), in: Circle())
             }
-            .padding(.top, 12)
-            .padding(.trailing, 12)
+            .marbleGlassCapsule(size: 44)
+            .padding(.top, 8)
+            .padding(.trailing, 16)
         }
+        .marbleAtmosphereBackground()
         .onAppear {
             topIndex = initialTopIndex
             bottomIndex = initialBottomIndex
@@ -395,10 +377,7 @@ struct PhotoComparisonView: View {
                 Text(photos[index.wrappedValue].date.marbleRelative())
                     .font(.marbleMono(11))
                     .tracking(1.5)
-                    .foregroundStyle(.white.opacity(0.7))
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(Color.black.opacity(0.45), in: Capsule())
+                    .foregroundStyle(Color("marbleSecondary"))
                     .padding(.bottom, 12)
             }
         }

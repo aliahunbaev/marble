@@ -291,8 +291,7 @@ struct ClosingRitualView: View {
     }
 
     private var formattedDate: String {
-        workout.date.formatted(.dateTime.month(.wide).day().year())
-            .uppercased()
+        workout.date.marbleFullDate()
     }
 
     // MARK: - Helpers

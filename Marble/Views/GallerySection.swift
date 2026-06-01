@@ -149,31 +149,28 @@ struct PhotoViewerView: View {
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
-
             VStack(spacing: 0) {
                 // Top bar
                 HStack {
-                    Button {
-                        dismiss()
-                    } label: {
+                    Button { dismiss() } label: {
                         Image(systemName: "xmark")
                             .font(.system(size: 14, weight: .light))
-                            .foregroundStyle(.white.opacity(0.8))
-                            .frame(width: 44, height: 44)
                     }
+                    .marbleGlassCapsule(size: 44)
+
                     Spacer()
+
                     Button {
                         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                         showingDeleteConfirmation = true
                     } label: {
                         Image(systemName: "trash")
                             .font(.system(size: 14, weight: .light))
-                            .foregroundStyle(.white.opacity(0.6))
-                            .frame(width: 44, height: 44)
                     }
+                    .marbleGlassCapsule(size: 44)
                 }
-                .padding(.horizontal, 12)
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
 
                 Spacer()
 
@@ -186,28 +183,29 @@ struct PhotoViewerView: View {
                         .offset(y: dragOffset)
                 } else {
                     ProgressView()
-                        .tint(.white.opacity(0.5))
+                        .tint(Color("marbleSecondary"))
                 }
 
                 Spacer()
 
                 // Metadata
                 VStack(spacing: 4) {
-                    Text(photo.date.formatted(.dateTime.month(.abbreviated).day().year()))
-                        .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 12).weight(.light))
-                        .tracking(1)
-                        .foregroundStyle(.white.opacity(0.8))
+                    Text(photo.date.marbleFullDate())
+                        .font(.marbleMono(12))
+                        .tracking(1.5)
+                        .foregroundStyle(Color("marbleSecondary"))
 
                     if let workout {
                         Text(workout.name.uppercased())
-                            .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 10).weight(.light))
-                            .tracking(1)
-                            .foregroundStyle(.white.opacity(0.4))
+                            .font(.marbleMono(10))
+                            .tracking(1.5)
+                            .foregroundStyle(Color("marbleTertiary"))
                     }
                 }
                 .padding(.bottom, 32)
             }
         }
+        .marbleAtmosphereBackground()
         .gesture(
             DragGesture()
                 .onChanged { value in
