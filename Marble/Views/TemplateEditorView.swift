@@ -325,6 +325,7 @@ struct ExerciseSetTable: View {
                             .font(.system(size: 13, weight: .medium))
                             .marbleGlassCapsule(size: 32)
                     }
+                    .buttonStyle(.plain)
                 }
             }
             .padding(.horizontal, 20)

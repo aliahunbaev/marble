@@ -277,6 +277,7 @@ struct ActiveWorkoutView: View {
                         .font(.system(size: 13, weight: .medium))
                         .marbleGlassCapsule(size: 32)
                 }
+                .buttonStyle(.plain)
             }
             .padding(.horizontal, 20)
             .padding(.bottom, 14)
@@ -436,6 +437,7 @@ struct ActiveWorkoutView: View {
                     .font(.system(size: 15, weight: .medium))
                     .marbleGlassCapsule(size: 44)
             }
+            .buttonStyle(.plain)
 
             Button {
                 attemptFinish()
