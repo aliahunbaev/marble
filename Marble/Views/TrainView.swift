@@ -187,7 +187,7 @@ struct TrainView: View {
                                 let cloudID = template.cloudID
                                 modelContext.delete(template)
                                 try? modelContext.save()
-                                CloudSyncService.shared.deleteTemplate(cloudID: cloudID)
+                                Task { await CloudSyncService.shared.deleteTemplate(cloudID: cloudID) }
                             } label: {
                                 Label("Delete", systemImage: "trash")
                             }

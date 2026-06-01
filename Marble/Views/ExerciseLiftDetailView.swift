@@ -58,7 +58,7 @@ struct ExerciseLiftDetailView: View {
                     let cloudID = trackedLift.cloudID
                     modelContext.delete(trackedLift)
                     try? modelContext.save()
-                    CloudSyncService.shared.deleteTrackedLift(cloudID: cloudID)
+                    Task { await CloudSyncService.shared.deleteTrackedLift(cloudID: cloudID) }
                     dismiss()
                 } label: {
                     Text("REMOVE FROM TRACKING")

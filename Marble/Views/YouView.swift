@@ -402,19 +402,19 @@ struct WorkoutEntry: View {
 
     // MARK: - Stat value helpers (0 for empty, never dashes)
 
+    /// Em-dash for empty/missing values rather than zeroes — "0 lb" reads
+    /// like data, "—" reads like absence. Consistent with editorial type
+    /// conventions: a missing field is shown explicitly, not faked.
     private var setsValue: String {
-        "\(totalSets)"
+        totalSets > 0 ? "\(totalSets)" : "—"
     }
 
     private var timeValue: String {
-        if Int(workout.duration) / 60 >= 1 {
-            return formattedDuration
-        }
-        return "0m"
+        Int(workout.duration) / 60 >= 1 ? formattedDuration : "—"
     }
 
     private var volumeValue: String {
-        totalVolume > 0 ? formattedVolume : "0 lb"
+        totalVolume > 0 ? formattedVolume : "—"
     }
 
     // MARK: - Stats Row (Strava-style, always 3 columns)

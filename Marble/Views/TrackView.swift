@@ -93,7 +93,7 @@ struct TrackView: View {
                                 let cloudID = lift.cloudID
                                 modelContext.delete(lift)
                                 try? modelContext.save()
-                                CloudSyncService.shared.deleteTrackedLift(cloudID: cloudID)
+                                Task { await CloudSyncService.shared.deleteTrackedLift(cloudID: cloudID) }
                             } label: {
                                 Label("Remove", systemImage: "trash")
                             }
@@ -816,7 +816,7 @@ private struct AddTrackedLiftSheet: View {
             let cloudID = existing.cloudID
             modelContext.delete(existing)
             try? modelContext.save()
-            CloudSyncService.shared.deleteTrackedLift(cloudID: cloudID)
+            Task { await CloudSyncService.shared.deleteTrackedLift(cloudID: cloudID) }
         } else {
             let lift = TrackedLift(exercise: exercise, metricType: "bestWeight", displayOrder: trackedLifts.count)
             modelContext.insert(lift)
@@ -1076,7 +1076,7 @@ struct BodyweightDetailView: View {
         UINotificationFeedbackGenerator().notificationOccurred(.warning)
         modelContext.delete(entry)
         try? modelContext.save()
-        CloudSyncService.shared.deleteBodyweightEntry(cloudID: cloudID)
+        Task { await CloudSyncService.shared.deleteBodyweightEntry(cloudID: cloudID) }
     }
 }
 

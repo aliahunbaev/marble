@@ -62,29 +62,55 @@ final class CloudSyncService {
     }
 
     // MARK: - Delete
+    //
+    // These were previously fire-and-forget (`db.collection(...).delete()`
+    // without awaiting). If the app backgrounded before the request
+    // flushed, the cloud delete never landed — local state had removed
+    // the doc, but Firestore still held the row. On reinstall, restore
+    // pulled the stale doc back. Now async/await with explicit error
+    // logging so failures are visible during dev.
+    //
+    // We also skip the cloud call when cloudID is empty (the row was
+    // never uploaded, so there's no cloud doc to remove).
 
-    func deleteWorkout(cloudID: String) {
-        guard let uid else { return }
-        db.collection("users").document(uid)
-            .collection("workouts").document(cloudID).delete()
+    func deleteWorkout(cloudID: String) async {
+        guard let uid, !cloudID.isEmpty else { return }
+        do {
+            try await db.collection("users").document(uid)
+                .collection("workouts").document(cloudID).delete()
+        } catch {
+            print("Cloud sync — delete workout failed: \(error)")
+        }
     }
 
-    func deleteTemplate(cloudID: String) {
-        guard let uid else { return }
-        db.collection("users").document(uid)
-            .collection("templates").document(cloudID).delete()
+    func deleteTemplate(cloudID: String) async {
+        guard let uid, !cloudID.isEmpty else { return }
+        do {
+            try await db.collection("users").document(uid)
+                .collection("templates").document(cloudID).delete()
+        } catch {
+            print("Cloud sync — delete template failed: \(error)")
+        }
     }
 
-    func deleteTrackedLift(cloudID: String) {
-        guard let uid else { return }
-        db.collection("users").document(uid)
-            .collection("trackedLifts").document(cloudID).delete()
+    func deleteTrackedLift(cloudID: String) async {
+        guard let uid, !cloudID.isEmpty else { return }
+        do {
+            try await db.collection("users").document(uid)
+                .collection("trackedLifts").document(cloudID).delete()
+        } catch {
+            print("Cloud sync — delete tracked lift failed: \(error)")
+        }
     }
 
-    func deleteBodyweightEntry(cloudID: String) {
-        guard let uid else { return }
-        db.collection("users").document(uid)
-            .collection("bodyweightEntries").document(cloudID).delete()
+    func deleteBodyweightEntry(cloudID: String) async {
+        guard let uid, !cloudID.isEmpty else { return }
+        do {
+            try await db.collection("users").document(uid)
+                .collection("bodyweightEntries").document(cloudID).delete()
+        } catch {
+            print("Cloud sync — delete bodyweight failed: \(error)")
+        }
     }
 
     // MARK: - Restore (on sign-in)
@@ -180,6 +206,72 @@ final class CloudSyncService {
         }
 
         try? context.save()
+    }
+
+    // MARK: - Cleanup utilities
+    //
+    // For removing orphan / sparse data that accumulated before the
+    // await-deletes fix landed. Sweep covers both the local model
+    // context and the user's Firestore docs.
+
+    /// Deletes templates that are "empty" — no name OR no exercises.
+    /// Sweeps the local store first, then the cloud (to catch stale
+    /// cloud docs whose local row was already removed but never
+    /// propagated). Returns total deleted count for confirmation.
+    func cleanupEmptyTemplates(context: ModelContext) async -> Int {
+        var localDeleted = 0
+        var cloudDeleted = 0
+        let cloudIDsToDelete: Set<String>
+
+        // --- Local sweep
+        let localTemplates = (try? context.fetch(FetchDescriptor<WorkoutTemplate>())) ?? []
+        var collectedCloudIDs = Set<String>()
+        for template in localTemplates {
+            let nameEmpty = template.name.trimmingCharacters(in: .whitespaces).isEmpty
+            let exercisesEmpty = template.exercises.isEmpty
+            if nameEmpty || exercisesEmpty {
+                if !template.cloudID.isEmpty { collectedCloudIDs.insert(template.cloudID) }
+                context.delete(template)
+                localDeleted += 1
+            }
+        }
+        try? context.save()
+        cloudIDsToDelete = collectedCloudIDs
+
+        // --- Cloud sweep (await every delete so the function only
+        // returns when the network has actually flushed every request)
+        guard let uid else { return localDeleted }
+
+        // First: the ones we just removed locally
+        for cloudID in cloudIDsToDelete {
+            do {
+                try await db.collection("users").document(uid)
+                    .collection("templates").document(cloudID).delete()
+                cloudDeleted += 1
+            } catch {
+                print("Cleanup — delete \(cloudID) failed: \(error)")
+            }
+        }
+
+        // Then: orphans that exist in cloud but not in local store —
+        // empty-exercises docs that survived a previous bad delete.
+        do {
+            let snap = try await db.collection("users").document(uid)
+                .collection("templates").getDocuments()
+            for doc in snap.documents {
+                guard let dto = try? doc.data(as: TemplateDTO.self) else { continue }
+                let nameEmpty = dto.name.trimmingCharacters(in: .whitespaces).isEmpty
+                let exercisesEmpty = dto.exerciseNames.isEmpty
+                if nameEmpty || exercisesEmpty {
+                    try? await doc.reference.delete()
+                    cloudDeleted += 1
+                }
+            }
+        } catch {
+            print("Cleanup — scan cloud templates failed: \(error)")
+        }
+
+        return max(localDeleted, cloudDeleted)
     }
 
     // MARK: - Clear all cloud data

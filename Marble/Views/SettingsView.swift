@@ -17,6 +17,9 @@ struct SettingsView: View {
     @State private var showingClearConfirmation = false
     @State private var showingSignOutConfirmation = false
     @State private var showingDeleteConfirmation = false
+    @State private var showingCleanupResult = false
+    @State private var cleanupCount = 0
+    @State private var isCleaningUp = false
 
     /// The sheet's color scheme. We ALWAYS resolve to an explicit .light or
     /// .dark and never pass nil — passing nil to .preferredColorScheme on a
@@ -228,6 +231,27 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 12) {
             SectionHeader(title: "DATA")
 
+            // Reversible-ish: removes only orphan / empty templates. Safe
+            // to run repeatedly; reports a count via alert when done.
+            Button {
+                guard !isCleaningUp else { return }
+                isCleaningUp = true
+                Task {
+                    let n = await CloudSyncService.shared
+                        .cleanupEmptyTemplates(context: modelContext)
+                    await MainActor.run {
+                        cleanupCount = n
+                        isCleaningUp = false
+                        showingCleanupResult = true
+                    }
+                }
+            } label: {
+                Text(isCleaningUp ? "CLEANING UP…" : "CLEAN UP EMPTY TEMPLATES")
+                    .marbleSecondaryButton()
+            }
+            .buttonStyle(.plain)
+            .disabled(isCleaningUp)
+
             Button {
                 showingClearConfirmation = true
             } label: {
@@ -235,6 +259,13 @@ struct SettingsView: View {
                     .marbleDestructiveButton()
             }
             .buttonStyle(.plain)
+        }
+        .alert("Cleanup Complete", isPresented: $showingCleanupResult) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(cleanupCount == 0
+                 ? "No empty or orphan templates found."
+                 : "Removed \(cleanupCount) empty template\(cleanupCount == 1 ? "" : "s").")
         }
     }
 

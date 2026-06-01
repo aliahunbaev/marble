@@ -90,7 +90,7 @@ struct WorkoutDetailView: View {
                 let cloudID = workout.cloudID
                 modelContext.delete(workout)
                 try? modelContext.save()
-                CloudSyncService.shared.deleteWorkout(cloudID: cloudID)
+                Task { await CloudSyncService.shared.deleteWorkout(cloudID: cloudID) }
                 dismiss()
             }
         }
