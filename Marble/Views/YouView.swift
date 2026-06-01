@@ -10,6 +10,12 @@ struct YouView: View {
 
     @State private var showingSignIn = false
     @State private var showingSettings = false
+    @State private var activeTab: YouTab = .record
+
+    enum YouTab: String, CaseIterable {
+        case record = "RECORD"
+        case gallery = "GALLERY"
+    }
 
     var body: some View {
         NavigationStack {
@@ -18,25 +24,16 @@ struct YouView: View {
                     profileHeader
                         .padding(.horizontal, 24)
                         .padding(.top, 12)
+                        .padding(.bottom, 20)
+
+                    tabSwitcher
+                        .padding(.horizontal, 24)
                         .padding(.bottom, 24)
 
-                    if visibleWorkouts.isEmpty {
-                        emptyFeed
+                    if activeTab == .record {
+                        recordContent
                     } else {
-                        VStack(spacing: 16) {
-                            ForEach(visibleWorkouts) { workout in
-                                NavigationLink {
-                                    WorkoutDetailView(workout: workout)
-                                } label: {
-                                    WorkoutEntry(
-                                        workout: workout,
-                                        photos: photosFor(workout)
-                                    )
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                        .padding(.horizontal, 16)
+                        GalleryTabContent(photos: allPhotos)
                     }
                 }
                 .padding(.bottom, 40)
@@ -62,6 +59,70 @@ struct YouView: View {
                 SignInView()
                     .environmentObject(auth)
             }
+        }
+    }
+
+    // MARK: - Tab switcher
+
+    /// Two-tab segmented control under the profile header. RECORD shows
+    /// the chronological workout feed (the original YOU surface).
+    /// GALLERY shows progress photos as the artifact, decoupled from
+    /// workout context.
+    private var tabSwitcher: some View {
+        HStack(spacing: 24) {
+            ForEach(YouTab.allCases, id: \.self) { tab in
+                Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        activeTab = tab
+                    }
+                } label: {
+                    VStack(spacing: 6) {
+                        Text(tab.rawValue)
+                            .font(.marbleMono(11, weight: .medium))
+                            .tracking(1.5)
+                            .foregroundStyle(
+                                activeTab == tab
+                                    ? Color("marblePrimary")
+                                    : Color("marbleSecondary")
+                            )
+                        Rectangle()
+                            .fill(
+                                activeTab == tab
+                                    ? Color("marblePrimary")
+                                    : Color.clear
+                            )
+                            .frame(height: 1)
+                    }
+                    .fixedSize(horizontal: true, vertical: false)
+                }
+                .buttonStyle(.plain)
+            }
+            Spacer()
+        }
+    }
+
+    // MARK: - Record (workout feed) content
+
+    @ViewBuilder
+    private var recordContent: some View {
+        if visibleWorkouts.isEmpty {
+            emptyFeed
+        } else {
+            VStack(spacing: 16) {
+                ForEach(visibleWorkouts) { workout in
+                    NavigationLink {
+                        WorkoutDetailView(workout: workout)
+                    } label: {
+                        WorkoutEntry(
+                            workout: workout,
+                            photos: photosFor(workout)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 16)
         }
     }
 

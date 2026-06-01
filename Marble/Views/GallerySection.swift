@@ -97,7 +97,7 @@ struct GallerySection: View {
 
 // MARK: - Thumbnail
 
-private struct PhotoThumbnail: View {
+struct PhotoThumbnail: View {
     let photo: ProgressPhoto
     @State private var image: UIImage?
 

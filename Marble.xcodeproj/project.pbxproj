@@ -28,6 +28,7 @@
 		AA000050 /* MarbleGlass.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000050 /* MarbleGlass.swift */; };
 		AA000052 /* MarbleDate.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000052 /* MarbleDate.swift */; };
 		AA000053 /* WorkoutSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000053 /* WorkoutSession.swift */; };
+		AA000054 /* GalleryTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000054 /* GalleryTab.swift */; };
 		AA000051 /* BodyweightEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000051 /* BodyweightEntry.swift */; };
 		AA000001 /* MarbleApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000001 /* MarbleApp.swift */; };
 		AA000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000002 /* ContentView.swift */; };
@@ -76,6 +77,7 @@
 		AB000050 /* MarbleGlass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarbleGlass.swift; sourceTree = "<group>"; };
 		AB000052 /* MarbleDate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarbleDate.swift; sourceTree = "<group>"; };
 		AB000053 /* WorkoutSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutSession.swift; sourceTree = "<group>"; };
+		AB000054 /* GalleryTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryTab.swift; sourceTree = "<group>"; };
 		AB000051 /* BodyweightEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BodyweightEntry.swift; sourceTree = "<group>"; };
 		AB000001 /* MarbleApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarbleApp.swift; sourceTree = "<group>"; };
 		AB000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -195,6 +197,7 @@
 				AB000032 /* SignInView.swift */,
 				AB000036 /* PhotoCaptureSheet.swift */,
 				AB000037 /* GallerySection.swift */,
+				AB000054 /* GalleryTab.swift */,
 				AB000038 /* OnboardingFlow.swift */,
 				AB000039 /* ClosingRitualView.swift */,
 				AB000043 /* SettingsView.swift */,
@@ -332,6 +335,7 @@
 				AA000050 /* MarbleGlass.swift in Sources */,
 				AA000052 /* MarbleDate.swift in Sources */,
 				AA000053 /* WorkoutSession.swift in Sources */,
+				AA000054 /* GalleryTab.swift in Sources */,
 				AA000051 /* BodyweightEntry.swift in Sources */,
 				AA000001 /* MarbleApp.swift in Sources */,
 				AA000002 /* ContentView.swift in Sources */,
