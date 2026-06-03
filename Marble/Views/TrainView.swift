@@ -74,9 +74,12 @@ struct TrainView: View {
                         .frame(height: 0.5)
                         .padding(.horizontal, 20)
 
-                    // Programs list
+                    // Programs list — horizontal padding lives INSIDE
+                    // (on the section header + each template row) so the
+                    // template list itself is full-width. That way the
+                    // iOS drag preview fills the screen edge-to-edge and
+                    // the row content stays correctly inset.
                     programsSection
-                        .padding(.horizontal, 20)
                         .padding(.top, 24)
                         .padding(.bottom, 40)
                 }
@@ -181,67 +184,64 @@ struct TrainView: View {
                 }
                 .buttonStyle(.plain)
             }
+            // Header keeps the 20pt content padding it had before; the
+            // templates list below sits full-width so the drag preview
+            // fills the screen edge-to-edge.
+            .padding(.horizontal, 20)
 
             if templates.isEmpty {
                 emptyProgramsPlaceholder
+                    .padding(.horizontal, 20)
             } else {
                 templatesList
             }
         }
     }
 
+    /// Native `List` + `.onMove`. iOS handles long-press → lift → drag
+    /// → drop natively with proper scroll coordination. The drag
+    /// preview is iOS-native (a slightly off-white lifted card) —
+    /// not a custom marble surface, but the *behavior* is exactly the
+    /// "lift, drag, others reflow" UX from Reminders / Files.
     private var templatesList: some View {
-        VStack(spacing: 0) {
-            ForEach(Array(templates.enumerated()), id: \.element.id) { index, template in
-                templateRowButton(template: template)
-
-                if index < templates.count - 1 {
-                    Rectangle()
-                        .fill(Color("marblePrimary").opacity(0.06))
-                        .frame(height: 0.5)
+        List {
+            ForEach(templates) { template in
+                Button {
+                    selectedTemplate = template
+                } label: {
+                    templateRow(template)
                 }
+                .buttonStyle(.plain)
+                .listRowInsets(EdgeInsets())
+                .listRowSeparator(.visible, edges: .bottom)
+                .listRowSeparatorTint(Color("marblePrimary").opacity(0.06))
+                .listRowBackground(Color.clear)
+            }
+            .onMove(perform: moveTemplates)
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .scrollDisabled(true)
+        // Fixed approximate height per row × count. Generous enough
+        // (140pt) to accommodate templates with longer handwritten
+        // watermarks without clipping. List rows still size themselves
+        // intrinsically; this frame is just the outer container so the
+        // nested List doesn't collapse inside the outer ScrollView.
+        .frame(height: CGFloat(templates.count) * 140)
+    }
+
+    private func moveTemplates(from source: IndexSet, to destination: Int) {
+        var reordered = templates
+        reordered.move(fromOffsets: source, toOffset: destination)
+        for (index, template) in reordered.enumerated() {
+            if template.displayOrder != index {
+                template.displayOrder = index
             }
         }
-    }
-
-    /// One template row in the programs list. Tap → opens the detail
-    /// sheet (where Edit / Duplicate / Delete live as ⋯ menu actions).
-    /// Long-press → lifts the row for drag-reorder. Drop onto another
-    /// row swaps positions. No context menu — `.contextMenu` and
-    /// `.draggable` collide on the long-press, and drag is the higher-
-    /// value gesture here.
-    @ViewBuilder
-    private func templateRowButton(template: WorkoutTemplate) -> some View {
-        Button {
-            selectedTemplate = template
-        } label: {
-            templateRow(template)
-        }
-        .buttonStyle(.plain)
-        .draggable(template.cloudID) {
-            templateRow(template)
-                .opacity(0.85)
-        }
-        .dropDestination(for: String.self) { droppedIDs, _ in
-            guard let sourceID = droppedIDs.first else { return false }
-            return swapTemplates(sourceCloudID: sourceID, destCloudID: template.cloudID)
-        }
-    }
-
-    private func swapTemplates(sourceCloudID: String, destCloudID: String) -> Bool {
-        guard sourceCloudID != destCloudID,
-              let source = templates.first(where: { $0.cloudID == sourceCloudID }),
-              let dest = templates.first(where: { $0.cloudID == destCloudID })
-        else { return false }
-
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        let sourceOrder = source.displayOrder
-        source.displayOrder = dest.displayOrder
-        dest.displayOrder = sourceOrder
         try? modelContext.save()
-        CloudSyncService.shared.uploadTemplate(source)
-        CloudSyncService.shared.uploadTemplate(dest)
-        return true
+        for template in reordered {
+            CloudSyncService.shared.uploadTemplate(template)
+        }
     }
 
     // MARK: - Sheet callbacks (from TemplateDetailSheet ⋯ menu)
@@ -305,6 +305,13 @@ struct TrainView: View {
                 Spacer(minLength: 20)
             }
         }
+        // Internal horizontal padding lives ON the row, not on the outer
+        // section. That way iOS's drag preview — which snapshots the row
+        // at whatever width the cell rendered — keeps the content
+        // properly inset inside the lifted card. Without this, the
+        // watermark anchors to the cell's trailing edge and gets
+        // clipped by the screen edge during drag.
+        .padding(.horizontal, 20)
         .padding(.vertical, 24)
         .contentShape(Rectangle())
     }
@@ -338,3 +345,4 @@ struct TrainView: View {
     TrainView()
         .modelContainer(for: [WorkoutTemplate.self, Workout.self], inMemory: true)
 }
+
