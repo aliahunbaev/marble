@@ -187,6 +187,73 @@ final class PhotoStorageService {
         }
     }
 
+    // MARK: - Avatar (single-image, profile-scoped)
+    //
+    // The avatar is one image per user. Stored locally as `avatar.jpg`
+    // in the photos cache and mirrored to `users/uid/avatar.jpg` in
+    // Firebase Storage so it follows the user across devices /
+    // reinstalls. Separate code path from ProgressPhoto since it's a
+    // singleton-per-user, not a record in a model.
+
+    private var avatarLocalURL: URL {
+        photosDirectory.appendingPathComponent("avatar.jpg")
+    }
+
+    /// Reads the cached avatar image off disk. Returns nil if the user
+    /// hasn't set one yet (or hasn't synced from cloud on this device).
+    func avatarImage() -> UIImage? {
+        guard let data = try? Data(contentsOf: avatarLocalURL) else { return nil }
+        return UIImage(data: data)
+    }
+
+    /// Persist a new avatar image. Downscales to a circle-friendly max
+    /// dimension, writes locally for immediate render, then uploads to
+    /// Firebase Storage in the background.
+    @discardableResult
+    func saveAvatar(_ image: UIImage) -> Bool {
+        guard let processed = downscale(image, maxDimension: 512),
+              let data = processed.jpegData(compressionQuality: 0.9) else {
+            return false
+        }
+        do {
+            try data.write(to: avatarLocalURL, options: .atomic)
+        } catch {
+            print("Avatar save — local write failed: \(error)")
+            return false
+        }
+        Task { await uploadAvatar(data: data) }
+        return true
+    }
+
+    private func uploadAvatar(data: Data) async {
+        guard let uid else { return }
+        let ref = storage.reference(withPath: "users/\(uid)/avatar.jpg")
+        let metadata = StorageMetadata()
+        metadata.contentType = "image/jpeg"
+        do {
+            _ = try await ref.putDataAsync(data, metadata: metadata)
+        } catch {
+            print("Avatar upload failed: \(error)")
+        }
+    }
+
+    /// Pull the cloud avatar into the local cache. Call on sign-in so
+    /// the user sees their photo on a fresh device after restoring.
+    func restoreAvatarFromCloud() async {
+        guard let uid else { return }
+        let ref = storage.reference(withPath: "users/\(uid)/avatar.jpg")
+        do {
+            let data = try await ref.data(maxSize: 4 * 1024 * 1024)
+            try data.write(to: avatarLocalURL, options: .atomic)
+        } catch {
+            // "object-not-found" is normal when the user hasn't set
+            // an avatar; suppress the noisy log for that case.
+            if (error as NSError).domain != StorageErrorDomain {
+                print("Avatar restore failed: \(error)")
+            }
+        }
+    }
+
     // MARK: - Helpers
 
     private var isSignedIn: Bool { uid != nil }

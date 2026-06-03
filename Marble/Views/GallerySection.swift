@@ -1,101 +1,13 @@
 import SwiftUI
 import SwiftData
 
-struct GallerySection: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query(sort: \ProgressPhoto.date, order: .reverse) private var photos: [ProgressPhoto]
-    @Query private var workouts: [Workout]
-
-    @State private var showingCapture = false
-    @State private var selectedPhoto: ProgressPhoto?
-
-    private let columns = [
-        GridItem(.flexible(), spacing: 6),
-        GridItem(.flexible(), spacing: 6),
-    ]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                SectionHeader(title: "GALLERY")
-                Spacer()
-                Button {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    showingCapture = true
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "plus")
-                            .font(.system(size: 11, weight: .light))
-                        Text("CAPTURE")
-                            .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 11).weight(.light))
-                            .tracking(1)
-                    }
-                    .foregroundStyle(Color("marbleSecondary"))
-                }
-            }
-
-            if photos.isEmpty {
-                emptyState
-            } else {
-                LazyVGrid(columns: columns, spacing: 6) {
-                    ForEach(photos) { photo in
-                        Button {
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                            selectedPhoto = photo
-                        } label: {
-                            PhotoThumbnail(photo: photo)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
-        }
-        .sheet(isPresented: $showingCapture) {
-            PhotoCaptureSheet()
-                .presentationDetents([.medium])
-                .presentationDragIndicator(.hidden)
-        }
-        .fullScreenCover(item: $selectedPhoto) { photo in
-            PhotoViewerView(
-                photo: photo,
-                workout: workoutFor(photo: photo),
-                onDelete: { delete(photo) }
-            )
-        }
-    }
-
-    private var emptyState: some View {
-        VStack(spacing: 12) {
-            Text("Mark the work.")
-                .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 18).weight(.light))
-                .foregroundStyle(Color("marblePrimary"))
-            Text("Capture a moment after each session. A quiet record of what you make.")
-                .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 13).weight(.light))
-                .foregroundStyle(Color("marbleSecondary"))
-                .multilineTextAlignment(.center)
-                .lineSpacing(2)
-                .padding(.horizontal, 24)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 32)
-        .overlay(
-            RoundedRectangle(cornerRadius: 4)
-                .stroke(Color("marblePrimary").opacity(0.08), lineWidth: 0.5)
-        )
-    }
-
-    private func workoutFor(photo: ProgressPhoto) -> Workout? {
-        guard let id = photo.workoutCloudID else { return nil }
-        return workouts.first { $0.cloudID == id }
-    }
-
-    private func delete(_ photo: ProgressPhoto) {
-        PhotoStorageService.shared.delete(photo, context: modelContext)
-        selectedPhoto = nil
-    }
-}
-
 // MARK: - Thumbnail
+//
+// Two-component file: PhotoThumbnail (used by GalleryTab's grid) +
+// PhotoViewerView (used by WorkoutDetailView for in-context photo
+// review). The outer GallerySection view that originally lived here
+// was orphaned after the YOU tab moved to RECORD/GALLERY subtabs.
+// Removed in the post-launch cleanup pass.
 
 struct PhotoThumbnail: View {
     let photo: ProgressPhoto

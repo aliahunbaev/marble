@@ -159,6 +159,8 @@ final class CloudSyncService {
                 let template = WorkoutTemplate(name: dto.name)
                 template.cloudID = dto.cloudID
                 template.exercises = dto.exerciseNames.compactMap { exerciseByName[$0] }
+                template.exerciseNames = dto.exerciseNames
+                template.displayOrder = dto.displayOrder
                 context.insert(template)
             }
         } catch {
@@ -206,72 +208,6 @@ final class CloudSyncService {
         }
 
         try? context.save()
-    }
-
-    // MARK: - Cleanup utilities
-    //
-    // For removing orphan / sparse data that accumulated before the
-    // await-deletes fix landed. Sweep covers both the local model
-    // context and the user's Firestore docs.
-
-    /// Deletes templates that are "empty" — no name OR no exercises.
-    /// Sweeps the local store first, then the cloud (to catch stale
-    /// cloud docs whose local row was already removed but never
-    /// propagated). Returns total deleted count for confirmation.
-    func cleanupEmptyTemplates(context: ModelContext) async -> Int {
-        var localDeleted = 0
-        var cloudDeleted = 0
-        let cloudIDsToDelete: Set<String>
-
-        // --- Local sweep
-        let localTemplates = (try? context.fetch(FetchDescriptor<WorkoutTemplate>())) ?? []
-        var collectedCloudIDs = Set<String>()
-        for template in localTemplates {
-            let nameEmpty = template.name.trimmingCharacters(in: .whitespaces).isEmpty
-            let exercisesEmpty = template.exercises.isEmpty
-            if nameEmpty || exercisesEmpty {
-                if !template.cloudID.isEmpty { collectedCloudIDs.insert(template.cloudID) }
-                context.delete(template)
-                localDeleted += 1
-            }
-        }
-        try? context.save()
-        cloudIDsToDelete = collectedCloudIDs
-
-        // --- Cloud sweep (await every delete so the function only
-        // returns when the network has actually flushed every request)
-        guard let uid else { return localDeleted }
-
-        // First: the ones we just removed locally
-        for cloudID in cloudIDsToDelete {
-            do {
-                try await db.collection("users").document(uid)
-                    .collection("templates").document(cloudID).delete()
-                cloudDeleted += 1
-            } catch {
-                print("Cleanup — delete \(cloudID) failed: \(error)")
-            }
-        }
-
-        // Then: orphans that exist in cloud but not in local store —
-        // empty-exercises docs that survived a previous bad delete.
-        do {
-            let snap = try await db.collection("users").document(uid)
-                .collection("templates").getDocuments()
-            for doc in snap.documents {
-                guard let dto = try? doc.data(as: TemplateDTO.self) else { continue }
-                let nameEmpty = dto.name.trimmingCharacters(in: .whitespaces).isEmpty
-                let exercisesEmpty = dto.exerciseNames.isEmpty
-                if nameEmpty || exercisesEmpty {
-                    try? await doc.reference.delete()
-                    cloudDeleted += 1
-                }
-            }
-        } catch {
-            print("Cleanup — scan cloud templates failed: \(error)")
-        }
-
-        return max(localDeleted, cloudDeleted)
     }
 
     // MARK: - Clear all cloud data
@@ -348,11 +284,19 @@ struct TemplateDTO: Codable {
     var cloudID: String
     var name: String
     var exerciseNames: [String]
+    /// Defaulted so legacy docs (which predate this field) decode
+    /// cleanly. Encoded going forward so the user's Train tab ordering
+    /// survives a reinstall.
+    var displayOrder: Int = 0
 
     init(from template: WorkoutTemplate) {
         self.cloudID = template.cloudID
         self.name = template.name
-        self.exerciseNames = template.exercises.map(\.name)
+        // Use the order-of-truth helper so cloud round-trip preserves
+        // the user's actual order (the raw .exercises relationship may
+        // not reflect the most recent reorder — see WorkoutTemplate).
+        self.exerciseNames = template.orderedExercises().map(\.name)
+        self.displayOrder = template.displayOrder
     }
 }
 

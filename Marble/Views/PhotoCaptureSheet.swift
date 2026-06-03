@@ -2,14 +2,28 @@ import SwiftUI
 import PhotosUI
 import UIKit
 
+/// Modal sheet that captures a progress photo via camera or library.
+/// Half-height detent — purposefully small so it reads as a single
+/// decision, not a screen of options. Two affordances + a Skip out.
+///
+/// Aligned with the design system in this pass:
+///   - Fonts go through `.marbleMono` / `.marbleBody` (previous file
+///     hard-coded `.custom("ABC Favorit Mono ...")` strings, which
+///     bypassed the centralized font helpers and drifted from the rest
+///     of the app's typography rules).
+///   - Buttons match the marble button vocabulary — tinted primary +
+///     bordered secondary — instead of the bespoke rounded-rect with
+///     inline color logic.
 struct PhotoCaptureSheet: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
-    /// Optional — if provided, photo will be linked to this workout
+    /// Optional — if provided, the photo links back to this workout so
+    /// the YOU feed can render it inline with the entry.
     var workoutCloudID: String? = nil
 
-    /// Called after a photo is captured (so caller can dismiss/celebrate)
+    /// Called after a photo is captured. Lets a caller celebrate or
+    /// chain into another flow (e.g. the closing ritual).
     var onCaptured: ((ProgressPhoto) -> Void)? = nil
 
     @State private var showingCamera = false
@@ -18,7 +32,6 @@ struct PhotoCaptureSheet: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Top drag bar
             Capsule()
                 .fill(Color("marbleSecondary").opacity(0.3))
                 .frame(width: 36, height: 4)
@@ -26,43 +39,42 @@ struct PhotoCaptureSheet: View {
 
             Spacer()
 
-            // Title
-            VStack(spacing: 8) {
+            VStack(spacing: 10) {
                 Text("MARK IT.")
-                    .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 13).weight(.medium))
+                    .font(.marbleMono(13, weight: .medium))
                     .tracking(2)
                     .foregroundStyle(Color("marblePrimary"))
 
                 Text("A photo of the work.")
-                    .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 15).weight(.light))
+                    .font(.marbleBody(15))
                     .foregroundStyle(Color("marbleSecondary"))
             }
 
             Spacer()
 
-            // Buttons
             VStack(spacing: 12) {
                 Button {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     showingCamera = true
                 } label: {
-                    captureButton(icon: "camera", label: "Take a photo", emphasized: true)
+                    captureRow(icon: "camera", label: "Take a photo", emphasized: true)
                 }
+                .buttonStyle(.plain)
 
                 Button {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     showingLibrary = true
                 } label: {
-                    captureButton(icon: "photo.on.rectangle", label: "Choose from library", emphasized: false)
+                    captureRow(icon: "photo.on.rectangle", label: "Choose from library", emphasized: false)
                 }
+                .buttonStyle(.plain)
             }
             .padding(.horizontal, 32)
 
-            // Skip
             Button("Skip") {
                 dismiss()
             }
-            .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 14).weight(.light))
+            .font(.marbleBody(14))
             .foregroundStyle(Color("marbleSecondary"))
             .padding(.top, 28)
             .padding(.bottom, 32)
@@ -89,12 +101,17 @@ struct PhotoCaptureSheet: View {
         }
     }
 
-    private func captureButton(icon: String, label: String, emphasized: Bool) -> some View {
+    /// Single capture-row affordance. The emphasized variant uses the
+    /// tinted marblePrimary fill (primary commit weight); the
+    /// non-emphasized uses marbleCard with a faint hairline border —
+    /// matches how the rest of the app treats secondary actions
+    /// (Settings selectors, banner backgrounds).
+    private func captureRow(icon: String, label: String, emphasized: Bool) -> some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
                 .font(.system(size: 16, weight: .light))
             Text(label)
-                .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 15).weight(emphasized ? .medium : .regular))
+                .font(.marbleBody(15, weight: emphasized ? .medium : .regular))
             Spacer()
         }
         .foregroundStyle(emphasized ? Color("marbleBackground") : Color("marblePrimary"))
@@ -104,7 +121,10 @@ struct PhotoCaptureSheet: View {
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .overlay(
             RoundedRectangle(cornerRadius: 14)
-                .stroke(emphasized ? Color.clear : Color("marbleTertiary"), lineWidth: 1)
+                .stroke(
+                    emphasized ? Color.clear : Color("marblePrimary").opacity(0.12),
+                    lineWidth: 0.5
+                )
         )
     }
 

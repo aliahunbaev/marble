@@ -22,7 +22,8 @@ struct TemplateDetailSheet: View {
                 // (templates default to 3). Names breathe instead.
                 ScrollView {
                     VStack(spacing: 0) {
-                        ForEach(Array(template.exercises.enumerated()), id: \.element.id) { index, exercise in
+                        let orderedExercises = template.orderedExercises()
+                        ForEach(Array(orderedExercises.enumerated()), id: \.element.id) { index, exercise in
                             HStack {
                                 Text(exercise.name)
                                     .font(.marbleBody(15))
@@ -32,7 +33,7 @@ struct TemplateDetailSheet: View {
                             .padding(.horizontal, 24)
                             .padding(.vertical, 16)
 
-                            if index < template.exercises.count - 1 {
+                            if index < orderedExercises.count - 1 {
                                 Rectangle()
                                     .fill(Color("marblePrimary").opacity(0.06))
                                     .frame(height: 0.5)

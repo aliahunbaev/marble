@@ -164,14 +164,17 @@ struct GalleryTabContent: View {
     // MARK: - Empty state
 
     private var emptyState: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 14) {
             Text("No photos yet.")
-                .font(.marbleBody(15))
+                .font(.marbleBody(28))
                 .foregroundStyle(Color("marbleSecondary"))
-            Text("Capture one after a workout.")
+            Text("After a workout, tap Capture to add one. Your gallery grows quietly over time.")
                 .font(.marbleMono(11))
                 .tracking(1)
                 .foregroundStyle(Color("marbleTertiary"))
+                .multilineTextAlignment(.center)
+                .lineSpacing(3)
+                .padding(.horizontal, 36)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 60)

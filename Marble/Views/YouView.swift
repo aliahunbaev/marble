@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import PhotosUI
 
 struct YouView: View {
     @EnvironmentObject private var auth: AuthenticationService
@@ -14,6 +15,11 @@ struct YouView: View {
     @State private var editingName = false
     @State private var editedName: String = ""
     @FocusState private var nameFieldFocused: Bool
+
+    // Avatar state. `avatarImage` is the rendered photo; `avatarPick` is
+    // the PhotosPicker selection that drives the upload pipeline.
+    @State private var avatarImage: UIImage? = nil
+    @State private var avatarPick: PhotosPickerItem? = nil
 
     enum YouTab: String, CaseIterable {
         case record = "RECORD"
@@ -68,6 +74,7 @@ struct YouView: View {
                 SignInView()
                     .environmentObject(auth)
             }
+            .onAppear { loadAvatarOnAppear() }
         }
     }
 
@@ -151,7 +158,24 @@ struct YouView: View {
 
     private var profileHeader: some View {
         HStack(spacing: 16) {
-            AvatarCircle(name: avatarName, size: 64)
+            // Tap the avatar to pick a new one. PhotosPicker opens the
+            // system library, the selection runs through
+            // PhotoStorageService.saveAvatar (downscale + local write +
+            // upload), then we refresh the in-view image. Only enabled
+            // when signed in — there's no profile to attach to otherwise.
+            PhotosPicker(
+                selection: $avatarPick,
+                matching: .images,
+                photoLibrary: .shared()
+            ) {
+                AvatarCircle(name: avatarName, size: 64, image: avatarImage)
+            }
+            .buttonStyle(.plain)
+            .disabled(!auth.isAuthenticated)
+            .onChange(of: avatarPick) { _, newItem in
+                guard let newItem else { return }
+                Task { await handleAvatarPick(newItem) }
+            }
 
             VStack(alignment: .leading, spacing: 4) {
                 if auth.isAuthenticated, let profile = auth.userProfile {
@@ -229,6 +253,39 @@ struct YouView: View {
         auth.userProfile?.name ?? "—"
     }
 
+    /// PhotosPicker callback. Pulls the selected item's data, hands it
+    /// to PhotoStorageService for downscale + persistence + upload,
+    /// then refreshes the in-view image. Clears the pick after so
+    /// re-selecting the same photo retriggers correctly.
+    private func handleAvatarPick(_ item: PhotosPickerItem) async {
+        defer { avatarPick = nil }
+        guard let data = try? await item.loadTransferable(type: Data.self),
+              let image = UIImage(data: data) else { return }
+        let ok = PhotoStorageService.shared.saveAvatar(image)
+        if ok {
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            await MainActor.run {
+                avatarImage = PhotoStorageService.shared.avatarImage()
+            }
+        } else {
+            UINotificationFeedbackGenerator().notificationOccurred(.warning)
+        }
+    }
+
+    /// On appear, pull the avatar off disk so signed-in users see their
+    /// photo immediately. Also kicks a cloud restore for fresh devices.
+    private func loadAvatarOnAppear() {
+        avatarImage = PhotoStorageService.shared.avatarImage()
+        if auth.isAuthenticated && avatarImage == nil {
+            Task {
+                await PhotoStorageService.shared.restoreAvatarFromCloud()
+                await MainActor.run {
+                    avatarImage = PhotoStorageService.shared.avatarImage()
+                }
+            }
+        }
+    }
+
     private func joinDateString(_ date: Date) -> String? {
         "SINCE \(date.marbleMonthYear())"
     }
@@ -243,12 +300,19 @@ struct YouView: View {
     }
 
     private var emptyFeed: some View {
-        VStack {
-            Spacer(minLength: 80)
+        VStack(spacing: 14) {
+            Spacer(minLength: 60)
             Text("Begin.")
                 .font(.marbleBody(28))
                 .foregroundStyle(Color("marbleSecondary"))
-            Spacer(minLength: 80)
+            Text("Your finished workouts collect here — date, lifts, notes, a photo if you took one.")
+                .font(.marbleMono(11))
+                .tracking(1)
+                .foregroundStyle(Color("marbleTertiary"))
+                .multilineTextAlignment(.center)
+                .lineSpacing(3)
+                .padding(.horizontal, 36)
+            Spacer(minLength: 60)
         }
         .frame(maxWidth: .infinity)
     }
@@ -273,6 +337,11 @@ struct YouView: View {
 struct AvatarCircle: View {
     let name: String
     let size: CGFloat
+    /// Optional override image. When non-nil, renders as the avatar;
+    /// when nil, falls back to initials (or a person icon when name
+    /// is empty). Lets profile-aware screens pass the loaded user
+    /// avatar without changing AvatarCircle callers elsewhere.
+    var image: UIImage? = nil
 
     private var initials: String {
         let trimmed = name.trimmingCharacters(in: .whitespaces)
@@ -285,7 +354,13 @@ struct AvatarCircle: View {
         ZStack {
             Circle()
                 .fill(Color.marbleSurfaceTint)
-            if initials.isEmpty {
+            if let image {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: size, height: size)
+                    .clipShape(Circle())
+            } else if initials.isEmpty {
                 Image(systemName: "person")
                     .font(.system(size: size * 0.4, weight: .light))
                     .foregroundStyle(Color("marbleSecondary"))

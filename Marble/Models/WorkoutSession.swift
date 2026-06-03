@@ -50,7 +50,7 @@ final class WorkoutSession {
         sourceTemplate = template
         if let template {
             name = template.name
-            entries = template.exercises.map { exercise in
+            entries = template.orderedExercises().map { exercise in
                 ExerciseEntry(exercise: exercise, sets: [
                     EditableSet(), EditableSet(), EditableSet()
                 ])

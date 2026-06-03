@@ -45,16 +45,27 @@ struct TemplateEditorView: View {
     /// replace. Same pattern as ActiveWorkoutView.
     @State private var replacingEntryID: UUID?
 
+    /// Used to assign a sensible displayOrder for fresh templates so
+    /// they land at the end of the Train list instead of at index 0
+    /// (where they'd collide with every other unset template). Bound
+    /// via @Query so the count is always live.
+    @Query(sort: \WorkoutTemplate.displayOrder) private var allTemplates: [WorkoutTemplate]
+
     private let existingTemplate: WorkoutTemplate?
 
     init(template: WorkoutTemplate? = nil) {
         self.existingTemplate = template
         _name = State(initialValue: template?.name ?? "")
-        _entries = State(initialValue: template?.exercises.map { exercise in
+        // Use the order-of-truth helper so reorders done in a previous
+        // edit session land in the correct sequence here. The raw
+        // `template.exercises` relationship doesn't reliably preserve
+        // order across saves — see WorkoutTemplate for the rationale.
+        let ordered = template?.orderedExercises() ?? []
+        _entries = State(initialValue: ordered.map { exercise in
             ExerciseEntry(exercise: exercise, sets: [
                 EditableSet(), EditableSet(), EditableSet()
             ])
-        } ?? [])
+        })
     }
 
     var body: some View {
@@ -247,16 +258,25 @@ struct TemplateEditorView: View {
         set: Binding<EditableSet>
     ) -> some View {
         let index = entry.wrappedValue.sets.firstIndex(where: { $0.id == set.wrappedValue.id }) ?? 0
+        // Ghost-text the previous workout's values per set, same lookup
+        // as ActiveWorkoutView. Templates don't *store* prescribed
+        // numbers — the editor is structural (exercises + set count +
+        // order). The ghost is purely informational: "here's what you
+        // last lifted on this exercise" so the user can shape the
+        // template knowing where they're starting from.
+        let prev = PreviousPerformance.previousComponents(
+            for: entry.wrappedValue.exercise,
+            setIndex: index,
+            context: modelContext
+        )
 
         SetRowView(
             setNumber: index + 1,
             weight: set.weight,
             reps: set.reps,
             isCompleted: set.isCompleted,
-            // No previous performance in template editor — these are
-            // demonstrational rows, not a live workout.
-            previousWeight: nil,
-            previousReps: nil,
+            previousWeight: prev.weight,
+            previousReps: prev.reps,
             showCheckmark: false,
             onComplete: nil
         )
@@ -400,11 +420,25 @@ struct TemplateEditorView: View {
 
         if let existing = existingTemplate {
             existing.name = trimmedName
+            // Two-property write:
+            //   * `exercises` is the SwiftData relationship — drives
+            //     cardinality + delete semantics. Cardinality changes
+            //     (add/remove) persist via this property.
+            //   * `exerciseNames` is the order-of-truth. Plain stored
+            //     `[String]`, so reorders persist reliably (unlike the
+            //     relationship, which silently coalesces pure-reorder
+            //     writes when the related set is unchanged).
+            // Reading: `template.orderedExercises()` resolves names →
+            // exercise refs in the saved order.
             existing.exercises = exercises
+            existing.exerciseNames = exercises.map(\.name)
             try? modelContext.save()
             CloudSyncService.shared.uploadTemplate(existing)
         } else {
             let template = WorkoutTemplate(name: trimmedName, exercises: exercises)
+            // Land at the end of the list so the user's existing order
+            // isn't disturbed by a new entry.
+            template.displayOrder = allTemplates.count
             modelContext.insert(template)
             try? modelContext.save()
             CloudSyncService.shared.uploadTemplate(template)

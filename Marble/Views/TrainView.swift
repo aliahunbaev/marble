@@ -20,10 +20,14 @@ enum TemplateEditorTarget: Identifiable {
 struct TrainView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(WorkoutSession.self) private var workoutSession
-    @Query private var templates: [WorkoutTemplate]
+    @Query(sort: \WorkoutTemplate.displayOrder) private var templates: [WorkoutTemplate]
     @Query(sort: \Workout.date, order: .reverse) private var workouts: [Workout]
 
     @State private var selectedTemplate: WorkoutTemplate?
+    /// Long-press a template row to enter reorder mode — rows collapse
+    /// to plain titles with native drag handles. Tap DONE in the
+    /// section header to exit.
+    @State private var isReorderingTemplates = false
     /// Drives the template editor cover. Using item-based presentation
     /// (rather than two pieces of state — bool + optional template) so
     /// the cover always reads the *current* target at construction
@@ -166,66 +170,136 @@ struct TrainView: View {
             HStack {
                 SectionHeader(title: "PROGRAMS")
                 Spacer()
-                Button {
-                    editorTarget = .create
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.system(size: 14, weight: .regular))
-                        .marbleGlassCapsule(size: 32)
+                if isReorderingTemplates {
+                    Button {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+                            isReorderingTemplates = false
+                        }
+                    } label: {
+                        Text("DONE")
+                            .font(.marbleMono(11, weight: .medium))
+                            .tracking(1.5)
+                            .foregroundStyle(Color("marblePrimary"))
+                            .padding(.horizontal, 12)
+                            .frame(height: 32)
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    Button {
+                        editorTarget = .create
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.system(size: 14, weight: .regular))
+                            .marbleGlassCapsule(size: 32)
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
 
             if templates.isEmpty {
                 emptyProgramsPlaceholder
+            } else if isReorderingTemplates {
+                reorderingTemplatesList
             } else {
-                // Inline rows with hairlines — templates are a "pick a
-                // workout" utility list, not a memory feed. Glass cards
-                // (used on YOU) read as artifacts to look at; rows read as
-                // a menu to act on. Different semantic, different container.
-                VStack(spacing: 0) {
-                    ForEach(Array(templates.enumerated()), id: \.element.id) { index, template in
-                        Button {
-                            selectedTemplate = template
-                        } label: {
-                            templateRow(template)
-                        }
-                        .buttonStyle(.plain)
-                        .contextMenu {
-                            Button {
-                                editorTarget = .edit(template)
-                            } label: {
-                                Label("Edit", systemImage: "pencil")
-                            }
-                            Button {
-                                let copy = WorkoutTemplate(
-                                    name: template.name + " Copy",
-                                    exercises: template.exercises
-                                )
-                                modelContext.insert(copy)
-                                try? modelContext.save()
-                                CloudSyncService.shared.uploadTemplate(copy)
-                            } label: {
-                                Label("Duplicate", systemImage: "doc.on.doc")
-                            }
-                            Button(role: .destructive) {
-                                let cloudID = template.cloudID
-                                modelContext.delete(template)
-                                try? modelContext.save()
-                                Task { await CloudSyncService.shared.deleteTemplate(cloudID: cloudID) }
-                            } label: {
-                                Label("Delete", systemImage: "trash")
-                            }
-                        }
+                normalTemplatesList
+            }
+        }
+    }
 
-                        if index < templates.count - 1 {
-                            Rectangle()
-                                .fill(Color("marblePrimary").opacity(0.06))
-                                .frame(height: 0.5)
+    private var normalTemplatesList: some View {
+        VStack(spacing: 0) {
+            ForEach(Array(templates.enumerated()), id: \.element.id) { index, template in
+                Button {
+                    selectedTemplate = template
+                } label: {
+                    templateRow(template)
+                }
+                .buttonStyle(.plain)
+                .contextMenu {
+                    Button {
+                        editorTarget = .edit(template)
+                    } label: {
+                        Label("Edit", systemImage: "pencil")
+                    }
+                    if templates.count >= 2 {
+                        Button {
+                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                            withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+                                isReorderingTemplates = true
+                            }
+                        } label: {
+                            Label("Reorder programs", systemImage: "arrow.up.arrow.down")
                         }
                     }
+                    Button {
+                        let copy = WorkoutTemplate(
+                            name: template.name + " Copy",
+                            exercises: template.orderedExercises()
+                        )
+                        copy.displayOrder = templates.count
+                        modelContext.insert(copy)
+                        try? modelContext.save()
+                        CloudSyncService.shared.uploadTemplate(copy)
+                    } label: {
+                        Label("Duplicate", systemImage: "doc.on.doc")
+                    }
+                    Button(role: .destructive) {
+                        let cloudID = template.cloudID
+                        modelContext.delete(template)
+                        try? modelContext.save()
+                        Task { await CloudSyncService.shared.deleteTemplate(cloudID: cloudID) }
+                    } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
+                }
+
+                if index < templates.count - 1 {
+                    Rectangle()
+                        .fill(Color("marblePrimary").opacity(0.06))
+                        .frame(height: 0.5)
                 }
             }
+        }
+    }
+
+    /// Compact reorder list — collapses each program to its title so
+    /// the drag handles read clearly. Native edit-mode for native
+    /// drag-to-reorder. Persists displayOrder + cloud syncs on each move.
+    private var reorderingTemplatesList: some View {
+        List {
+            ForEach(templates) { template in
+                Text(template.name)
+                    .font(.marbleBody(20))
+                    .foregroundStyle(Color("marblePrimary"))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, 8)
+                    .listRowInsets(EdgeInsets(top: 4, leading: 8, bottom: 4, trailing: 8))
+                    .listRowSeparator(.visible, edges: .bottom)
+                    .listRowSeparatorTint(Color("marblePrimary").opacity(0.08))
+                    .listRowBackground(Color.clear)
+            }
+            .onMove(perform: moveTemplates)
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .environment(\.editMode, .constant(.active))
+        .frame(height: CGFloat(templates.count) * 56 + 12)
+        .scrollDisabled(true)
+    }
+
+    private func moveTemplates(from source: IndexSet, to destination: Int) {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        var reordered = templates
+        reordered.move(fromOffsets: source, toOffset: destination)
+        for (index, template) in reordered.enumerated() {
+            if template.displayOrder != index {
+                template.displayOrder = index
+            }
+        }
+        try? modelContext.save()
+        for template in reordered {
+            CloudSyncService.shared.uploadTemplate(template)
         }
     }
 
@@ -233,7 +307,7 @@ struct TrainView: View {
         ZStack(alignment: .trailing) {
             // Handwritten watermark — ghost layer, right-aligned
             VStack(alignment: .trailing, spacing: 1) {
-                ForEach(template.exercises) { exercise in
+                ForEach(template.orderedExercises()) { exercise in
                     Text(exercise.name)
                         .font(.custom("Nothing You Could Do", size: 15))
                         .foregroundStyle(Color("marblePrimary").opacity(0.12))
