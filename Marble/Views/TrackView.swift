@@ -18,11 +18,6 @@ struct TrackView: View {
 
     @State private var showingAddLift = false
     @State private var showingLogBodyweight = false
-    /// Long-press a lift card to enter this mode. The grid collapses to
-    /// a compact reorder list so the user can drag lifts into the
-    /// desired order. Bodyweight isn't reorderable (always first), so
-    /// it sits out of this mode.
-    @State private var isReorderingLifts = false
 
     var body: some View {
         NavigationStack {
@@ -58,41 +53,41 @@ struct TrackView: View {
             HStack {
                 SectionHeader(title: "METRICS")
                 Spacer()
-                if isReorderingLifts {
-                    Button {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-                            isReorderingLifts = false
-                        }
-                    } label: {
-                        Text("DONE")
-                            .font(.marbleMono(11, weight: .medium))
-                            .tracking(1.5)
-                            .foregroundStyle(Color("marblePrimary"))
-                            .padding(.horizontal, 12)
-                            .frame(height: 32)
-                    }
-                    .buttonStyle(.plain)
-                } else {
-                    Button {
-                        showingAddLift = true
-                    } label: {
-                        Image(systemName: "plus")
-                            .font(.system(size: 14, weight: .regular))
-                            .marbleGlassCapsule(size: 32)
-                    }
-                    .buttonStyle(.plain)
+                Button {
+                    showingAddLift = true
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 14, weight: .regular))
+                        .marbleGlassCapsule(size: 32)
                 }
+                .buttonStyle(.plain)
             }
             .padding(.bottom, 8)
 
-            if isReorderingLifts {
-                reorderingLiftsList
-            } else {
-                normalMetricsGrid
+            LazyVGrid(
+                columns: [
+                    GridItem(.flexible(), spacing: 12),
+                    GridItem(.flexible(), spacing: 12)
+                ],
+                spacing: 12
+            ) {
+                // Bodyweight — anchored top-left, not reorderable.
+                NavigationLink(destination: BodyweightDetailView()) {
+                    BodyweightCardView(
+                        entries: bodyweightEntries,
+                        weightUnit: weightUnit
+                    )
+                }
+                .buttonStyle(.plain)
+
+                ForEach(trackedLifts) { lift in
+                    if let exercise = lift.exercise {
+                        liftCardCell(lift: lift, exercise: exercise)
+                    }
+                }
             }
 
-            if trackedLifts.isEmpty && !isReorderingLifts {
+            if trackedLifts.isEmpty {
                 VStack(spacing: 6) {
                     Text("No lifts tracked.")
                         .font(.marbleBody(15))
@@ -108,98 +103,45 @@ struct TrackView: View {
         }
     }
 
-    private var normalMetricsGrid: some View {
-        LazyVGrid(
-            columns: [
-                GridItem(.flexible(), spacing: 12),
-                GridItem(.flexible(), spacing: 12)
-            ],
-            spacing: 12
-        ) {
-            // Bodyweight — always first, anchored top-left.
-            NavigationLink(destination: BodyweightDetailView()) {
-                BodyweightCardView(
-                    entries: bodyweightEntries,
-                    weightUnit: weightUnit
-                )
-            }
-            .buttonStyle(.plain)
-
-            ForEach(trackedLifts) { lift in
-                if let exercise = lift.exercise {
-                    NavigationLink(destination: ExerciseLiftDetailView(trackedLift: lift)) {
-                        LiftCardView(lift: lift, exercise: exercise, workouts: workouts)
-                    }
-                    .buttonStyle(.plain)
-                    .contextMenu {
-                        if trackedLifts.count >= 2 {
-                            Button {
-                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                                withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-                                    isReorderingLifts = true
-                                }
-                            } label: {
-                                Label("Reorder lifts", systemImage: "arrow.up.arrow.down")
-                            }
-                        }
-                        Button(role: .destructive) {
-                            let cloudID = lift.cloudID
-                            modelContext.delete(lift)
-                            try? modelContext.save()
-                            Task { await CloudSyncService.shared.deleteTrackedLift(cloudID: cloudID) }
-                        } label: {
-                            Label("Remove", systemImage: "trash")
-                        }
-                    }
-                }
-            }
+    /// One lift card in the grid. Tap → detail view. Long-press lifts the
+    /// card (`.draggable`), drag → drop onto another lift to swap
+    /// positions. No reorder mode, no DONE pill — the gesture *is* the
+    /// reorder. Lift removal moved into ExerciseLiftDetailView's toolbar
+    /// since `.contextMenu` and `.draggable` collide on the long-press.
+    @ViewBuilder
+    private func liftCardCell(lift: TrackedLift, exercise: Exercise) -> some View {
+        NavigationLink(destination: ExerciseLiftDetailView(trackedLift: lift)) {
+            LiftCardView(lift: lift, exercise: exercise, workouts: workouts)
+        }
+        .buttonStyle(.plain)
+        .draggable(lift.cloudID) {
+            // Drag preview — slightly dimmed clone of the card.
+            LiftCardView(lift: lift, exercise: exercise, workouts: workouts)
+                .opacity(0.85)
+        }
+        .dropDestination(for: String.self) { droppedIDs, _ in
+            guard let sourceID = droppedIDs.first else { return false }
+            return swapTrackedLifts(sourceCloudID: sourceID, destCloudID: lift.cloudID)
         }
     }
 
-    /// Compact reorder list — one row per tracked lift with the exercise
-    /// name + native drag handles. Embedded in a small fixed-height List
-    /// so the rest of the page (THE MONTH, sections beyond METRICS) keeps
-    /// rendering. Reorder commits to displayOrder + cloud on each move.
-    private var reorderingLiftsList: some View {
-        List {
-            ForEach(trackedLifts) { lift in
-                if let exercise = lift.exercise {
-                    Text(exercise.name)
-                        .font(.marbleBody(17))
-                        .foregroundStyle(Color("marblePrimary"))
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.vertical, 6)
-                        .listRowInsets(EdgeInsets(top: 4, leading: 8, bottom: 4, trailing: 8))
-                        .listRowSeparator(.visible, edges: .bottom)
-                        .listRowSeparatorTint(Color("marblePrimary").opacity(0.08))
-                        .listRowBackground(Color.clear)
-                }
-            }
-            .onMove(perform: moveTrackedLifts)
-        }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-        .environment(\.editMode, .constant(.active))
-        .frame(height: CGFloat(trackedLifts.count) * 50 + 12)
-        .scrollDisabled(true)
-    }
+    /// Swap two lifts' displayOrder values, save locally, and push both
+    /// up to cloud. Swap (rather than insert-between) is the right model
+    /// for a 2-column grid — there's no "between" position to land in.
+    private func swapTrackedLifts(sourceCloudID: String, destCloudID: String) -> Bool {
+        guard sourceCloudID != destCloudID,
+              let source = trackedLifts.first(where: { $0.cloudID == sourceCloudID }),
+              let dest = trackedLifts.first(where: { $0.cloudID == destCloudID })
+        else { return false }
 
-    private func moveTrackedLifts(from source: IndexSet, to destination: Int) {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        // Rebuild the in-memory order via a mutable copy, then commit
-        // a fresh displayOrder to each — same write-pattern as a list
-        // reorder.
-        var reordered = trackedLifts
-        reordered.move(fromOffsets: source, toOffset: destination)
-        for (index, lift) in reordered.enumerated() {
-            if lift.displayOrder != index {
-                lift.displayOrder = index
-            }
-        }
+        let sourceOrder = source.displayOrder
+        source.displayOrder = dest.displayOrder
+        dest.displayOrder = sourceOrder
         try? modelContext.save()
-        for lift in reordered {
-            CloudSyncService.shared.uploadTrackedLift(lift)
-        }
+        CloudSyncService.shared.uploadTrackedLift(source)
+        CloudSyncService.shared.uploadTrackedLift(dest)
+        return true
     }
 
     /// Best metric value for a given lift within a date range, using the

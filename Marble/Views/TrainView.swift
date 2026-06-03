@@ -24,10 +24,6 @@ struct TrainView: View {
     @Query(sort: \Workout.date, order: .reverse) private var workouts: [Workout]
 
     @State private var selectedTemplate: WorkoutTemplate?
-    /// Long-press a template row to enter reorder mode — rows collapse
-    /// to plain titles with native drag handles. Tap DONE in the
-    /// section header to exit.
-    @State private var isReorderingTemplates = false
     /// Drives the template editor cover. Using item-based presentation
     /// (rather than two pieces of state — bool + optional template) so
     /// the cover always reads the *current* target at construction
@@ -96,12 +92,18 @@ struct TrainView: View {
                 }
             }
             .sheet(item: $selectedTemplate) { template in
-                TemplateDetailSheet(template: template) {
-                    selectedTemplate = nil
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        workoutSession.start(template: template)
-                    }
-                }
+                TemplateDetailSheet(
+                    template: template,
+                    onStartWorkout: {
+                        selectedTemplate = nil
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            workoutSession.start(template: template)
+                        }
+                    },
+                    onEdit: { editTemplate(template) },
+                    onDuplicate: { duplicateTemplate(template) },
+                    onDelete: { deleteTemplate(template) }
+                )
             }
         }
     }
@@ -170,89 +172,28 @@ struct TrainView: View {
             HStack {
                 SectionHeader(title: "PROGRAMS")
                 Spacer()
-                if isReorderingTemplates {
-                    Button {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-                            isReorderingTemplates = false
-                        }
-                    } label: {
-                        Text("DONE")
-                            .font(.marbleMono(11, weight: .medium))
-                            .tracking(1.5)
-                            .foregroundStyle(Color("marblePrimary"))
-                            .padding(.horizontal, 12)
-                            .frame(height: 32)
-                    }
-                    .buttonStyle(.plain)
-                } else {
-                    Button {
-                        editorTarget = .create
-                    } label: {
-                        Image(systemName: "plus")
-                            .font(.system(size: 14, weight: .regular))
-                            .marbleGlassCapsule(size: 32)
-                    }
-                    .buttonStyle(.plain)
+                Button {
+                    editorTarget = .create
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 14, weight: .regular))
+                        .marbleGlassCapsule(size: 32)
                 }
+                .buttonStyle(.plain)
             }
 
             if templates.isEmpty {
                 emptyProgramsPlaceholder
-            } else if isReorderingTemplates {
-                reorderingTemplatesList
             } else {
-                normalTemplatesList
+                templatesList
             }
         }
     }
 
-    private var normalTemplatesList: some View {
+    private var templatesList: some View {
         VStack(spacing: 0) {
             ForEach(Array(templates.enumerated()), id: \.element.id) { index, template in
-                Button {
-                    selectedTemplate = template
-                } label: {
-                    templateRow(template)
-                }
-                .buttonStyle(.plain)
-                .contextMenu {
-                    Button {
-                        editorTarget = .edit(template)
-                    } label: {
-                        Label("Edit", systemImage: "pencil")
-                    }
-                    if templates.count >= 2 {
-                        Button {
-                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                            withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-                                isReorderingTemplates = true
-                            }
-                        } label: {
-                            Label("Reorder programs", systemImage: "arrow.up.arrow.down")
-                        }
-                    }
-                    Button {
-                        let copy = WorkoutTemplate(
-                            name: template.name + " Copy",
-                            exercises: template.orderedExercises()
-                        )
-                        copy.displayOrder = templates.count
-                        modelContext.insert(copy)
-                        try? modelContext.save()
-                        CloudSyncService.shared.uploadTemplate(copy)
-                    } label: {
-                        Label("Duplicate", systemImage: "doc.on.doc")
-                    }
-                    Button(role: .destructive) {
-                        let cloudID = template.cloudID
-                        modelContext.delete(template)
-                        try? modelContext.save()
-                        Task { await CloudSyncService.shared.deleteTemplate(cloudID: cloudID) }
-                    } label: {
-                        Label("Delete", systemImage: "trash")
-                    }
-                }
+                templateRowButton(template: template)
 
                 if index < templates.count - 1 {
                     Rectangle()
@@ -263,44 +204,77 @@ struct TrainView: View {
         }
     }
 
-    /// Compact reorder list — collapses each program to its title so
-    /// the drag handles read clearly. Native edit-mode for native
-    /// drag-to-reorder. Persists displayOrder + cloud syncs on each move.
-    private var reorderingTemplatesList: some View {
-        List {
-            ForEach(templates) { template in
-                Text(template.name)
-                    .font(.marbleBody(20))
-                    .foregroundStyle(Color("marblePrimary"))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.vertical, 8)
-                    .listRowInsets(EdgeInsets(top: 4, leading: 8, bottom: 4, trailing: 8))
-                    .listRowSeparator(.visible, edges: .bottom)
-                    .listRowSeparatorTint(Color("marblePrimary").opacity(0.08))
-                    .listRowBackground(Color.clear)
-            }
-            .onMove(perform: moveTemplates)
+    /// One template row in the programs list. Tap → opens the detail
+    /// sheet (where Edit / Duplicate / Delete live as ⋯ menu actions).
+    /// Long-press → lifts the row for drag-reorder. Drop onto another
+    /// row swaps positions. No context menu — `.contextMenu` and
+    /// `.draggable` collide on the long-press, and drag is the higher-
+    /// value gesture here.
+    @ViewBuilder
+    private func templateRowButton(template: WorkoutTemplate) -> some View {
+        Button {
+            selectedTemplate = template
+        } label: {
+            templateRow(template)
         }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-        .environment(\.editMode, .constant(.active))
-        .frame(height: CGFloat(templates.count) * 56 + 12)
-        .scrollDisabled(true)
+        .buttonStyle(.plain)
+        .draggable(template.cloudID) {
+            templateRow(template)
+                .opacity(0.85)
+        }
+        .dropDestination(for: String.self) { droppedIDs, _ in
+            guard let sourceID = droppedIDs.first else { return false }
+            return swapTemplates(sourceCloudID: sourceID, destCloudID: template.cloudID)
+        }
     }
 
-    private func moveTemplates(from source: IndexSet, to destination: Int) {
+    private func swapTemplates(sourceCloudID: String, destCloudID: String) -> Bool {
+        guard sourceCloudID != destCloudID,
+              let source = templates.first(where: { $0.cloudID == sourceCloudID }),
+              let dest = templates.first(where: { $0.cloudID == destCloudID })
+        else { return false }
+
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        var reordered = templates
-        reordered.move(fromOffsets: source, toOffset: destination)
-        for (index, template) in reordered.enumerated() {
-            if template.displayOrder != index {
-                template.displayOrder = index
-            }
-        }
+        let sourceOrder = source.displayOrder
+        source.displayOrder = dest.displayOrder
+        dest.displayOrder = sourceOrder
         try? modelContext.save()
-        for template in reordered {
-            CloudSyncService.shared.uploadTemplate(template)
+        CloudSyncService.shared.uploadTemplate(source)
+        CloudSyncService.shared.uploadTemplate(dest)
+        return true
+    }
+
+    // MARK: - Sheet callbacks (from TemplateDetailSheet ⋯ menu)
+
+    private func editTemplate(_ template: WorkoutTemplate) {
+        selectedTemplate = nil
+        // Defer to the next runloop so the dismiss completes before
+        // the editor cover triggers — otherwise the cover construction
+        // races with the sheet dismissal animation and the editor can
+        // appear under the still-fading sheet.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            editorTarget = .edit(template)
         }
+    }
+
+    private func duplicateTemplate(_ template: WorkoutTemplate) {
+        let copy = WorkoutTemplate(
+            name: template.name + " Copy",
+            exercises: template.orderedExercises()
+        )
+        copy.displayOrder = templates.count
+        modelContext.insert(copy)
+        try? modelContext.save()
+        CloudSyncService.shared.uploadTemplate(copy)
+        selectedTemplate = nil
+    }
+
+    private func deleteTemplate(_ template: WorkoutTemplate) {
+        let cloudID = template.cloudID
+        selectedTemplate = nil
+        modelContext.delete(template)
+        try? modelContext.save()
+        Task { await CloudSyncService.shared.deleteTemplate(cloudID: cloudID) }
     }
 
     private func templateRow(_ template: WorkoutTemplate) -> some View {

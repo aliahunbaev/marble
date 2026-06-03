@@ -3,15 +3,22 @@ import SwiftUI
 struct TemplateDetailSheet: View {
     let template: WorkoutTemplate
     let onStartWorkout: () -> Void
+    /// Edit / Duplicate / Delete callbacks bubble back to TrainView,
+    /// which owns the editor cover state + the model context delete
+    /// path. All three optional so the preview / tests can omit them.
+    var onEdit: (() -> Void)? = nil
+    var onDuplicate: (() -> Void)? = nil
+    var onDelete: (() -> Void)? = nil
+
     @Environment(\.dismiss) private var dismiss
+    @State private var showingDeleteConfirmation = false
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
             VStack(alignment: .leading, spacing: 0) {
                 // Template name
                 Text(template.name)
-                    .font(.custom("ABC Favorit Variable Unlicensed Trial", size: 26))
-                    .fontWeight(.light)
+                    .font(.marbleBody(26))
                     .foregroundStyle(Color("marblePrimary"))
                     .padding(.top, 24)
                     .padding(.horizontal, 24)
@@ -74,17 +81,57 @@ struct TemplateDetailSheet: View {
                 .padding(.top, 12)
             }
 
-            // Close — glass capsule, same as template editor X
-            Button {
-                dismiss()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 12, weight: .regular))
-                    .marbleGlassCapsule(size: 32)
+            // Top-right chrome: ⋯ menu (Edit / Duplicate / Delete) +
+            // close X. Lives on the sheet now rather than the row's
+            // long-press context menu so the row can own long-press
+            // for drag-reorder.
+            HStack(spacing: 8) {
+                if onEdit != nil || onDuplicate != nil || onDelete != nil {
+                    Menu {
+                        if let onEdit {
+                            Button { onEdit() } label: {
+                                Label("Edit", systemImage: "pencil")
+                            }
+                        }
+                        if let onDuplicate {
+                            Button { onDuplicate() } label: {
+                                Label("Duplicate", systemImage: "doc.on.doc")
+                            }
+                        }
+                        if onDelete != nil {
+                            Button(role: .destructive) {
+                                showingDeleteConfirmation = true
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis")
+                            .font(.system(size: 13, weight: .medium))
+                            .marbleGlassCapsule(size: 32)
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 12, weight: .regular))
+                        .marbleGlassCapsule(size: 32)
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
             .padding(.top, 16)
             .padding(.trailing, 16)
+        }
+        .alert("Delete this program?", isPresented: $showingDeleteConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) {
+                onDelete?()
+            }
+        } message: {
+            Text("This cannot be undone.")
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.hidden)
