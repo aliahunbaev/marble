@@ -81,30 +81,35 @@ struct TrackView: View {
             }
             .padding(.bottom, 8)
 
-            // 2-col grid of cards. Bodyweight is item 0 (locked at the
-            // top-left, not reorderable). Tracked lifts follow and can
-            // be rearranged via long-press → lift → drag — that whole
-            // flow lives in ReorderableMetricsGrid, which bridges to
-            // UICollectionView's interactive-movement API. No SwiftUI
-            // gesture conflicts, no system drag-drop chrome.
+            // Bodyweight as a full-width hero card above the grid.
+            // It's a vital sign, not a lift — different mental
+            // category, deserves its own treatment. Tap → detail.
+            Button {
+                showingBodyweightDetail = true
+            } label: {
+                BodyweightCardView(
+                    entries: bodyweightEntries,
+                    weightUnit: weightUnit
+                )
+            }
+            .buttonStyle(.plain)
+            .padding(.bottom, 12)
+
+            // 2-col reorderable grid of tracked lifts. Long-press →
+            // lift → drag → reflow → snap, via UICollectionView's
+            // built-in interactive movement API (no SwiftUI gesture
+            // conflicts, no system drag-drop chrome).
             ReorderableMetricsGrid(
-                items: metricsItems,
+                lifts: trackedLifts,
                 onReorder: { newOrder in commitMetricsReorder(newOrder) },
-                onTap: { item in handleMetricsTap(item) },
-                bodyweightContent: {
-                    BodyweightCardView(
-                        entries: bodyweightEntries,
-                        weightUnit: weightUnit
-                    )
-                },
-                liftContent: { lift in
-                    if let exercise = lift.exercise {
-                        LiftCardView(lift: lift, exercise: exercise, workouts: workouts)
-                    } else {
-                        Color.clear
-                    }
+                onTap: { lift in navigatedLift = lift }
+            ) { lift in
+                if let exercise = lift.exercise {
+                    LiftCardView(lift: lift, exercise: exercise, workouts: workouts)
+                } else {
+                    Color.clear
                 }
-            )
+            }
 
             if trackedLifts.isEmpty {
                 VStack(spacing: 6) {
@@ -122,44 +127,21 @@ struct TrackView: View {
         }
     }
 
-    // MARK: - Metrics grid helpers (UICollectionView bridge)
+    // MARK: - Metrics reorder
 
-    /// Items array fed to the reorderable grid. Bodyweight is always
-    /// item 0 (locked); tracked lifts follow in displayOrder. The grid
-    /// uses each item's id for diffable updates.
-    private var metricsItems: [MetricItem] {
-        [.bodyweight] + trackedLifts.map { .lift($0) }
-    }
-
-    /// After a reorder, walk the new items array and write each lift's
-    /// new index back to its `displayOrder` property. Bodyweight is
-    /// excluded (always at item 0). Cloud-sync each lift whose order
-    /// changed.
-    private func commitMetricsReorder(_ newOrder: [MetricItem]) {
-        var newIndex = 0
-        for item in newOrder {
-            switch item {
-            case .bodyweight:
-                continue
-            case .lift(let lift):
-                if lift.displayOrder != newIndex {
-                    lift.displayOrder = newIndex
-                }
-                newIndex += 1
+    /// After a drag-drop, walk the new order and write each lift's
+    /// new index back to its `displayOrder` property, then cloud-sync.
+    /// Called once on drop (not per-swap) from the collection view's
+    /// reorder handler, so network noise stays low.
+    private func commitMetricsReorder(_ newOrder: [TrackedLift]) {
+        for (index, lift) in newOrder.enumerated() {
+            if lift.displayOrder != index {
+                lift.displayOrder = index
             }
         }
         try? modelContext.save()
-        for lift in trackedLifts {
+        for lift in newOrder {
             CloudSyncService.shared.uploadTrackedLift(lift)
-        }
-    }
-
-    private func handleMetricsTap(_ item: MetricItem) {
-        switch item {
-        case .bodyweight:
-            showingBodyweightDetail = true
-        case .lift(let lift):
-            navigatedLift = lift
         }
     }
 

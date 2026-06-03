@@ -1,71 +1,49 @@
 import SwiftUI
 import UIKit
 
-/// Discriminated union the metrics grid renders. Bodyweight is always
-/// item 0 and not reorderable; lifts follow and can be rearranged.
-enum MetricItem: Identifiable, Hashable {
-    case bodyweight
-    case lift(TrackedLift)
+/// Public SwiftUI grid that wraps a `UICollectionView` for the iOS-
+/// native long-press → lift → drag → reflow → snap reorder UX. The
+/// public face is pure SwiftUI; the UIKit bridge is private below.
+///
+/// Specialized for the metrics tab: takes `[TrackedLift]`, reorders
+/// freely (bodyweight has been moved out of the grid into its own
+/// hero treatment above). Cells host arbitrary SwiftUI content via
+/// `UIHostingConfiguration` (iOS 16+).
+struct ReorderableMetricsGrid<Cell: View>: View {
+    let lifts: [TrackedLift]
+    let onReorder: ([TrackedLift]) -> Void
+    let onTap: (TrackedLift) -> Void
+    @ViewBuilder let cellContent: (TrackedLift) -> Cell
 
-    var id: String {
-        switch self {
-        case .bodyweight: return "__bodyweight__"
-        case .lift(let lift): return "lift-\(lift.cloudID)"
-        }
-    }
+    @State private var measuredHeight: CGFloat = 170
 
-    static func == (lhs: MetricItem, rhs: MetricItem) -> Bool {
-        lhs.id == rhs.id
-    }
-
-    func hash(into hasher: inout Hasher) {
-        hasher.combine(id)
+    var body: some View {
+        CollectionBridge(
+            lifts: lifts,
+            onReorder: onReorder,
+            onTap: onTap,
+            onHeightChange: { newHeight in
+                if abs(newHeight - measuredHeight) > 0.5 {
+                    measuredHeight = newHeight
+                }
+            },
+            cellContent: cellContent
+        )
+        .frame(height: measuredHeight)
     }
 }
 
-/// `UIViewRepresentable` over `UICollectionView` that gives us the iOS-
-/// native long-press → lift → drag → reflow → snap reorder UX that
-/// SwiftUI's `LazyVGrid` doesn't expose. The cards stay as SwiftUI
-/// views inside the cells via `UIHostingConfiguration` (iOS 16+), so
-/// our existing `LiftCardView` / `BodyweightCardView` render unchanged.
-///
-/// Why a UIKit bridge:
-///   - `LazyVGrid` has no reorder API. `.draggable` + `.dropDestination`
-///     brings the system drop-indicator chrome (the green plus) and
-///     a translucent floating preview that don't fit Marble's
-///     atmosphere.
-///   - Custom SwiftUI gestures (long-press + DragGesture) fight the
-///     outer ScrollView's pan — the trap that broke several earlier
-///     attempts.
-///   - `UICollectionView` has had `beginInteractiveMovementForItem(at:)`
-///     since iOS 9. It's exactly what apps like Strong / Photos use:
-///     subtle lift on long-press, drag follows the finger, other cells
-///     animate aside in real time, snap to position on release. No
-///     gesture conflict; the collection view owns the scroll.
-///
-/// API: `items` is the rendered order. Bodyweight is locked at index 0
-/// (via `canMoveItem` returning false for it and clamping move targets
-/// to >= 1). On reorder, `onReorder` fires with the new full order so
-/// the caller can persist `displayOrder` values. On tap, `onTap` fires
-/// with the tapped item.
-struct ReorderableMetricsGrid<BodyweightCell: View, LiftCell: View>: UIViewRepresentable {
-    let items: [MetricItem]
-    let onReorder: ([MetricItem]) -> Void
-    let onTap: (MetricItem) -> Void
-    @ViewBuilder let bodyweightContent: () -> BodyweightCell
-    @ViewBuilder let liftContent: (TrackedLift) -> LiftCell
+// MARK: - Private UIKit bridge
 
-    // MARK: - Layout constants
+private struct CollectionBridge<Cell: View>: UIViewRepresentable {
+    let lifts: [TrackedLift]
+    let onReorder: ([TrackedLift]) -> Void
+    let onTap: (TrackedLift) -> Void
+    let onHeightChange: (CGFloat) -> Void
+    @ViewBuilder let cellContent: (TrackedLift) -> Cell
 
-    /// Inter-item spacing (both horizontal and vertical). Matches the
-    /// `LazyVGrid` spacing the metrics section had before.
     private static var spacing: CGFloat { 12 }
-
-    /// Starting-height estimate for cells; the SwiftUI content self-
-    /// sizes from there via UIHostingConfiguration.
-    private static var estimatedItemHeight: CGFloat { 160 }
-
-    // MARK: - UIViewRepresentable
+    private static var estimatedItemHeight: CGFloat { 170 }
 
     func makeCoordinator() -> Coordinator {
         Coordinator(parent: self)
@@ -75,35 +53,37 @@ struct ReorderableMetricsGrid<BodyweightCell: View, LiftCell: View>: UIViewRepre
         let layout = Self.makeLayout()
         let collectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
         collectionView.backgroundColor = .clear
-        // We want the outer SwiftUI ScrollView to handle vertical scroll.
-        // The collection view itself just lays out cells and runs the
-        // reorder interaction — scrolling within is unnecessary and
-        // would fight the parent.
         collectionView.isScrollEnabled = false
         collectionView.allowsSelection = true
         collectionView.alwaysBounceVertical = false
 
-        // Cell registration via UIHostingConfiguration. One registration
-        // per cell archetype — bodyweight and lift content are
-        // different SwiftUI views, but we resolve them in the cell
-        // provider closure based on the item discriminator.
-        let cellRegistration = UICollectionView.CellRegistration<HostingCell, MetricItem> { cell, _, item in
-            switch item {
-            case .bodyweight:
-                cell.host(AnyView(self.bodyweightContent()))
-            case .lift(let lift):
-                cell.host(AnyView(self.liftContent(lift)))
+        // Cell registration. Stable lookup by cloudID — passed in via
+        // the snapshot below. The data-source closure resolves the
+        // lift from cloudID, then the cell hosts the SwiftUI content.
+        let cellRegistration = UICollectionView.CellRegistration<HostingCell, String> { [coordinator = context.coordinator] cell, _, cloudID in
+            guard let lift = coordinator.currentLifts.first(where: { $0.cloudID == cloudID }) else {
+                cell.host(AnyView(Color.clear))
+                return
             }
+            cell.host(AnyView(self.cellContent(lift)))
         }
 
-        let dataSource = UICollectionViewDiffableDataSource<Int, MetricItem>(
+        let dataSource = UICollectionViewDiffableDataSource<Int, String>(
             collectionView: collectionView
-        ) { collectionView, indexPath, item in
+        ) { collectionView, indexPath, cloudID in
             collectionView.dequeueConfiguredReusableCell(
                 using: cellRegistration,
                 for: indexPath,
-                item: item
+                item: cloudID
             )
+        }
+
+        // Reorder hooks. Diffable data sources DON'T fall back to the
+        // classic `canMoveItemAt` / `moveItemAt` delegate methods —
+        // interactive movement only works when these handlers are set.
+        dataSource.reorderingHandlers.canReorderItem = { _ in true }
+        dataSource.reorderingHandlers.didReorder = { [weak coordinator = context.coordinator] transaction in
+            coordinator?.handleDidReorder(newCloudIDs: transaction.finalSnapshot.itemIdentifiers)
         }
 
         context.coordinator.dataSource = dataSource
@@ -111,8 +91,8 @@ struct ReorderableMetricsGrid<BodyweightCell: View, LiftCell: View>: UIViewRepre
         collectionView.dataSource = dataSource
         collectionView.delegate = context.coordinator
 
-        // Long-press gesture drives interactive movement. Same
-        // recognizer Apple's own apps use for this pattern.
+        context.coordinator.startObservingContentSize()
+
         let longPress = UILongPressGestureRecognizer(
             target: context.coordinator,
             action: #selector(Coordinator.handleLongPress(_:))
@@ -120,29 +100,25 @@ struct ReorderableMetricsGrid<BodyweightCell: View, LiftCell: View>: UIViewRepre
         longPress.minimumPressDuration = 0.35
         collectionView.addGestureRecognizer(longPress)
 
-        // Initial snapshot
-        context.coordinator.apply(items: items, animated: false)
+        context.coordinator.apply(lifts: lifts, animated: false)
 
         return collectionView
     }
 
     func updateUIView(_ collectionView: UICollectionView, context: Context) {
-        // Keep coordinator's parent reference fresh so callbacks invoke
-        // the latest closures (which capture current view state).
         context.coordinator.parent = self
-        // Reapply snapshot. Diffable data source handles add/remove/
-        // reorder animations automatically.
-        context.coordinator.apply(items: items, animated: true)
+        context.coordinator.apply(lifts: lifts, animated: true)
     }
 
-    // MARK: - Compositional layout
+    static func dismantleUIView(_ uiView: UICollectionView, coordinator: Coordinator) {
+        coordinator.stopObservingContentSize()
+    }
 
-    /// 2-column equally-divided layout with self-sizing rows.
     private static func makeLayout() -> UICollectionViewCompositionalLayout {
         let s = spacing
         let estimated = estimatedItemHeight
 
-        let layout = UICollectionViewCompositionalLayout { _, _ in
+        return UICollectionViewCompositionalLayout { _, _ in
             let itemSize = NSCollectionLayoutSize(
                 widthDimension: .fractionalWidth(1.0),
                 heightDimension: .estimated(estimated)
@@ -164,43 +140,58 @@ struct ReorderableMetricsGrid<BodyweightCell: View, LiftCell: View>: UIViewRepre
             section.interGroupSpacing = s
             return section
         }
-        return layout
     }
 }
 
 // MARK: - Coordinator
 
-extension ReorderableMetricsGrid {
+extension CollectionBridge {
     final class Coordinator: NSObject, UICollectionViewDelegate {
-        var parent: ReorderableMetricsGrid
+        var parent: CollectionBridge
         weak var collectionView: UICollectionView?
-        var dataSource: UICollectionViewDiffableDataSource<Int, MetricItem>?
-        private var currentItems: [MetricItem] = []
+        var dataSource: UICollectionViewDiffableDataSource<Int, String>?
+        var currentLifts: [TrackedLift] = []
+        private var contentSizeObservation: NSKeyValueObservation?
 
-        init(parent: ReorderableMetricsGrid) {
+        init(parent: CollectionBridge) {
             self.parent = parent
         }
 
-        // MARK: Snapshots
-
-        func apply(items: [MetricItem], animated: Bool) {
-            currentItems = items
-            var snapshot = NSDiffableDataSourceSnapshot<Int, MetricItem>()
+        func apply(lifts: [TrackedLift], animated: Bool) {
+            currentLifts = lifts
+            var snapshot = NSDiffableDataSourceSnapshot<Int, String>()
             snapshot.appendSections([0])
-            snapshot.appendItems(items, toSection: 0)
+            snapshot.appendItems(lifts.map(\.cloudID), toSection: 0)
             dataSource?.apply(snapshot, animatingDifferences: animated)
         }
 
-        // MARK: Interactive movement
+        func handleDidReorder(newCloudIDs: [String]) {
+            let reordered = newCloudIDs.compactMap { id in
+                currentLifts.first(where: { $0.cloudID == id })
+            }
+            currentLifts = reordered
+            parent.onReorder(reordered)
+        }
+
+        func startObservingContentSize() {
+            guard let collectionView else { return }
+            contentSizeObservation = collectionView.observe(\.contentSize, options: [.new]) { [weak self] _, change in
+                guard let height = change.newValue?.height else { return }
+                self?.parent.onHeightChange(height)
+            }
+        }
+
+        func stopObservingContentSize() {
+            contentSizeObservation?.invalidate()
+            contentSizeObservation = nil
+        }
 
         @objc func handleLongPress(_ gesture: UILongPressGestureRecognizer) {
             guard let collectionView else { return }
             let location = gesture.location(in: collectionView)
             switch gesture.state {
             case .began:
-                guard let indexPath = collectionView.indexPathForItem(at: location),
-                      indexPath.item > 0 // bodyweight is locked
-                else { return }
+                guard let indexPath = collectionView.indexPathForItem(at: location) else { return }
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 collectionView.beginInteractiveMovementForItem(at: indexPath)
             case .changed:
@@ -212,26 +203,10 @@ extension ReorderableMetricsGrid {
             }
         }
 
-        // MARK: Delegate
-
         func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
             collectionView.deselectItem(at: indexPath, animated: false)
-            guard currentItems.indices.contains(indexPath.item) else { return }
-            parent.onTap(currentItems[indexPath.item])
-        }
-
-        /// Clamp move targets so bodyweight stays at index 0 — the user
-        /// can't drop another card on top of it.
-        func collectionView(
-            _ collectionView: UICollectionView,
-            targetIndexPathForMoveOfItemFromOriginalIndexPath originalIndexPath: IndexPath,
-            atCurrentIndexPath currentIndexPath: IndexPath,
-            toProposedIndexPath proposedIndexPath: IndexPath
-        ) -> IndexPath {
-            if proposedIndexPath.item < 1 {
-                return IndexPath(item: 1, section: 0)
-            }
-            return proposedIndexPath
+            guard currentLifts.indices.contains(indexPath.item) else { return }
+            parent.onTap(currentLifts[indexPath.item])
         }
     }
 }
@@ -239,13 +214,32 @@ extension ReorderableMetricsGrid {
 // MARK: - Hosting cell
 
 /// UICollectionViewCell that hosts a SwiftUI view via the modern
-/// `UIHostingConfiguration` API. Cells are reused — `host(_:)` swaps
-/// the SwiftUI content each time the cell is configured.
+/// `UIHostingConfiguration` API.
+///
+/// `clipsToBounds = false` on both the cell and its content view so
+/// SwiftUI `.shadow(...)` rendering can extend past the cell rect.
+/// `backgroundConfiguration` is cleared so iOS doesn't paint a
+/// default tinted fill behind the SwiftUI content.
 final class HostingCell: UICollectionViewCell {
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        clipsToBounds = false
+        contentView.clipsToBounds = false
+        layer.masksToBounds = false
+        contentView.layer.masksToBounds = false
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        clipsToBounds = false
+        contentView.clipsToBounds = false
+        layer.masksToBounds = false
+        contentView.layer.masksToBounds = false
+    }
+
     func host(_ view: AnyView) {
+        backgroundConfiguration = UIBackgroundConfiguration.clear()
         contentConfiguration = UIHostingConfiguration { view }
-            // Strip default insets — our SwiftUI cards control their
-            // own padding internally.
             .margins(.all, 0)
     }
 }
