@@ -18,6 +18,13 @@ struct TrackView: View {
 
     @State private var showingAddLift = false
     @State private var showingLogBodyweight = false
+    /// State-driven nav so taps on the grid cells push the lift detail
+    /// view. The grid is a UICollectionView bridge that routes taps via
+    /// a callback, so we can't use SwiftUI NavigationLinks inside the
+    /// cells — that's also the trick that lets the long-press
+    /// interactive-movement gesture work without conflict.
+    @State private var navigatedLift: TrackedLift?
+    @State private var showingBodyweightDetail = false
 
     var body: some View {
         NavigationStack {
@@ -33,6 +40,16 @@ struct TrackView: View {
             }
             .marbleAtmosphereBackground()
             .navigationBarTitleDisplayMode(.inline)
+            // State-driven nav — the cards themselves are inside a
+            // UICollectionView bridge and route taps via a callback, so
+            // navigation is triggered through this binding rather than
+            // by a NavigationLink wrapping each cell.
+            .navigationDestination(item: $navigatedLift) { lift in
+                ExerciseLiftDetailView(trackedLift: lift)
+            }
+            .navigationDestination(isPresented: $showingBodyweightDetail) {
+                BodyweightDetailView()
+            }
             .sheet(isPresented: $showingAddLift) {
                 AddTrackedLiftSheet(trackedLifts: trackedLifts)
             }
@@ -64,28 +81,30 @@ struct TrackView: View {
             }
             .padding(.bottom, 8)
 
-            LazyVGrid(
-                columns: [
-                    GridItem(.flexible(), spacing: 12),
-                    GridItem(.flexible(), spacing: 12)
-                ],
-                spacing: 12
-            ) {
-                // Bodyweight — anchored top-left, not reorderable.
-                NavigationLink(destination: BodyweightDetailView()) {
+            // 2-col grid of cards. Bodyweight is item 0 (locked at the
+            // top-left, not reorderable). Tracked lifts follow and can
+            // be rearranged via long-press → lift → drag — that whole
+            // flow lives in ReorderableMetricsGrid, which bridges to
+            // UICollectionView's interactive-movement API. No SwiftUI
+            // gesture conflicts, no system drag-drop chrome.
+            ReorderableMetricsGrid(
+                items: metricsItems,
+                onReorder: { newOrder in commitMetricsReorder(newOrder) },
+                onTap: { item in handleMetricsTap(item) },
+                bodyweightContent: {
                     BodyweightCardView(
                         entries: bodyweightEntries,
                         weightUnit: weightUnit
                     )
-                }
-                .buttonStyle(.plain)
-
-                ForEach(trackedLifts) { lift in
+                },
+                liftContent: { lift in
                     if let exercise = lift.exercise {
-                        liftCardCell(lift: lift, exercise: exercise)
+                        LiftCardView(lift: lift, exercise: exercise, workouts: workouts)
+                    } else {
+                        Color.clear
                     }
                 }
-            }
+            )
 
             if trackedLifts.isEmpty {
                 VStack(spacing: 6) {
@@ -103,45 +122,45 @@ struct TrackView: View {
         }
     }
 
-    /// One lift card in the grid. Tap → detail view. Long-press lifts the
-    /// card (`.draggable`), drag → drop onto another lift to swap
-    /// positions. No reorder mode, no DONE pill — the gesture *is* the
-    /// reorder. Lift removal moved into ExerciseLiftDetailView's toolbar
-    /// since `.contextMenu` and `.draggable` collide on the long-press.
-    @ViewBuilder
-    private func liftCardCell(lift: TrackedLift, exercise: Exercise) -> some View {
-        NavigationLink(destination: ExerciseLiftDetailView(trackedLift: lift)) {
-            LiftCardView(lift: lift, exercise: exercise, workouts: workouts)
+    // MARK: - Metrics grid helpers (UICollectionView bridge)
+
+    /// Items array fed to the reorderable grid. Bodyweight is always
+    /// item 0 (locked); tracked lifts follow in displayOrder. The grid
+    /// uses each item's id for diffable updates.
+    private var metricsItems: [MetricItem] {
+        [.bodyweight] + trackedLifts.map { .lift($0) }
+    }
+
+    /// After a reorder, walk the new items array and write each lift's
+    /// new index back to its `displayOrder` property. Bodyweight is
+    /// excluded (always at item 0). Cloud-sync each lift whose order
+    /// changed.
+    private func commitMetricsReorder(_ newOrder: [MetricItem]) {
+        var newIndex = 0
+        for item in newOrder {
+            switch item {
+            case .bodyweight:
+                continue
+            case .lift(let lift):
+                if lift.displayOrder != newIndex {
+                    lift.displayOrder = newIndex
+                }
+                newIndex += 1
+            }
         }
-        .buttonStyle(.plain)
-        .draggable(lift.cloudID) {
-            // Drag preview — slightly dimmed clone of the card.
-            LiftCardView(lift: lift, exercise: exercise, workouts: workouts)
-                .opacity(0.85)
-        }
-        .dropDestination(for: String.self) { droppedIDs, _ in
-            guard let sourceID = droppedIDs.first else { return false }
-            return swapTrackedLifts(sourceCloudID: sourceID, destCloudID: lift.cloudID)
+        try? modelContext.save()
+        for lift in trackedLifts {
+            CloudSyncService.shared.uploadTrackedLift(lift)
         }
     }
 
-    /// Swap two lifts' displayOrder values, save locally, and push both
-    /// up to cloud. Swap (rather than insert-between) is the right model
-    /// for a 2-column grid — there's no "between" position to land in.
-    private func swapTrackedLifts(sourceCloudID: String, destCloudID: String) -> Bool {
-        guard sourceCloudID != destCloudID,
-              let source = trackedLifts.first(where: { $0.cloudID == sourceCloudID }),
-              let dest = trackedLifts.first(where: { $0.cloudID == destCloudID })
-        else { return false }
-
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        let sourceOrder = source.displayOrder
-        source.displayOrder = dest.displayOrder
-        dest.displayOrder = sourceOrder
-        try? modelContext.save()
-        CloudSyncService.shared.uploadTrackedLift(source)
-        CloudSyncService.shared.uploadTrackedLift(dest)
-        return true
+    private func handleMetricsTap(_ item: MetricItem) {
+        switch item {
+        case .bodyweight:
+            showingBodyweightDetail = true
+        case .lift(let lift):
+            navigatedLift = lift
+        }
     }
 
     /// Best metric value for a given lift within a date range, using the
