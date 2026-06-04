@@ -1,8 +1,12 @@
 import SwiftUI
+import SwiftData
 
 struct ContentView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.scenePhase) private var scenePhase
     @State private var selectedTab = 1
     @State private var workoutSession = WorkoutSession()
+    @State private var didAttemptRestore = false
     @AppStorage("appTheme") private var appTheme: String = "system"
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
 
@@ -28,6 +32,25 @@ struct ContentView: View {
         }
         .environment(workoutSession)
         .preferredColorScheme(colorScheme)
+        // Restore an in-progress workout on first appearance — uses
+        // ModelContext to resolve exercise references by name.
+        // didAttemptRestore guards against re-running if the view
+        // re-appears (it shouldn't matter since restoreSnapshot is
+        // idempotent on the same data, but cleaner this way).
+        .task {
+            guard !didAttemptRestore else { return }
+            didAttemptRestore = true
+            workoutSession.restoreSnapshot(context: modelContext)
+        }
+        // Snapshot on backgrounding so any in-flight edits (typed
+        // weight that hasn't lost focus yet) get persisted. The
+        // start/end calls also snapshot, but those don't fire when
+        // the user is just editing.
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .background || newPhase == .inactive {
+                workoutSession.saveSnapshot()
+            }
+        }
     }
 
     private var mainAppView: some View {

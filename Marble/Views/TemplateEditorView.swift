@@ -3,15 +3,15 @@ import SwiftData
 
 // MARK: - Editing State (shared with ActiveWorkoutView)
 
-struct EditableSet: Identifiable {
-    let id = UUID()
+struct EditableSet: Identifiable, Codable {
+    var id: UUID = UUID()
     var weight: String = ""
     var reps: String = ""
     var isCompleted: Bool = false
 }
 
 struct ExerciseEntry: Identifiable {
-    let id = UUID()
+    var id: UUID = UUID()
     let exercise: Exercise
     var sets: [EditableSet]
 }

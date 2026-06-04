@@ -17,6 +17,20 @@ enum TemplateEditorTarget: Identifiable {
     }
 }
 
+/// What the user was about to start when we caught that another
+/// workout's already in progress. Drives the confirmation dialog.
+enum PendingWorkoutStart: Identifiable {
+    case empty
+    case template(WorkoutTemplate)
+
+    var id: String {
+        switch self {
+        case .empty: return "__empty__"
+        case .template(let t): return "tmpl-\(t.cloudID)"
+        }
+    }
+}
+
 struct TrainView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(WorkoutSession.self) private var workoutSession
@@ -32,6 +46,11 @@ struct TrainView: View {
     /// no-op (the editor was operating on whatever template had been
     /// set the time before).
     @State private var editorTarget: TemplateEditorTarget?
+
+    /// What the user was trying to start when we discovered there's
+    /// already an active workout. Non-nil means we're showing the
+    /// "end current + start new vs. resume vs. cancel" dialog.
+    @State private var pendingStart: PendingWorkoutStart?
 
     // Daily quotes — terse, classical, on-thesis
     private let quotes: [String] = [
@@ -103,7 +122,7 @@ struct TrainView: View {
                     onStartWorkout: {
                         selectedTemplate = nil
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                            workoutSession.start(template: template)
+                            attemptStart(.template(template))
                         }
                     },
                     onEdit: { editTemplate(template) },
@@ -111,6 +130,62 @@ struct TrainView: View {
                     onDelete: { deleteTemplate(template) }
                 )
             }
+            // Confirmation when the user tries to start a workout
+            // while another is already active. Resume re-expands the
+            // current one; End&Start tears it down and kicks off
+            // the pending one.
+            .confirmationDialog(
+                "A workout is already in progress",
+                isPresented: Binding(
+                    get: { pendingStart != nil },
+                    set: { if !$0 { pendingStart = nil } }
+                ),
+                titleVisibility: .visible,
+                presenting: pendingStart
+            ) { start in
+                Button("Resume current workout") {
+                    pendingStart = nil
+                    workoutSession.expand()
+                }
+                Button("End current and start new", role: .destructive) {
+                    workoutSession.end()
+                    // Defer the new start one runloop so the end's
+                    // state flush (mini-bar disappearing, sourceTemplate
+                    // cleared) lands before we kick off the next
+                    // workout. Otherwise SwiftUI conflates the two
+                    // transitions and the cover doesn't present.
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                        switch start {
+                        case .empty:
+                            workoutSession.start()
+                        case .template(let template):
+                            workoutSession.start(template: template)
+                        }
+                    }
+                    pendingStart = nil
+                }
+                Button("Cancel", role: .cancel) {
+                    pendingStart = nil
+                }
+            } message: { _ in
+                Text("What do you want to do?")
+            }
+        }
+    }
+
+    /// Try to start a workout. If one's already active, queue the
+    /// pending start and surface the confirmation dialog instead of
+    /// silently switching.
+    private func attemptStart(_ start: PendingWorkoutStart) {
+        if workoutSession.isActive {
+            pendingStart = start
+            return
+        }
+        switch start {
+        case .empty:
+            workoutSession.start()
+        case .template(let template):
+            workoutSession.start(template: template)
         }
     }
 
@@ -144,7 +219,7 @@ struct TrainView: View {
             // every "go" moment in the app.
             Button {
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                workoutSession.start()
+                attemptStart(.empty)
             } label: {
                 Text("Start Workout")
                     .font(.marbleBody(16))

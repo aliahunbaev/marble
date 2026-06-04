@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 
 /// Shared workout state, lifted out of ActiveWorkoutView so an in-progress
 /// workout survives across tab navigation and view dismissal. Holds the
@@ -64,6 +65,7 @@ final class WorkoutSession {
         isActive = true
         isExpanded = true
         startTimer()
+        saveSnapshot()
     }
 
     /// Collapse the workout to the mini-bar without ending it. Tabs
@@ -89,6 +91,7 @@ final class WorkoutSession {
         entries = []
         name = "Workout"
         elapsedSeconds = 0
+        UserDefaults.standard.removeObject(forKey: Self.persistenceKey)
     }
 
     /// Resume the timer without resetting startDate. Used by the undo-
@@ -110,5 +113,112 @@ final class WorkoutSession {
     func stopTimer() {
         timer?.invalidate()
         timer = nil
+    }
+
+    // MARK: - Persistence
+    //
+    // Save the active workout's state to UserDefaults so it survives
+    // the app being backgrounded or killed. On launch we re-hydrate
+    // by ID-looking-up the exercise references through the
+    // ModelContext, then recompute elapsedSeconds from real wall-clock
+    // time (so a workout left running while the app was closed for
+    // 20 minutes resumes with the correct elapsed timer instead of
+    // jumping back to where it was when we last saved). Clearing the
+    // saved blob on `end()` ensures we don't accidentally restore a
+    // finished workout.
+
+    private static let persistenceKey = "Marble.WorkoutSession.v1"
+
+    private struct PersistedEntry: Codable {
+        let id: UUID
+        let exerciseName: String
+        let sets: [EditableSet]
+    }
+
+    private struct PersistedState: Codable {
+        let name: String
+        let entries: [PersistedEntry]
+        let startDate: Date
+        let isExpanded: Bool
+        let sourceTemplateName: String?
+    }
+
+    /// Snapshot the live session to UserDefaults. Call after any
+    /// meaningful state change (we wire it into start/end and also
+    /// at app-backgrounding to catch in-flight edits).
+    func saveSnapshot() {
+        guard isActive else {
+            UserDefaults.standard.removeObject(forKey: Self.persistenceKey)
+            return
+        }
+        let persisted = PersistedState(
+            name: name,
+            entries: entries.map { entry in
+                PersistedEntry(
+                    id: entry.id,
+                    exerciseName: entry.exercise.name,
+                    sets: entry.sets
+                )
+            },
+            startDate: startDate,
+            isExpanded: isExpanded,
+            sourceTemplateName: sourceTemplate?.name
+        )
+        if let data = try? JSONEncoder().encode(persisted) {
+            UserDefaults.standard.set(data, forKey: Self.persistenceKey)
+        }
+    }
+
+    /// Attempt to rehydrate the session from a saved snapshot.
+    /// Returns true if a workout was restored (so the caller knows
+    /// to present it). No-op if nothing's saved or the saved
+    /// exercises can no longer be resolved.
+    @discardableResult
+    func restoreSnapshot(context: ModelContext) -> Bool {
+        guard let data = UserDefaults.standard.data(forKey: Self.persistenceKey),
+              let persisted = try? JSONDecoder().decode(PersistedState.self, from: data) else {
+            return false
+        }
+
+        // Resolve exercise references by name. We could use
+        // PersistentIdentifier here, but name lookup is simpler and
+        // more forgiving across schema migrations / store rebuilds.
+        let exerciseDescriptor = FetchDescriptor<Exercise>()
+        guard let allExercises = try? context.fetch(exerciseDescriptor) else {
+            return false
+        }
+        let byName = Dictionary(uniqueKeysWithValues: allExercises.map { ($0.name, $0) })
+
+        let resolved = persisted.entries.compactMap { saved -> ExerciseEntry? in
+            guard let exercise = byName[saved.exerciseName] else { return nil }
+            return ExerciseEntry(id: saved.id, exercise: exercise, sets: saved.sets)
+        }
+        // If we couldn't find ANY of the saved exercises (e.g. store
+        // was wiped), don't restore an empty husk — discard the
+        // snapshot instead.
+        guard !resolved.isEmpty || persisted.entries.isEmpty else {
+            UserDefaults.standard.removeObject(forKey: Self.persistenceKey)
+            return false
+        }
+
+        // Source template lookup (optional — workout still works
+        // without it).
+        if let templateName = persisted.sourceTemplateName {
+            let templateDescriptor = FetchDescriptor<WorkoutTemplate>()
+            if let templates = try? context.fetch(templateDescriptor) {
+                sourceTemplate = templates.first { $0.name == templateName }
+            }
+        }
+
+        name = persisted.name
+        entries = resolved
+        startDate = persisted.startDate
+        // Recompute elapsed from real time so the timer's correct
+        // even if the app was closed for hours.
+        elapsedSeconds = max(0, Int(Date().timeIntervalSince(persisted.startDate)))
+        isActive = true
+        isExpanded = persisted.isExpanded
+        startTimer()
+        return true
     }
 }
