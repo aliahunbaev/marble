@@ -200,7 +200,11 @@ struct ActiveWorkoutView: View {
     @ViewBuilder
     private func unifiedCanvas(session: WorkoutSession) -> some View {
         @Bindable var session = session
-        ScrollView {
+        // UIKit-backed scroll view so the ReorderableList bridge can
+        // anchor the dragged cell at the touch point — SwiftUI's
+        // built-in ScrollView reverts our contentInset writes within
+        // one runloop tick (proven in logs). See BackedScrollView.swift.
+        BackedScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 workoutHeaderInline(session: session)
 
@@ -268,7 +272,6 @@ struct ActiveWorkoutView: View {
             }
             .padding(.bottom, 140)
         }
-        .scrollDismissesKeyboard(.interactively)
         .background(Color("marbleBackground"))
     }
 
