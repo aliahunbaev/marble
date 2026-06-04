@@ -20,6 +20,11 @@ struct ExerciseLiftDetailView: View {
     @State private var manualWeightText = ""
     @State private var manualRepsText = ""
     @State private var manualValueText = ""
+    /// Flag set when the user removes this lift from tracking. The
+    /// `.onDisappear` upload-on-exit path checks this and skips the
+    /// upload — otherwise dismissal would re-create the cloud doc
+    /// milliseconds after the delete, undoing it.
+    @State private var wasDeleted = false
 
     private var exercise: Exercise? { trackedLift.exercise }
 
@@ -56,6 +61,11 @@ struct ExerciseLiftDetailView: View {
 
                 Button {
                     let cloudID = trackedLift.cloudID
+                    // Mark BEFORE deleting + dismissing so the
+                    // .onDisappear path below skips the catch-all
+                    // upload (which would re-create the cloud doc
+                    // immediately after the delete).
+                    wasDeleted = true
                     modelContext.delete(trackedLift)
                     try? modelContext.save()
                     Task { await CloudSyncService.shared.deleteTrackedLift(cloudID: cloudID) }
@@ -77,6 +87,11 @@ struct ExerciseLiftDetailView: View {
             Text("Enter value manually")
         }
         .onDisappear {
+            // Skip the catch-all upload when the user removed the
+            // lift via the destructive button — uploading a deleted
+            // model object would re-create its cloud doc and
+            // resurrect it on next launch.
+            guard !wasDeleted else { return }
             CloudSyncService.shared.uploadTrackedLift(trackedLift)
         }
     }
