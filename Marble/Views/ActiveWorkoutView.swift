@@ -239,7 +239,16 @@ struct ActiveWorkoutView: View {
                     reconfigureKey: AnyHashable(
                         "\(reorderState.isReordering)|" +
                         session.entries.map { e in
-                            "\(e.id):\(e.sets.map { $0.id.uuidString }.joined(separator: ","))"
+                            "\(e.id):" + e.sets.map {
+                                // Fold isCompleted into the hash so
+                                // tapping the checkmark causes the
+                                // cell to reconfigure with the new
+                                // state — without this, the binding
+                                // writes through to the parent but
+                                // the visible button is the cached
+                                // pre-tap view and never updates.
+                                "\($0.id.uuidString):\($0.isCompleted)"
+                            }.joined(separator: ",")
                         }.joined(separator: ";")
                     )
                 ) { entry in
