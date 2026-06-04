@@ -27,6 +27,15 @@ struct ReorderableList<Item, Cell: View>: View {
     /// drop or cancellation. Use to clear the drag state and let cells
     /// re-render expanded.
     var onDragEnd: (() -> Void)? = nil
+    /// External state that should trigger cell content to re-render.
+    /// `@ObservedObject` inside UIHostingConfiguration cells does NOT
+    /// reliably propagate updates from objects owned outside the cell —
+    /// UCV configures the cell once and doesn't observe further. When
+    /// this value changes, the bridge calls `snapshot.reconfigureItems`
+    /// which re-executes the cell registration closure with fresh
+    /// content. Use for any external state that the cell content
+    /// closure reads (e.g. a `reorderState.isReordering` flag).
+    var reconfigureKey: AnyHashable? = nil
     @ViewBuilder let cellContent: (Item) -> Cell
 
     @State private var measuredHeight: CGFloat = 60
@@ -39,6 +48,7 @@ struct ReorderableList<Item, Cell: View>: View {
             onTap: onTap,
             onDragStart: onDragStart,
             onDragEnd: onDragEnd,
+            reconfigureKey: reconfigureKey,
             onHeightChange: { newHeight in
                 if abs(newHeight - measuredHeight) > 0.5 {
                     measuredHeight = newHeight
@@ -59,6 +69,7 @@ private struct CollectionBridge<Item, Cell: View>: UIViewRepresentable {
     let onTap: ((Item) -> Void)?
     let onDragStart: (() -> Void)?
     let onDragEnd: (() -> Void)?
+    let reconfigureKey: AnyHashable?
     let onHeightChange: (CGFloat) -> Void
     @ViewBuilder let cellContent: (Item) -> Cell
 
@@ -123,6 +134,14 @@ private struct CollectionBridge<Item, Cell: View>: UIViewRepresentable {
     func updateUIView(_ collectionView: UICollectionView, context: Context) {
         context.coordinator.parent = self
         context.coordinator.apply(items: items, animated: true)
+        // Force cell content reconfiguration when the external key
+        // changes — `@ObservedObject` inside UIHostingConfiguration
+        // doesn't reliably trigger UCV cell updates on its own, so
+        // we drive the refresh explicitly via the diffable snapshot.
+        if context.coordinator.lastReconfigureKey != reconfigureKey {
+            context.coordinator.lastReconfigureKey = reconfigureKey
+            context.coordinator.reconfigureAllCells()
+        }
     }
 
     static func dismantleUIView(_ uiView: UICollectionView, coordinator: Coordinator) {
@@ -154,6 +173,10 @@ extension CollectionBridge {
         weak var collectionView: UICollectionView?
         var dataSource: UICollectionViewDiffableDataSource<Int, String>?
         var currentItems: [Item] = []
+        /// Tracks the last reconfigureKey value so the bridge can
+        /// detect when external state has changed and trigger a
+        /// reconfigureItems pass.
+        var lastReconfigureKey: AnyHashable?
         private var contentSizeObservation: NSKeyValueObservation?
 
         init(parent: CollectionBridge) {
@@ -166,6 +189,16 @@ extension CollectionBridge {
             snapshot.appendSections([0])
             snapshot.appendItems(items.map(parent.itemID), toSection: 0)
             dataSource?.apply(snapshot, animatingDifferences: animated)
+        }
+
+        /// Re-executes the cell registration closure for every visible
+        /// cell. Use to refresh cell content when external state
+        /// changes (since UCV cells are configured once and don't
+        /// observe outside state changes on their own).
+        func reconfigureAllCells() {
+            guard var snapshot = dataSource?.snapshot() else { return }
+            snapshot.reconfigureItems(snapshot.itemIdentifiers)
+            dataSource?.apply(snapshot, animatingDifferences: false)
         }
 
         func handleDidReorder(newIDs: [String]) {

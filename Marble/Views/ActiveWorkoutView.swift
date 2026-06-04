@@ -224,7 +224,8 @@ struct ActiveWorkoutView: View {
                         withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
                             reorderState.isReordering = false
                         }
-                    }
+                    },
+                    reconfigureKey: AnyHashable(reorderState.isReordering)
                 ) { entry in
                     ExerciseCell(
                         entry: entry,
