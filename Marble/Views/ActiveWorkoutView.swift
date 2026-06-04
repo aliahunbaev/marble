@@ -22,10 +22,11 @@ struct ActiveWorkoutView: View {
     /// entry instead of being toggled into the entries list. Cleared
     /// after a successful replace.
     @State private var replacingEntryID: UUID?
-    /// Long-press on an exercise header flips this on, collapsing the
-    /// sets to titles-only so the user can drag-reorder. The Done glass
-    /// pill in the toolbar exits the mode.
-    @State private var isReordering: Bool = false
+    /// Shared reorder state — observed by every exercise cell so they
+    /// can collapse to title-only when the user starts dragging and
+    /// expand back when they release. ReorderableList's bridge fires
+    /// onDragStart/onDragEnd which mutate this ObservableObject.
+    @StateObject private var reorderState = ExerciseReorderState()
 
     @AppStorage("defaultRestTimer") private var defaultRestTimer: Int = 90
 
@@ -74,11 +75,7 @@ struct ActiveWorkoutView: View {
         @Bindable var session = session
 
         return ZStack(alignment: .top) {
-            if isReordering {
-                reorderingCanvas(session: session)
-            } else {
-                expandedCanvas(session: session)
-            }
+            unifiedCanvas(session: session)
 
             // Floating glass buttons over the workout content
             floatingToolbar
@@ -194,64 +191,89 @@ struct ActiveWorkoutView: View {
         }
     }
 
-    /// Normal mode — full List with expanded exercises, native swipe-
-    /// to-delete on sets, +SET buttons, the whole live-workout UX.
+    /// Single canvas — workout header + reorderable exercise list +
+    /// add-exercise row. Each exercise cell observes `reorderState`
+    /// and renders expanded or compact in place. Long-press on any
+    /// cell triggers reorder (UCV bridge's recognizer), all cells
+    /// collapse to titles with animation, drag to reorder, release
+    /// to expand back. One continuous gesture. No mode switch, no
+    /// DONE button.
     @ViewBuilder
-    private func expandedCanvas(session: WorkoutSession) -> some View {
-        @Bindable var session = session
-        List {
-            workoutHeaderRow(session: session)
-            expandedExercisesContent(entries: $session.entries)
-            addExerciseRow
-        }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-        .scrollDismissesKeyboard(.interactively)
-        .environment(\.defaultMinListRowHeight, 0)
-        .background(Color("marbleBackground"))
-    }
-
-    /// Reorder mode — exercises collapse to title rows in a
-    /// `ReorderableList` (UICollectionView bridge). Same iOS-native
-    /// long-press → lift → drag → reflow → snap UX as Train templates
-    /// and Track metrics. Exit via DONE in the toolbar.
-    @ViewBuilder
-    private func reorderingCanvas(session: WorkoutSession) -> some View {
+    private func unifiedCanvas(session: WorkoutSession) -> some View {
         @Bindable var session = session
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                Text(session.name)
-                    .font(.marbleBody(32))
-                    .foregroundStyle(Color("marblePrimary"))
-                    .padding(.horizontal, 20)
-                    .padding(.top, 88)
-                    .padding(.bottom, 24)
+                workoutHeaderInline(session: session)
 
                 ReorderableList(
                     items: session.entries,
                     itemID: { $0.id.uuidString },
                     onReorder: { newOrder in session.entries = newOrder },
-                    onTap: nil
+                    onTap: nil,
+                    onDragStart: {
+                        withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
+                            reorderState.isReordering = true
+                        }
+                    },
+                    onDragEnd: {
+                        withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
+                            reorderState.isReordering = false
+                        }
+                    }
                 ) { entry in
-                    Text(entry.exercise.name)
-                        .font(.marbleBody(22))
-                        .foregroundStyle(Color("marblePrimary"))
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 18)
-                        .background(
-                            VStack {
-                                Spacer()
-                                Rectangle()
-                                    .fill(Color("marblePrimary").opacity(0.08))
-                                    .frame(height: 0.5)
-                            }
-                        )
+                    ExerciseCell(
+                        entry: entry,
+                        entries: $session.entries,
+                        reorderState: reorderState,
+                        onReplace: { entryID in
+                            replacingEntryID = entryID
+                            showingLibrary = true
+                        },
+                        onComplete: nil
+                    )
                 }
+
+                addExerciseInline
             }
             .padding(.bottom, 140)
         }
+        .scrollDismissesKeyboard(.interactively)
         .background(Color("marbleBackground"))
+    }
+
+    /// Workout name + duration as a flat top-of-canvas header.
+    @ViewBuilder
+    private func workoutHeaderInline(session: WorkoutSession) -> some View {
+        @Bindable var session = session
+        VStack(alignment: .leading, spacing: 6) {
+            TextField("Workout", text: $session.name)
+                .font(.marbleBody(32))
+                .foregroundStyle(Color("marblePrimary"))
+
+            Text(session.formattedTime)
+                .font(.marbleMono(13))
+                .tracking(1)
+                .foregroundStyle(Color("marbleSecondary"))
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 88)
+        .padding(.bottom, 32)
+    }
+
+    /// + EXERCISE button at the bottom of the list.
+    private var addExerciseInline: some View {
+        Button {
+            showingLibrary = true
+        } label: {
+            HStack(spacing: 6) {
+                Text("+")
+                Text("EXERCISE").tracking(1)
+            }
+            .marbleSecondaryButton()
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, 20)
+        .padding(.top, 24)
     }
 
     /// Exercise header as a regular List row (not a Section header) so
@@ -269,21 +291,6 @@ struct ActiveWorkoutView: View {
                 Text(entry.wrappedValue.exercise.name)
                     .font(.marbleBody(22))
                     .foregroundStyle(Color("marblePrimary"))
-                    // Long-press the name to enter reorder mode
-                    // directly — no dedicated "Reorder" menu button.
-                    // Long-press is gesture-isolated to the Text so it
-                    // doesn't compete with set field focus, swipe-to-
-                    // delete on sets, or the ⋯ menu's own tap.
-                    .gesture(
-                        LongPressGesture(minimumDuration: 0.4)
-                            .onEnded { _ in
-                                guard session.entries.count >= 2 else { return }
-                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                                withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-                                    isReordering = true
-                                }
-                            }
-                    )
 
                 Spacer()
 
@@ -419,13 +426,8 @@ struct ActiveWorkoutView: View {
 
     // MARK: - Floating Toolbar (iOS-26 liquid glass)
 
-    @ViewBuilder
     private var floatingToolbar: some View {
-        if isReordering {
-            reorderingToolbar
-        } else {
-            normalToolbar
-        }
+        normalToolbar
     }
 
     private var normalToolbar: some View {
@@ -468,26 +470,6 @@ struct ActiveWorkoutView: View {
                 attemptFinish()
             } label: {
                 Text("FINISH")
-                    .marbleGlassPill()
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.horizontal, 16)
-        .padding(.top, 8)
-    }
-
-    /// Reorder-mode toolbar — just a Done glass pill that exits back to
-    /// the expanded layout. Hides the other actions to keep focus.
-    private var reorderingToolbar: some View {
-        HStack {
-            Spacer()
-            Button {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-                    isReordering = false
-                }
-            } label: {
-                Text("DONE")
                     .marbleGlassPill()
             }
             .buttonStyle(.plain)
@@ -559,4 +541,214 @@ struct ActiveWorkoutView: View {
     ActiveWorkoutView()
         .environment(WorkoutSession())
         .modelContainer(for: [Workout.self, Exercise.self], inMemory: true)
+}
+
+// MARK: - Exercise reorder state
+
+/// Shared observable across all exercise cells. The ReorderableList
+/// bridge's `onDragStart` / `onDragEnd` callbacks toggle this; every
+/// cell observes via `@ObservedObject` and re-renders compact when
+/// a drag is in progress and expanded when it ends. One state, many
+/// cells — that's how the "all cells collapse together" effect lands
+/// without breaking the gesture chain across view transitions.
+final class ExerciseReorderState: ObservableObject {
+    @Published var isReordering: Bool = false
+}
+
+// MARK: - Exercise cell (expanded ↔ compact)
+
+/// One exercise inside the unified canvas. Renders the full expanded
+/// view (header + sets + +SET) by default; collapses to a single
+/// title row while `reorderState.isReordering` is true. The transition
+/// animates via the spring set on the SwiftUI .animation modifier so
+/// all cells visually compact together when any one is being dragged.
+struct ExerciseCell: View {
+    @Environment(\.modelContext) private var modelContext
+
+    let entry: ExerciseEntry
+    @Binding var entries: [ExerciseEntry]
+    @ObservedObject var reorderState: ExerciseReorderState
+    let onReplace: (UUID) -> Void
+    let onComplete: (() -> Void)?
+    /// Show the checkmark column on each set row. False for templates
+    /// (which are structural — no "completed" concept). True for live
+    /// workouts.
+    var showCheckmark: Bool = true
+
+    var body: some View {
+        if reorderState.isReordering {
+            compactView
+        } else {
+            expandedView
+        }
+    }
+
+    /// Compact form during drag — just the exercise name in a fixed
+    /// row height. Hairline divider sits at the bottom so the strip
+    /// of titles reads as a single inline list.
+    private var compactView: some View {
+        Text(entry.exercise.name)
+            .font(.marbleBody(22))
+            .foregroundStyle(Color("marblePrimary"))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 18)
+            .background(
+                VStack {
+                    Spacer()
+                    Rectangle()
+                        .fill(Color("marblePrimary").opacity(0.08))
+                        .frame(height: 0.5)
+                }
+            )
+    }
+
+    /// Expanded form — full exercise card with header, column titles,
+    /// each set, and the +SET button.
+    private var expandedView: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Header: name + ⋯ menu
+            HStack {
+                Text(entry.exercise.name)
+                    .font(.marbleBody(22))
+                    .foregroundStyle(Color("marblePrimary"))
+
+                Spacer()
+
+                Menu {
+                    Button {
+                        DispatchQueue.main.async {
+                            onReplace(entry.id)
+                        }
+                    } label: {
+                        Label("Replace exercise", systemImage: "arrow.triangle.2.circlepath")
+                    }
+                    Button(role: .destructive) {
+                        let entryID = entry.id
+                        DispatchQueue.main.async {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                                entries.removeAll { $0.id == entryID }
+                            }
+                        }
+                    } label: {
+                        Label("Remove", systemImage: "trash")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 13, weight: .medium))
+                        .marbleGlassCapsule(size: 32)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 14)
+
+            // Column headers
+            HStack(spacing: 14) {
+                Text("SET").frame(width: 32, alignment: .center)
+                Spacer()
+                Text("LBS").frame(width: 100, alignment: .center)
+                Text("REPS").frame(width: 100, alignment: .center)
+                if showCheckmark {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 11, weight: .light))
+                        .frame(width: 44, alignment: .center)
+                }
+            }
+            .font(.marbleMono(11))
+            .tracking(1.5)
+            .foregroundStyle(Color("marbleSecondary"))
+            .padding(.horizontal, 20)
+            .padding(.bottom, 8)
+
+            // Sets — each row uses .contextMenu for delete (long-press
+            // shows a Delete option). Avoids conflicting with the
+            // cell-level long-press that drives reorder: the gestures
+            // operate at different levels of the view hierarchy.
+            ForEach(setsBinding) { $set in
+                let index = entry.sets.firstIndex(where: { $0.id == set.id }) ?? 0
+                let prev = PreviousPerformance.previousComponents(
+                    for: entry.exercise,
+                    setIndex: index,
+                    context: modelContext
+                )
+                SetRowView(
+                    setNumber: index + 1,
+                    weight: $set.weight,
+                    reps: $set.reps,
+                    isCompleted: $set.isCompleted,
+                    previousWeight: prev.weight,
+                    previousReps: prev.reps,
+                    showCheckmark: showCheckmark,
+                    onComplete: onComplete
+                )
+                .padding(.horizontal, 20)
+                .padding(.vertical, 10)
+                .background(
+                    set.isCompleted
+                        ? Color("marblePrimary").opacity(0.04)
+                        : Color.clear
+                )
+                .contextMenu {
+                    Button(role: .destructive) {
+                        let setID = set.id
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                            removeSet(id: setID)
+                        }
+                    } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
+                }
+            }
+
+            // + SET button
+            Button {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.82)) {
+                    addSet()
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    Text("+")
+                    Text("SET").tracking(1)
+                }
+                .marbleSecondaryButton()
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 20)
+            .padding(.top, 8)
+            .padding(.bottom, 24)
+        }
+        .background(
+            VStack {
+                Spacer()
+                Rectangle()
+                    .fill(Color("marblePrimary").opacity(0.06))
+                    .frame(height: 0.5)
+            }
+        )
+    }
+
+    /// Binding into the SwiftData-backed entries array for *this*
+    /// entry's sets. Updates here mutate `entries` through the
+    /// passed Binding, which the WorkoutSession observes.
+    private var setsBinding: Binding<[EditableSet]> {
+        Binding(
+            get: { entry.sets },
+            set: { newSets in
+                guard let idx = entries.firstIndex(where: { $0.id == entry.id }) else { return }
+                entries[idx].sets = newSets
+            }
+        )
+    }
+
+    private func addSet() {
+        guard let idx = entries.firstIndex(where: { $0.id == entry.id }) else { return }
+        entries[idx].sets.append(EditableSet())
+    }
+
+    private func removeSet(id: UUID) {
+        guard let idx = entries.firstIndex(where: { $0.id == entry.id }) else { return }
+        entries[idx].sets.removeAll { $0.id == id }
+    }
 }

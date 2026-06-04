@@ -39,11 +39,14 @@ struct TemplateEditorView: View {
     @State private var name: String
     @State private var entries: [ExerciseEntry]
     @State private var showingLibrary = false
-    @State private var isReordering: Bool = false
     /// When set, the next exercise picked from the library replaces this
     /// entry instead of being appended. Cleared after a successful
     /// replace. Same pattern as ActiveWorkoutView.
     @State private var replacingEntryID: UUID?
+    /// Shared reorder state — observed by every exercise cell so they
+    /// collapse when a drag starts and expand when it ends. Same
+    /// ObservableObject pattern as ActiveWorkoutView.
+    @StateObject private var reorderState = ExerciseReorderState()
 
     /// Used to assign a sensible displayOrder for fresh templates so
     /// they land at the end of the Train list instead of at index 0
@@ -70,11 +73,7 @@ struct TemplateEditorView: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            if isReordering {
-                reorderingCanvas
-            } else {
-                expandedCanvas
-            }
+            unifiedCanvas
 
             floatingToolbar
         }
@@ -155,61 +154,68 @@ struct TemplateEditorView: View {
         }
     }
 
-    /// Normal mode — full List with expanded exercises, swipe-to-
-    /// delete on sets, +SET buttons, the whole template-editing UX.
+    /// Single canvas — template name + reorderable exercise list +
+    /// add-exercise row. Each exercise cell observes `reorderState`
+    /// and renders expanded or compact in place. Same architecture
+    /// as ActiveWorkoutView's unifiedCanvas; the only difference is
+    /// the header is template name (no duration) and cells hide
+    /// the checkmark column (templates have no completed concept).
     @ViewBuilder
-    private var expandedCanvas: some View {
-        List {
-            templateHeaderRow
-            expandedExercisesContent
-            addExerciseRow
-        }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-        .scrollDismissesKeyboard(.interactively)
-        .environment(\.defaultMinListRowHeight, 0)
-        .background(Color("marbleBackground"))
-    }
-
-    /// Reorder mode — exercises collapse to title rows in a
-    /// `ReorderableList` (UICollectionView bridge). Same iOS-native
-    /// long-press → lift → drag → reflow → snap UX as Train templates
-    /// and Track metrics. Exit via DONE in the toolbar.
-    @ViewBuilder
-    private var reorderingCanvas: some View {
+    private var unifiedCanvas: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                Text(name.isEmpty ? "Template" : name)
+                TextField("Template", text: $name)
                     .font(.marbleBody(32))
                     .foregroundStyle(Color("marblePrimary"))
                     .padding(.horizontal, 20)
                     .padding(.top, 88)
-                    .padding(.bottom, 24)
+                    .padding(.bottom, 32)
 
                 ReorderableList(
                     items: entries,
                     itemID: { $0.id.uuidString },
                     onReorder: { newOrder in entries = newOrder },
-                    onTap: nil
+                    onTap: nil,
+                    onDragStart: {
+                        withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
+                            reorderState.isReordering = true
+                        }
+                    },
+                    onDragEnd: {
+                        withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
+                            reorderState.isReordering = false
+                        }
+                    }
                 ) { entry in
-                    Text(entry.exercise.name)
-                        .font(.marbleBody(22))
-                        .foregroundStyle(Color("marblePrimary"))
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 18)
-                        .background(
-                            VStack {
-                                Spacer()
-                                Rectangle()
-                                    .fill(Color("marblePrimary").opacity(0.08))
-                                    .frame(height: 0.5)
-                            }
-                        )
+                    ExerciseCell(
+                        entry: entry,
+                        entries: $entries,
+                        reorderState: reorderState,
+                        onReplace: { entryID in
+                            replacingEntryID = entryID
+                            showingLibrary = true
+                        },
+                        onComplete: nil,
+                        showCheckmark: false
+                    )
                 }
+
+                Button {
+                    showingLibrary = true
+                } label: {
+                    HStack(spacing: 6) {
+                        Text("+")
+                        Text("EXERCISE").tracking(1)
+                    }
+                    .marbleSecondaryButton()
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 20)
+                .padding(.top, 24)
             }
             .padding(.bottom, 140)
         }
+        .scrollDismissesKeyboard(.interactively)
         .background(Color("marbleBackground"))
     }
 
@@ -225,18 +231,6 @@ struct TemplateEditorView: View {
                 Text(entry.wrappedValue.exercise.name)
                     .font(.marbleBody(22))
                     .foregroundStyle(Color("marblePrimary"))
-                    // Long-press the name to enter reorder mode
-                    // directly — no dedicated "Reorder" menu button.
-                    .gesture(
-                        LongPressGesture(minimumDuration: 0.4)
-                            .onEnded { _ in
-                                guard entries.count >= 2 else { return }
-                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                                withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-                                    isReordering = true
-                                }
-                            }
-                    )
 
                 Spacer()
 
@@ -369,13 +363,8 @@ struct TemplateEditorView: View {
 
     // MARK: - Floating Toolbar
 
-    @ViewBuilder
     private var floatingToolbar: some View {
-        if isReordering {
-            reorderingToolbar
-        } else {
-            normalToolbar
-        }
+        normalToolbar
     }
 
     private var normalToolbar: some View {
@@ -413,23 +402,6 @@ struct TemplateEditorView: View {
         .padding(.top, 8)
     }
 
-    private var reorderingToolbar: some View {
-        HStack {
-            Spacer()
-            Button {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-                    isReordering = false
-                }
-            } label: {
-                Text("DONE")
-                    .marbleGlassPill()
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.horizontal, 16)
-        .padding(.top, 8)
-    }
 
     // MARK: - Save
 

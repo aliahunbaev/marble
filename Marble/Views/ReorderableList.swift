@@ -19,6 +19,14 @@ struct ReorderableList<Item, Cell: View>: View {
     let itemID: (Item) -> String
     let onReorder: ([Item]) -> Void
     let onTap: ((Item) -> Void)?
+    /// Fires the moment the long-press recognizer activates (i.e.
+    /// the cell is about to lift). Use to set any "we're dragging
+    /// now" state in the parent so cells can re-render compact.
+    var onDragStart: (() -> Void)? = nil
+    /// Fires when the long-press recognizer ends — either successful
+    /// drop or cancellation. Use to clear the drag state and let cells
+    /// re-render expanded.
+    var onDragEnd: (() -> Void)? = nil
     @ViewBuilder let cellContent: (Item) -> Cell
 
     @State private var measuredHeight: CGFloat = 60
@@ -29,6 +37,8 @@ struct ReorderableList<Item, Cell: View>: View {
             itemID: itemID,
             onReorder: onReorder,
             onTap: onTap,
+            onDragStart: onDragStart,
+            onDragEnd: onDragEnd,
             onHeightChange: { newHeight in
                 if abs(newHeight - measuredHeight) > 0.5 {
                     measuredHeight = newHeight
@@ -47,6 +57,8 @@ private struct CollectionBridge<Item, Cell: View>: UIViewRepresentable {
     let itemID: (Item) -> String
     let onReorder: ([Item]) -> Void
     let onTap: ((Item) -> Void)?
+    let onDragStart: (() -> Void)?
+    let onDragEnd: (() -> Void)?
     let onHeightChange: (CGFloat) -> Void
     @ViewBuilder let cellContent: (Item) -> Cell
 
@@ -200,13 +212,19 @@ extension CollectionBridge {
             case .began:
                 guard let indexPath = collectionView.indexPathForItem(at: location) else { return }
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                // Tell SwiftUI the drag is starting so cells can
+                // re-render compact BEFORE the interactive movement
+                // snapshots the cell content.
+                parent.onDragStart?()
                 collectionView.beginInteractiveMovementForItem(at: indexPath)
             case .changed:
                 collectionView.updateInteractiveMovementTargetPosition(location)
             case .ended:
                 collectionView.endInteractiveMovement()
+                parent.onDragEnd?()
             default:
                 collectionView.cancelInteractiveMovement()
+                parent.onDragEnd?()
             }
         }
 
