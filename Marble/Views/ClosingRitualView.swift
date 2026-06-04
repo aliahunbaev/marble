@@ -16,6 +16,10 @@ struct ClosingRitualView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var noteText: String = ""
+    /// In-place editable workout title. Seeded from `workout.name` on
+    /// appear, committed back on save (or earlier on commit if the
+    /// user explicitly submits).
+    @State private var workoutNameDraft: String = ""
     /// Captured photos, in display order. Each entry is the rendered
     /// UIImage + the persisted ProgressPhoto record. Tracking as a
     /// paired array means we can remove individual photos by index
@@ -27,6 +31,7 @@ struct ClosingRitualView: View {
     @State private var showingAddPhotoChoice = false
     @State private var isRecorded: Bool = false
     @FocusState private var noteFocused: Bool
+    @FocusState private var titleFocused: Bool
 
     var body: some View {
         Group {
@@ -62,75 +67,117 @@ struct ClosingRitualView: View {
         }
         .onTapGesture {
             noteFocused = false
+            titleFocused = false
+        }
+        .onAppear {
+            // Seed the editable title from the workout's current name
+            // exactly once, so an in-flight edit isn't blown away on
+            // re-render. Default to "Workout" if the workout's name
+            // is missing or blank.
+            if workoutNameDraft.isEmpty {
+                let current = workout.name.trimmingCharacters(in: .whitespaces)
+                workoutNameDraft = current.isEmpty ? "Workout" : current
+            }
         }
     }
 
     // MARK: - Ritual (photo + note)
 
     private var ritualView: some View {
-        ZStack(alignment: .topLeading) {
-            VStack(spacing: 0) {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 32) {
-                        // Header: date + duration. The bare duration
-                        // alone read as floating numbers without
-                        // context; pairing with the date anchors it.
-                        VStack(spacing: 6) {
-                            Text(formattedDate)
-                                .font(.marbleMono(12))
-                                .tracking(2)
-                                .foregroundStyle(Color("marblePrimary"))
-                            Text(formattedDuration)
-                                .font(.marbleMono(11))
-                                .tracking(1.5)
-                                .foregroundStyle(Color("marbleSecondary"))
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.top, 24)
+        ZStack(alignment: .top) {
+            // Main scrollable canvas — fills the full screen so SAVE
+            // can float over it. Long notes scroll behind the glass
+            // SAVE button; the iOS 26 glass effect handles the visual
+            // transition automatically (no need for an explicit fade).
+            ScrollView {
+                VStack(alignment: .leading, spacing: 32) {
+                    titleHeader
 
-                        photoZone
+                    photoZone
 
-                        noteZone
-                            .padding(.horizontal, 20)
-                    }
-                    // Big bottom padding so the scrollable content
-                    // can clear the floating SAVE button instead of
-                    // sliding under it. SAVE is ~52pt + 32pt bottom
-                    // padding = 84pt safe zone; 120pt gives breathing
-                    // room above that.
-                    .padding(.bottom, 120)
+                    noteZone
+                        .padding(.horizontal, 20)
                 }
+                // Safe zone below the floating SAVE button (52pt button
+                // + 32pt bottom + breathing room).
+                .padding(.bottom, 140)
+                .padding(.top, 64)
+            }
 
-                Spacer(minLength: 0)
+            // Back chevron — escape hatch to the active workout.
+            if let onBack {
+                HStack {
+                    Button {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        onBack()
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 15, weight: .medium))
+                            .marbleGlassCapsule(size: 44)
+                    }
+                    .buttonStyle(.plain)
+                    Spacer()
+                }
+                .padding(.leading, 16)
+                .padding(.top, 8)
+            }
 
+            // Floating SAVE — sits at the bottom, full-width within
+            // 20pt horizontal insets. Inline-styled so the label
+            // actually stretches to fill width (the marbleGlassPill
+            // helper sizes to its content and the outer .frame
+            // wouldn't propagate through the modifier chain).
+            VStack {
+                Spacer()
                 Button {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     save(skipping: false)
                 } label: {
                     Text("SAVE")
-                        .marbleGlassPill(horizontalPadding: 24, height: 52)
+                        .font(.marbleMono(13, weight: .regular))
+                        .tracking(1)
+                        .foregroundStyle(Color("marblePrimary"))
                         .frame(maxWidth: .infinity)
+                        .frame(height: 52)
+                        .modifier(InlineGlassPillBackground())
                 }
                 .buttonStyle(.plain)
                 .padding(.horizontal, 20)
                 .padding(.bottom, 32)
             }
+        }
+    }
 
-            // Back chevron — escape hatch to the active workout.
-            if let onBack {
-                Button {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    onBack()
-                } label: {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 15, weight: .medium))
-                        .marbleGlassCapsule(size: 44)
-                }
-                .buttonStyle(.plain)
-                .padding(.leading, 16)
-                .padding(.top, 8)
+    /// Header for the closing ritual — inline-editable workout title
+    /// over a quiet date + duration line. Tap the title to rename;
+    /// the new name lands on `workout.name` when SAVE is hit (or
+    /// earlier if the user explicitly submits / blurs the field).
+    private var titleHeader: some View {
+        VStack(spacing: 8) {
+            TextField("Workout", text: $workoutNameDraft)
+                .font(.marbleBody(22))
+                .foregroundStyle(Color("marblePrimary"))
+                .multilineTextAlignment(.center)
+                .focused($titleFocused)
+                .submitLabel(.done)
+                .onSubmit { titleFocused = false }
+
+            HStack(spacing: 8) {
+                Text(formattedDate)
+                    .font(.marbleMono(11))
+                    .tracking(1.5)
+                    .foregroundStyle(Color("marbleSecondary"))
+                Text("·")
+                    .font(.marbleMono(11))
+                    .foregroundStyle(Color("marbleTertiary"))
+                Text(formattedDuration)
+                    .font(.marbleMono(11))
+                    .tracking(1.5)
+                    .foregroundStyle(Color("marbleSecondary"))
             }
         }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 20)
     }
 
     // MARK: - Recorded (final closing screen)
@@ -354,13 +401,25 @@ struct ClosingRitualView: View {
     // MARK: - Save
 
     private func save(skipping: Bool) {
-        let trimmed = noteText.trimmingCharacters(in: .whitespaces)
-        if !skipping || !trimmed.isEmpty {
-            workout.notes = trimmed.isEmpty ? nil : trimmed
-            try? modelContext.save()
-            CloudSyncService.shared.uploadWorkout(workout)
+        let trimmedNote = noteText.trimmingCharacters(in: .whitespaces)
+        let trimmedName = workoutNameDraft.trimmingCharacters(in: .whitespaces)
+
+        // Note: only commit when not skipping (Skip button is gone but
+        // the parameter is preserved in case it returns).
+        if !skipping || !trimmedNote.isEmpty {
+            workout.notes = trimmedNote.isEmpty ? nil : trimmedNote
         }
+        // Title: always commit if the user actually typed something
+        // different from the current name. Empty draft falls back to
+        // the existing workout name (don't clobber with blank).
+        if !trimmedName.isEmpty, trimmedName != workout.name {
+            workout.name = trimmedName
+        }
+        try? modelContext.save()
+        CloudSyncService.shared.uploadWorkout(workout)
+
         noteFocused = false
+        titleFocused = false
         withAnimation(.easeInOut(duration: 0.5)) {
             isRecorded = true
         }
@@ -380,6 +439,29 @@ struct ClosingRitualView: View {
             return "\(hours)h \(minutes)m"
         }
         return "\(minutes)m"
+    }
+}
+
+// MARK: - Inline glass pill background
+
+/// Reusable glass-pill background that respects `frame(maxWidth:)`
+/// — unlike the `marbleGlassPill` helper, which sizes to its content
+/// and doesn't propagate the stretch through the modifier chain when
+/// the caller wants a full-width button. Applied here to the SAVE
+/// button so it stretches edge-to-edge of its parent insets instead
+/// of shrinking to "SAVE" text width.
+private struct InlineGlassPillBackground: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content.glassEffect(.regular, in: Capsule())
+        } else {
+            content
+                .background(.ultraThinMaterial, in: Capsule())
+                .overlay(
+                    Capsule()
+                        .stroke(Color("marblePrimary").opacity(0.08), lineWidth: 0.5)
+                )
+        }
     }
 }
 
