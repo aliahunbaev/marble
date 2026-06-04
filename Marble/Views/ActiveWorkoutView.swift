@@ -22,11 +22,6 @@ struct ActiveWorkoutView: View {
     /// entry instead of being toggled into the entries list. Cleared
     /// after a successful replace.
     @State private var replacingEntryID: UUID?
-    /// Shared reorder state — observed by every exercise cell so they
-    /// can collapse to title-only when the user starts dragging and
-    /// expand back when they release. ReorderableList's bridge fires
-    /// onDragStart/onDragEnd which mutate this ObservableObject.
-    @StateObject private var reorderState = ExerciseReorderState()
 
     @AppStorage("defaultRestTimer") private var defaultRestTimer: Int = 90
 
@@ -209,22 +204,11 @@ struct ActiveWorkoutView: View {
                     items: session.entries,
                     itemID: { $0.id.uuidString },
                     onReorder: { newOrder in session.entries = newOrder },
-                    onTap: nil,
-                    onDragStart: {
-                        withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
-                            reorderState.isReordering = true
-                        }
-                    },
-                    onDragEnd: {
-                        withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
-                            reorderState.isReordering = false
-                        }
-                    }
+                    onTap: nil
                 ) { entry in
                     ExerciseCell(
                         entry: entry,
                         entries: $session.entries,
-                        reorderState: reorderState,
                         onReplace: { entryID in
                             replacingEntryID = entryID
                             showingLibrary = true
@@ -543,19 +527,7 @@ struct ActiveWorkoutView: View {
         .modelContainer(for: [Workout.self, Exercise.self], inMemory: true)
 }
 
-// MARK: - Exercise reorder state
-
-/// Shared observable across all exercise cells. The ReorderableList
-/// bridge's `onDragStart` / `onDragEnd` callbacks toggle this; every
-/// cell observes via `@ObservedObject` and re-renders compact when
-/// a drag is in progress and expanded when it ends. One state, many
-/// cells — that's how the "all cells collapse together" effect lands
-/// without breaking the gesture chain across view transitions.
-final class ExerciseReorderState: ObservableObject {
-    @Published var isReordering: Bool = false
-}
-
-// MARK: - Exercise cell (expanded ↔ compact)
+// MARK: - Exercise cell
 
 /// One exercise inside the unified canvas. Renders the full expanded
 /// view (header + sets + +SET) by default; collapses to a single
@@ -567,7 +539,6 @@ struct ExerciseCell: View {
 
     let entry: ExerciseEntry
     @Binding var entries: [ExerciseEntry]
-    @ObservedObject var reorderState: ExerciseReorderState
     let onReplace: (UUID) -> Void
     let onComplete: (() -> Void)?
     /// Show the checkmark column on each set row. False for templates
@@ -575,21 +546,17 @@ struct ExerciseCell: View {
     /// workouts.
     var showCheckmark: Bool = true
 
-    /// Single view tree, conditional sections. The title bar is
-    /// always visible at the same position; the sets section is
-    /// conditionally rendered with a SwiftUI transition. SwiftUI
-    /// animates the layout reflow naturally — the sets fade and the
-    /// divider below slides up to where they were, which is exactly
-    /// the document-flow effect Strong has.
+    /// Cells stay expanded during drag — UCV's interactive movement
+    /// takes a snapshot of the cell as-is, lifts it under the finger,
+    /// and the other cells naturally reflow. No SwiftUI animation
+    /// running in parallel with the snapshot capture, so no mid-
+    /// animation flicker. Strong's reorder uses the same approach
+    /// (the cells you're not dragging stay full-size, the dragged
+    /// snapshot moves with the finger).
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             titleBar
-
-            if !reorderState.isReordering {
-                setsSection
-                    .transition(.opacity)
-            }
-
+            setsSection
             Rectangle()
                 .fill(Color("marblePrimary").opacity(0.08))
                 .frame(height: 0.5)
@@ -631,8 +598,6 @@ struct ExerciseCell: View {
                     .marbleGlassCapsule(size: 32)
             }
             .buttonStyle(.plain)
-            .opacity(reorderState.isReordering ? 0 : 1)
-            .allowsHitTesting(!reorderState.isReordering)
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 18)

@@ -43,10 +43,6 @@ struct TemplateEditorView: View {
     /// entry instead of being appended. Cleared after a successful
     /// replace. Same pattern as ActiveWorkoutView.
     @State private var replacingEntryID: UUID?
-    /// Shared reorder state — observed by every exercise cell so they
-    /// collapse when a drag starts and expand when it ends. Same
-    /// ObservableObject pattern as ActiveWorkoutView.
-    @StateObject private var reorderState = ExerciseReorderState()
 
     /// Used to assign a sensible displayOrder for fresh templates so
     /// they land at the end of the Train list instead of at index 0
@@ -175,22 +171,11 @@ struct TemplateEditorView: View {
                     items: entries,
                     itemID: { $0.id.uuidString },
                     onReorder: { newOrder in entries = newOrder },
-                    onTap: nil,
-                    onDragStart: {
-                        withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
-                            reorderState.isReordering = true
-                        }
-                    },
-                    onDragEnd: {
-                        withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
-                            reorderState.isReordering = false
-                        }
-                    }
+                    onTap: nil
                 ) { entry in
                     ExerciseCell(
                         entry: entry,
                         entries: $entries,
-                        reorderState: reorderState,
                         onReplace: { entryID in
                             replacingEntryID = entryID
                             showingLibrary = true
