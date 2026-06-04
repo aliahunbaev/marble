@@ -205,7 +205,10 @@ extension CollectionBridge {
         func reconfigureAllCells() {
             guard var snapshot = dataSource?.snapshot() else { return }
             snapshot.reconfigureItems(snapshot.itemIdentifiers)
-            dataSource?.apply(snapshot, animatingDifferences: false)
+            // Animate the diff so cell height changes (a set added /
+            // removed grows or shrinks the exercise cell) flow into
+            // the surrounding layout instead of snapping.
+            dataSource?.apply(snapshot, animatingDifferences: true)
         }
 
         func handleDidReorder(newIDs: [String]) {
