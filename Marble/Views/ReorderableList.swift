@@ -94,7 +94,14 @@ private struct CollectionBridge<Item, Cell: View>: UIViewRepresentable {
                 cell.host(AnyView(Color.clear))
                 return
             }
-            cell.host(AnyView(self.cellContent(item)))
+            // Route through coordinator.parent.cellContent, NOT
+            // self.cellContent — `self` is the CollectionBridge struct
+            // captured by value at makeUIView time; it never sees
+            // updates to the closure. `coordinator.parent` is updated
+            // in updateUIView to the latest bridge instance, so its
+            // cellContent reflects the latest captured state (e.g.
+            // reorderState.isReordering).
+            cell.host(AnyView(coordinator.parent.cellContent(item)))
         }
 
         let dataSource = UICollectionViewDiffableDataSource<Int, String>(
