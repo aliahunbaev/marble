@@ -27,7 +27,10 @@ struct ClosingRitualView: View {
     @State private var capturedItems: [CapturedPhotoItem] = []
     @State private var showingCamera = false
     @State private var showingLibrary = false
-    @State private var libraryItem: PhotosPickerItem?
+    /// PhotosPicker accepts multi-select when bound to a `[PhotosPickerItem]`
+    /// with a maxSelectionCount > 1. We keep it as an array and process
+    /// each picked item into the captured strip on .onChange.
+    @State private var libraryItems: [PhotosPickerItem] = []
     @State private var showingAddPhotoChoice = false
     @State private var isRecorded: Bool = false
     @FocusState private var noteFocused: Bool
@@ -49,15 +52,22 @@ struct ClosingRitualView: View {
             }
             .ignoresSafeArea()
         }
-        .photosPicker(isPresented: $showingLibrary, selection: $libraryItem, matching: .images)
-        .onChange(of: libraryItem) { _, newItem in
-            guard let newItem else { return }
+        .photosPicker(
+            isPresented: $showingLibrary,
+            selection: $libraryItems,
+            maxSelectionCount: 10,
+            matching: .images
+        )
+        .onChange(of: libraryItems) { _, newItems in
+            guard !newItems.isEmpty else { return }
             Task {
-                if let data = try? await newItem.loadTransferable(type: Data.self),
-                   let image = UIImage(data: data) {
-                    handleImage(image)
+                for item in newItems {
+                    if let data = try? await item.loadTransferable(type: Data.self),
+                       let image = UIImage(data: data) {
+                        handleImage(image)
+                    }
                 }
-                libraryItem = nil
+                libraryItems = []
             }
         }
         .confirmationDialog("Add a photo", isPresented: $showingAddPhotoChoice, titleVisibility: .hidden) {
@@ -143,41 +153,27 @@ struct ClosingRitualView: View {
                 }
                 .buttonStyle(.plain)
                 .padding(.horizontal, 20)
-                .padding(.bottom, 32)
+                .padding(.bottom, 16)
             }
         }
     }
 
-    /// Header for the closing ritual — inline-editable workout title
-    /// over a quiet date + duration line. Tap the title to rename;
-    /// the new name lands on `workout.name` when SAVE is hit (or
-    /// earlier if the user explicitly submits / blurs the field).
+    /// Inline-editable workout title at 32pt body — same scale and
+    /// alignment as the title in ActiveWorkout / TemplateEditor so
+    /// the three "what is this workout / template" surfaces feel
+    /// like the same canvas. Date + duration intentionally dropped:
+    /// the date is implicit (just-finished workouts are always today)
+    /// and the duration is non-essential at the closing moment —
+    /// both live on the workout detail view for later reference.
     private var titleHeader: some View {
-        VStack(spacing: 8) {
-            TextField("Workout", text: $workoutNameDraft)
-                .font(.marbleBody(22))
-                .foregroundStyle(Color("marblePrimary"))
-                .multilineTextAlignment(.center)
-                .focused($titleFocused)
-                .submitLabel(.done)
-                .onSubmit { titleFocused = false }
-
-            HStack(spacing: 8) {
-                Text(formattedDate)
-                    .font(.marbleMono(11))
-                    .tracking(1.5)
-                    .foregroundStyle(Color("marbleSecondary"))
-                Text("·")
-                    .font(.marbleMono(11))
-                    .foregroundStyle(Color("marbleTertiary"))
-                Text(formattedDuration)
-                    .font(.marbleMono(11))
-                    .tracking(1.5)
-                    .foregroundStyle(Color("marbleSecondary"))
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.horizontal, 20)
+        TextField("Workout", text: $workoutNameDraft)
+            .font(.marbleBody(32))
+            .foregroundStyle(Color("marblePrimary"))
+            .focused($titleFocused)
+            .submitLabel(.done)
+            .onSubmit { titleFocused = false }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 20)
     }
 
     // MARK: - Recorded (final closing screen)
@@ -235,10 +231,20 @@ struct ClosingRitualView: View {
 
     // MARK: - Photo Zone
 
-    /// Empty: two big capture options (PHOTO / LIBRARY).
-    /// Otherwise: horizontal strip of captured photos + an "add more"
-    /// tile that re-opens the camera/library choice via a confirmation
-    /// dialog. Users can keep adding photos one by one.
+    /// Fixed height across both empty-state buttons and captured
+    /// thumbs. Photos preserve their natural aspect ratio (width =
+    /// height × ratio), so a landscape pic reads as landscape and a
+    /// portrait pic reads as portrait — instead of every photo being
+    /// crammed into a 4:5 crop. Empty-state PHOTO / LIBRARY buttons
+    /// share this height so the zone reads the same dimensionally
+    /// before and after photos land.
+    private static let photoZoneHeight: CGFloat = 180
+
+    /// Empty: two equal-width PHOTO / LIBRARY buttons spanning the
+    /// content width, shaped wider than tall for a horizontal feel.
+    /// Otherwise: a horizontal scroll of captured photos at their
+    /// natural aspect ratios + a "+" tile that opens the
+    /// Camera/Library choice via a confirmation dialog.
     @ViewBuilder
     private var photoZone: some View {
         if capturedItems.isEmpty {
@@ -250,6 +256,7 @@ struct ClosingRitualView: View {
                     showingLibrary = true
                 }
             }
+            .frame(height: Self.photoZoneHeight)
             .padding(.horizontal, 20)
         } else {
             ScrollView(.horizontal, showsIndicators: false) {
@@ -261,6 +268,7 @@ struct ClosingRitualView: View {
                 }
                 .padding(.horizontal, 20)
             }
+            .frame(height: Self.photoZoneHeight)
         }
     }
 
@@ -269,16 +277,15 @@ struct ClosingRitualView: View {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             action()
         } label: {
-            VStack(spacing: 8) {
+            VStack(spacing: 10) {
                 Image(systemName: icon)
-                    .font(.system(size: 18, weight: .ultraLight))
+                    .font(.system(size: 20, weight: .ultraLight))
                 Text(label)
                     .font(.marbleMono(10))
                     .tracking(1.5)
             }
             .foregroundStyle(Color("marbleSecondary"))
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 40)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
                     .stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5)
@@ -287,14 +294,26 @@ struct ClosingRitualView: View {
         .buttonStyle(.plain)
     }
 
-    /// 4:5 portrait thumb of a captured photo with a small X to remove.
+    /// Captured photo thumb — fixed height, natural aspect ratio width.
+    /// Landscape photos render landscape, portrait render portrait.
+    /// An X overlay in the top-right removes the individual photo
+    /// from the strip (and from the underlying storage).
     private func capturedThumb(item: CapturedPhotoItem, index: Int) -> some View {
-        let thumbWidth: CGFloat = 140
-        let thumbHeight: CGFloat = thumbWidth * 5 / 4
+        let height = Self.photoZoneHeight
+        // Guard against zero-size weirdness; fall back to 4:5 portrait
+        // if for some reason we don't have a sane image size yet.
+        let aspect: CGFloat = {
+            let w = item.image.size.width
+            let h = item.image.size.height
+            guard w > 0, h > 0 else { return 4.0 / 5.0 }
+            return w / h
+        }()
+        let width = height * aspect
+
         return Image(uiImage: item.image)
             .resizable()
             .scaledToFill()
-            .frame(width: thumbWidth, height: thumbHeight)
+            .frame(width: width, height: height)
             .clipped()
             .clipShape(RoundedRectangle(cornerRadius: 8))
             .overlay(alignment: .topTrailing) {
@@ -315,9 +334,11 @@ struct ClosingRitualView: View {
 
     /// "+" tile at the end of the captured strip. Opens the
     /// Camera/Library confirmation dialog so users can keep adding.
+    /// Width matches a typical 4:5 portrait so it reads as "one more
+    /// slot" rather than a different element.
     private var addMoreTile: some View {
-        let thumbWidth: CGFloat = 140
-        let thumbHeight: CGFloat = thumbWidth * 5 / 4
+        let height = Self.photoZoneHeight
+        let width = height * 4 / 5
         return Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             showingAddPhotoChoice = true
@@ -325,7 +346,7 @@ struct ClosingRitualView: View {
             Image(systemName: "plus")
                 .font(.system(size: 18, weight: .light))
                 .foregroundStyle(Color("marbleSecondary"))
-                .frame(width: thumbWidth, height: thumbHeight)
+                .frame(width: width, height: height)
                 .overlay(
                     RoundedRectangle(cornerRadius: 8)
                         .stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5)
