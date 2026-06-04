@@ -408,7 +408,7 @@ struct ActiveWorkoutView: View {
         // Cascade-fill: prefer the closest non-empty (weight, reps)
         // pair ABOVE this set in the current workout, fall back to
         // the previous workout's value.
-        let cascade = cascadeFill(in: entry.wrappedValue.sets, forSetAt: index)
+        let cascade = priorFilledValues(in: entry.wrappedValue.sets, forSetAt: index)
         let placeholderWeight = cascade.weight ?? prev.weight
         let placeholderReps = cascade.reps ?? prev.reps
 
@@ -841,7 +841,7 @@ struct ExerciseCell: View {
     }
 
     private func cascadeFill(forSetAt index: Int) -> (weight: String?, reps: String?) {
-        cascadeFill(in: live.sets, forSetAt: index)
+        priorFilledValues(in: live.sets, forSetAt: index)
     }
 }
 
@@ -851,7 +851,7 @@ struct ExerciseCell: View {
 /// set 2 has weight="" reps=8, the cascade for set 3 yields (225,
 /// 8). Returns nil for any component that's empty all the way up.
 /// Empty after the usual whitespace trim.
-func cascadeFill(
+func priorFilledValues(
     in sets: [EditableSet],
     forSetAt index: Int
 ) -> (weight: String?, reps: String?) {
