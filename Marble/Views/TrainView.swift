@@ -81,8 +81,11 @@ struct TrainView: View {
                     // the row content stays correctly inset.
                     programsSection
                         .padding(.top, 24)
-                        .padding(.bottom, 40)
                 }
+                // Match TrackView/YouView: generous bottom padding so
+                // the last template row clears the iOS 26 Liquid Glass
+                // tab bar instead of slipping behind it.
+                .padding(.bottom, 140)
             }
             .marbleAtmosphereBackground()
             .navigationBarTitleDisplayMode(.inline)
@@ -223,11 +226,12 @@ struct TrainView: View {
         .scrollContentBackground(.hidden)
         .scrollDisabled(true)
         // Fixed approximate height per row × count. Generous enough
-        // (140pt) to accommodate templates with longer handwritten
-        // watermarks without clipping. List rows still size themselves
-        // intrinsically; this frame is just the outer container so the
-        // nested List doesn't collapse inside the outer ScrollView.
-        .frame(height: CGFloat(templates.count) * 140)
+        // (160pt) to accommodate templates with longer handwritten
+        // watermarks (6 exercises = ~6 lines of script font) without
+        // clipping. List rows still size themselves intrinsically;
+        // this frame is just the outer container so the nested List
+        // doesn't collapse inside the outer ScrollView.
+        .frame(height: CGFloat(templates.count) * 160)
     }
 
     private func moveTemplates(from source: IndexSet, to destination: Int) {
