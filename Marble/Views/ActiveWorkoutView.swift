@@ -859,30 +859,24 @@ struct SwipeToDeleteRow<Content: View>: View {
     @ViewBuilder let content: () -> Content
 
     @State private var offset: CGFloat = 0
-    @State private var isSwiped: Bool = false
     @State private var isDeleting: Bool = false
 
-    private let deleteThreshold: CGFloat = -100
-    private let fullSwipeThreshold: CGFloat = -220
+    /// Distance the user has to drag before release commits the
+    /// delete. Below this, the row springs back to zero. Tuned to
+    /// feel decisive — a short tentative drag won't accidentally
+    /// nuke a row, but a confident swipe past the midpoint will.
+    private let commitThreshold: CGFloat = -140
 
     var body: some View {
         ZStack(alignment: .trailing) {
-            // Full-bleed red. No corner radius, no margin — sits
-            // edge-to-edge so the swipe reveals a clean rectangular
-            // strip.
             HStack {
                 Spacer()
-                Button {
-                    commitDelete()
-                } label: {
-                    Text("DELETE")
-                        .font(.marbleMono(13, weight: .medium))
-                        .tracking(1.5)
-                        .foregroundStyle(Color.white)
-                        .padding(.horizontal, 28)
-                        .frame(maxHeight: .infinity)
-                }
-                .buttonStyle(.plain)
+                Text("DELETE")
+                    .font(.marbleMono(13, weight: .medium))
+                    .tracking(1.5)
+                    .foregroundStyle(Color.white)
+                    .padding(.horizontal, 28)
+                    .frame(maxHeight: .infinity)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color.red)
@@ -891,9 +885,6 @@ struct SwipeToDeleteRow<Content: View>: View {
             content()
                 .offset(x: offset)
                 .opacity(isDeleting ? 0 : 1)
-                .onTapGesture {
-                    if isSwiped { snapBack() }
-                }
         }
         .frame(maxHeight: isDeleting ? 0 : nil)
         .clipped()
@@ -903,31 +894,15 @@ struct SwipeToDeleteRow<Content: View>: View {
                     guard abs(value.translation.width) > abs(value.translation.height) else {
                         return
                     }
-                    let baseline: CGFloat = isSwiped ? deleteThreshold : 0
-                    let raw = baseline + value.translation.width
-                    if raw < 0 {
-                        if raw < fullSwipeThreshold {
-                            let over = fullSwipeThreshold - raw
-                            offset = fullSwipeThreshold - sqrt(over) * 4
-                        } else {
-                            offset = raw
-                        }
-                    } else {
-                        offset = 0
-                    }
+                    offset = min(0, value.translation.width)
                 }
                 .onEnded { value in
                     guard abs(value.translation.width) > abs(value.translation.height) else {
                         snapBack()
                         return
                     }
-                    if offset < fullSwipeThreshold {
+                    if offset < commitThreshold {
                         commitDelete()
-                    } else if offset < deleteThreshold {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                            offset = deleteThreshold
-                        }
-                        isSwiped = true
                     } else {
                         snapBack()
                     }
@@ -939,7 +914,6 @@ struct SwipeToDeleteRow<Content: View>: View {
         withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
             offset = 0
         }
-        isSwiped = false
     }
 
     private func commitDelete() {
