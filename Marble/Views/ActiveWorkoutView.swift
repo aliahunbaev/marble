@@ -918,12 +918,24 @@ struct SwipeToDeleteRow<Content: View>: View {
 
     private func commitDelete() {
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
-            isDeleting = true
+        // Phase 1: slide the content fully off-screen so the red
+        // strip fills the entire row width. Running this in the same
+        // animation as the height collapse causes the row to start
+        // shrinking before the slide completes, so you only ever
+        // see ~87% red — sequencing them gives the full reveal.
+        withAnimation(.easeOut(duration: 0.22)) {
             offset = -UIScreen.main.bounds.width
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.28) {
-            onDelete()
+        // Phase 2: once the slide is done and the row is solid red,
+        // collapse the row's height to zero so adjacent rows flow
+        // into the space cleanly.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
+            withAnimation(.easeInOut(duration: 0.18)) {
+                isDeleting = true
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+                onDelete()
+            }
         }
     }
 }
