@@ -744,45 +744,36 @@ struct ExerciseCell: View {
                     let cascade = cascadeFill(forSetAt: index)
                     let placeholderWeight = cascade.weight ?? prev.weight
                     let placeholderReps = cascade.reps ?? prev.reps
-                    SetRowView(
-                        setNumber: index + 1,
-                        weight: $set.weight,
-                        reps: $set.reps,
-                        isCompleted: $set.isCompleted,
-                        previousWeight: placeholderWeight,
-                        previousReps: placeholderReps,
-                        showCheckmark: showCheckmark,
-                        onComplete: onComplete
-                    )
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 10)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(
-                        set.isCompleted
-                            ? Color("marblePrimary").opacity(0.04)
-                            : Color("marbleBackground")
-                    )
-                    .listRowInsets(EdgeInsets())
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
-                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                        Button(role: .destructive) {
+                    SwipeToDeleteRow(
+                        onDelete: {
                             let setID = set.id
                             withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
                                 removeSet(id: setID)
                             }
-                        } label: {
-                            // No icon, just the word — matches the
-                            // app's editorial typography. `.tint(.red)`
-                            // gives the action its solid background;
-                            // the white foreground comes from the
-                            // destructive button's default styling.
-                            Text("DELETE")
-                                .font(.marbleMono(11, weight: .medium))
-                                .tracking(1.5)
                         }
-                        .tint(.red)
+                    ) {
+                        SetRowView(
+                            setNumber: index + 1,
+                            weight: $set.weight,
+                            reps: $set.reps,
+                            isCompleted: $set.isCompleted,
+                            previousWeight: placeholderWeight,
+                            previousReps: placeholderReps,
+                            showCheckmark: showCheckmark,
+                            onComplete: onComplete
+                        )
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 10)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(
+                            set.isCompleted
+                                ? Color("marblePrimary").opacity(0.04)
+                                : Color("marbleBackground")
+                        )
                     }
+                    .listRowInsets(EdgeInsets())
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
                 }
             }
             .listStyle(.plain)
@@ -842,6 +833,124 @@ struct ExerciseCell: View {
 
     private func cascadeFill(forSetAt index: Int) -> (weight: String?, reps: String?) {
         priorFilledValues(in: live.sets, forSetAt: index)
+    }
+}
+
+// MARK: - Swipe to delete (custom, for set rows)
+
+/// Custom swipe-to-delete affordance. iOS's native `.swipeActions`
+/// renders the action button with system-controlled rounded corners
+/// and margin — we want a flat, full-bleed red strip with the word
+/// DELETE in the same uppercase/tracked treatment as the +SET button
+/// so it reads as part of the editorial vocabulary. Two phases:
+///   - Partial swipe past `deleteThreshold` → row snaps to that
+///     offset, revealing the DELETE strip. Tap content to dismiss.
+///   - Full swipe past `fullSwipeThreshold` → commits the delete
+///     in one motion without the second tap.
+///
+/// Hosted inside a SwiftUI `List` (which is no longer using
+/// `.swipeActions` for these rows). The List provides predictable
+/// gesture coordination for the surrounding scroll + field-tap
+/// interactions; our horizontal DragGesture only activates after
+/// 15pt of motion, so TextField focus and List scroll both still
+/// work.
+struct SwipeToDeleteRow<Content: View>: View {
+    let onDelete: () -> Void
+    @ViewBuilder let content: () -> Content
+
+    @State private var offset: CGFloat = 0
+    @State private var isSwiped: Bool = false
+    @State private var isDeleting: Bool = false
+
+    private let deleteThreshold: CGFloat = -100
+    private let fullSwipeThreshold: CGFloat = -220
+
+    var body: some View {
+        ZStack(alignment: .trailing) {
+            // Full-bleed red. No corner radius, no margin — sits
+            // edge-to-edge so the swipe reveals a clean rectangular
+            // strip.
+            HStack {
+                Spacer()
+                Button {
+                    commitDelete()
+                } label: {
+                    Text("DELETE")
+                        .font(.marbleMono(13, weight: .medium))
+                        .tracking(1.5)
+                        .foregroundStyle(Color.white)
+                        .padding(.horizontal, 28)
+                        .frame(maxHeight: .infinity)
+                }
+                .buttonStyle(.plain)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color.red)
+            .opacity(offset < 0 ? 1 : 0)
+
+            content()
+                .offset(x: offset)
+                .opacity(isDeleting ? 0 : 1)
+                .onTapGesture {
+                    if isSwiped { snapBack() }
+                }
+        }
+        .frame(maxHeight: isDeleting ? 0 : nil)
+        .clipped()
+        .highPriorityGesture(
+            DragGesture(minimumDistance: 15, coordinateSpace: .local)
+                .onChanged { value in
+                    guard abs(value.translation.width) > abs(value.translation.height) else {
+                        return
+                    }
+                    let baseline: CGFloat = isSwiped ? deleteThreshold : 0
+                    let raw = baseline + value.translation.width
+                    if raw < 0 {
+                        if raw < fullSwipeThreshold {
+                            let over = fullSwipeThreshold - raw
+                            offset = fullSwipeThreshold - sqrt(over) * 4
+                        } else {
+                            offset = raw
+                        }
+                    } else {
+                        offset = 0
+                    }
+                }
+                .onEnded { value in
+                    guard abs(value.translation.width) > abs(value.translation.height) else {
+                        snapBack()
+                        return
+                    }
+                    if offset < fullSwipeThreshold {
+                        commitDelete()
+                    } else if offset < deleteThreshold {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                            offset = deleteThreshold
+                        }
+                        isSwiped = true
+                    } else {
+                        snapBack()
+                    }
+                }
+        )
+    }
+
+    private func snapBack() {
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+            offset = 0
+        }
+        isSwiped = false
+    }
+
+    private func commitDelete() {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
+            isDeleting = true
+            offset = -UIScreen.main.bounds.width
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.28) {
+            onDelete()
+        }
     }
 }
 
