@@ -56,6 +56,14 @@ private struct CollectionBridge<Cell: View>: UIViewRepresentable {
         collectionView.isScrollEnabled = false
         collectionView.allowsSelection = true
         collectionView.alwaysBounceVertical = false
+        // Don't clip cards' shadows at the collection view's rect.
+        // Cells already have `clipsToBounds = false` so shadows extend
+        // past the cell — but the collection view's own bounds clip
+        // them again at its frame edges, creating a visible "box"
+        // outline where the shadow cuts off. Flatten clipping at every
+        // level so shadows blend naturally into the page.
+        collectionView.clipsToBounds = false
+        collectionView.layer.masksToBounds = false
 
         // Cell registration. Stable lookup by cloudID — passed in via
         // the snapshot below. The data-source closure resolves the
@@ -223,23 +231,47 @@ extension CollectionBridge {
 final class HostingCell: UICollectionViewCell {
     override init(frame: CGRect) {
         super.init(frame: frame)
-        clipsToBounds = false
-        contentView.clipsToBounds = false
-        layer.masksToBounds = false
-        contentView.layer.masksToBounds = false
+        configureClearAppearance()
     }
 
     required init?(coder: NSCoder) {
         super.init(coder: coder)
+        configureClearAppearance()
+    }
+
+    private func configureClearAppearance() {
+        // Disable clipping at every level so SwiftUI shadows can extend
+        // past the cell rect.
         clipsToBounds = false
         contentView.clipsToBounds = false
         layer.masksToBounds = false
         contentView.layer.masksToBounds = false
+
+        // Force transparent at every level. Modern UICollectionViewCells
+        // get a default `backgroundConfiguration` and a contentView with
+        // an inherited systemBackground — both of which paint a faint
+        // off-white rectangle behind the SwiftUI card that reads as a
+        // tint stripe through the cell gaps. Clearing every surface
+        // forces only the SwiftUI card's own background to show.
+        backgroundColor = .clear
+        contentView.backgroundColor = .clear
+        backgroundView = nil
+        selectedBackgroundView = nil
+    }
+
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        // Reuse cycle can re-apply defaults; re-flatten on each cycle.
+        backgroundColor = .clear
+        contentView.backgroundColor = .clear
     }
 
     func host(_ view: AnyView) {
         backgroundConfiguration = UIBackgroundConfiguration.clear()
-        contentConfiguration = UIHostingConfiguration { view }
-            .margins(.all, 0)
+        contentConfiguration = UIHostingConfiguration {
+            view
+        }
+        .margins(.all, 0)
+        .background(Color.clear)
     }
 }

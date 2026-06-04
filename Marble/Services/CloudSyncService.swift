@@ -210,6 +210,68 @@ final class CloudSyncService {
         try? context.save()
     }
 
+    // MARK: - Cleanup utilities
+
+    /// Deletes templates that are "empty" — no name OR no exercises.
+    /// Sweeps the local store first, then the cloud (to catch stale
+    /// cloud docs whose local row was already removed but never
+    /// propagated — the fingerprint of the pre-await-deletes bug).
+    /// Returns total deleted count for a confirmation alert.
+    func cleanupEmptyTemplates(context: ModelContext) async -> Int {
+        var localDeleted = 0
+        var cloudDeleted = 0
+        let cloudIDsToDelete: Set<String>
+
+        let localTemplates = (try? context.fetch(FetchDescriptor<WorkoutTemplate>())) ?? []
+        var collectedCloudIDs = Set<String>()
+        for template in localTemplates {
+            let nameEmpty = template.name.trimmingCharacters(in: .whitespaces).isEmpty
+            let exercisesEmpty = template.exercises.isEmpty && template.exerciseNames.isEmpty
+            if nameEmpty || exercisesEmpty {
+                if !template.cloudID.isEmpty { collectedCloudIDs.insert(template.cloudID) }
+                context.delete(template)
+                localDeleted += 1
+            }
+        }
+        try? context.save()
+        cloudIDsToDelete = collectedCloudIDs
+
+        guard let uid else { return localDeleted }
+
+        for cloudID in cloudIDsToDelete {
+            do {
+                try await db.collection("users").document(uid)
+                    .collection("templates").document(cloudID).delete()
+                cloudDeleted += 1
+            } catch {
+                print("Cleanup — delete \(cloudID) failed: \(error)")
+            }
+        }
+
+        do {
+            let snap = try await db.collection("users").document(uid)
+                .collection("templates").getDocuments()
+            for doc in snap.documents {
+                guard let dto = try? doc.data(as: TemplateDTO.self) else { continue }
+                let nameEmpty = dto.name.trimmingCharacters(in: .whitespaces).isEmpty
+                let exercisesEmpty = dto.exerciseNames.isEmpty
+                // Only delete cloud docs where the *name* is also empty
+                // (or both fields are). A name-but-no-exerciseNames
+                // doc is more likely the fingerprint of a bad upload
+                // than a true orphan — preserve it and let the next
+                // valid save overwrite with correct exerciseNames.
+                if nameEmpty && exercisesEmpty {
+                    try? await doc.reference.delete()
+                    cloudDeleted += 1
+                }
+            }
+        } catch {
+            print("Cleanup — scan cloud templates failed: \(error)")
+        }
+
+        return max(localDeleted, cloudDeleted)
+    }
+
     // MARK: - Clear all cloud data
 
     func clearAllCloudData() async {
@@ -292,10 +354,18 @@ struct TemplateDTO: Codable {
     init(from template: WorkoutTemplate) {
         self.cloudID = template.cloudID
         self.name = template.name
-        // Use the order-of-truth helper so cloud round-trip preserves
-        // the user's actual order (the raw .exercises relationship may
-        // not reflect the most recent reorder — see WorkoutTemplate).
-        self.exerciseNames = template.orderedExercises().map(\.name)
+        // Prefer the stored `exerciseNames` directly. Going through
+        // `orderedExercises().map(\.name)` is unsafe: if SwiftData
+        // hasn't fault-resolved the `.exercises` relationship at this
+        // moment, the resolver returns `[]` and we'd upload an empty
+        // array that overwrites the valid cloud doc. Fall back to the
+        // relationship only when `exerciseNames` is genuinely empty
+        // (legacy templates pre-migration).
+        if !template.exerciseNames.isEmpty {
+            self.exerciseNames = template.exerciseNames
+        } else {
+            self.exerciseNames = template.exercises.map(\.name)
+        }
         self.displayOrder = template.displayOrder
     }
 }
