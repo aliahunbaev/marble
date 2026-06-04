@@ -249,6 +249,34 @@ extension CollectionBridge {
                     guard cellLocation.y <= 60 else { return }
                 }
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+
+                // Walk up the view hierarchy to find the enclosing
+                // SwiftUI ScrollView's UIScrollView. The collection
+                // view itself IS a UIScrollView, so skip it. We use
+                // the outer one to anchor the dragged cell at its
+                // original on-screen position when the surrounding
+                // cells collapse — without this, all the page
+                // content reflows to the top, making it feel like
+                // the page "snaps up" to start the drag.
+                let outerScrollView: UIScrollView? = {
+                    var v: UIView? = collectionView.superview
+                    while let next = v {
+                        if let s = next as? UIScrollView, s !== collectionView {
+                            return s
+                        }
+                        v = next.superview
+                    }
+                    return nil
+                }()
+
+                // Capture the dragged cell's content-space Y BEFORE
+                // the collapse so we can compute how far it moves
+                // and counter-scroll to compensate.
+                let preCellMinY: CGFloat = collectionView
+                    .cellForItem(at: indexPath)?
+                    .convert(CGPoint.zero, to: outerScrollView).y ?? 0
+                let preContentOffset = outerScrollView?.contentOffset.y ?? 0
+
                 parent.onDragStart?()
                 // The cell collapses from full-height (title + sets +
                 // +SET button — can be 400-600pt) down to just the
@@ -272,6 +300,38 @@ extension CollectionBridge {
                 func beginWhenCompact(attempt: Int) {
                     let height = cv.cellForItem(at: targetIndexPath)?.bounds.height ?? 0
                     if height < 80 || attempt >= 10 {
+                        // Cells have collapsed. The dragged cell has
+                        // moved to a new content-space Y because the
+                        // cells above it (if any) are now title-only.
+                        // Adjust the outer scroll offset by the same
+                        // delta so the dragged cell visually stays
+                        // where the finger pressed it. This makes the
+                        // page appear to compress AROUND the drag
+                        // point instead of all flowing toward the top.
+                        if let scroll = outerScrollView,
+                           let cell = cv.cellForItem(at: targetIndexPath) {
+                            let newCellMinY = cell.convert(CGPoint.zero, to: scroll).y
+                            let delta = preCellMinY - newCellMinY
+                            let targetOffset = preContentOffset - delta
+                            // Clamp to the scroll view's legal range
+                            // — if the dragged cell was near the top
+                            // and there's no content above to "give",
+                            // we'll just bottom out at offset 0 and
+                            // the cell will sit higher than touched.
+                            // That's the best we can do at the top
+                            // boundary.
+                            let topInset = scroll.adjustedContentInset.top
+                            let bottomInset = scroll.adjustedContentInset.bottom
+                            let maxOffset = max(-topInset,
+                                scroll.contentSize.height
+                                - scroll.bounds.height
+                                + bottomInset)
+                            let clamped = max(-topInset, min(targetOffset, maxOffset))
+                            scroll.setContentOffset(
+                                CGPoint(x: scroll.contentOffset.x, y: clamped),
+                                animated: false
+                            )
+                        }
                         cv.beginInteractiveMovementForItem(at: targetIndexPath)
                     } else {
                         DispatchQueue.main.async { beginWhenCompact(attempt: attempt + 1) }
