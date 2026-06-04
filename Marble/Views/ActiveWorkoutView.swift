@@ -859,7 +859,6 @@ struct SwipeToDeleteRow<Content: View>: View {
     @ViewBuilder let content: () -> Content
 
     @State private var offset: CGFloat = 0
-    @State private var isDeleting: Bool = false
 
     /// Distance the user has to drag before release commits the
     /// delete. Below this, the row springs back to zero. Tuned to
@@ -884,9 +883,7 @@ struct SwipeToDeleteRow<Content: View>: View {
 
             content()
                 .offset(x: offset)
-                .opacity(isDeleting ? 0 : 1)
         }
-        .frame(maxHeight: isDeleting ? 0 : nil)
         .clipped()
         .highPriorityGesture(
             DragGesture(minimumDistance: 15, coordinateSpace: .local)
@@ -918,24 +915,17 @@ struct SwipeToDeleteRow<Content: View>: View {
 
     private func commitDelete() {
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        // Phase 1: slide the content fully off-screen so the red
-        // strip fills the entire row width. Running this in the same
-        // animation as the height collapse causes the row to start
-        // shrinking before the slide completes, so you only ever
-        // see ~87% red — sequencing them gives the full reveal.
-        withAnimation(.easeOut(duration: 0.22)) {
+        // Slide the content fully off-screen so the row briefly
+        // shows as solid red, then hand off to the parent's
+        // removeSet (already wrapped in a spring withAnimation) —
+        // SwiftUI's diff animates the row's removal and the
+        // surrounding sets flow into the space without an
+        // explicit vertical-collapse step here.
+        withAnimation(.easeOut(duration: 0.18)) {
             offset = -UIScreen.main.bounds.width
         }
-        // Phase 2: once the slide is done and the row is solid red,
-        // collapse the row's height to zero so adjacent rows flow
-        // into the space cleanly.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
-            withAnimation(.easeInOut(duration: 0.18)) {
-                isDeleting = true
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
-                onDelete()
-            }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+            onDelete()
         }
     }
 }
