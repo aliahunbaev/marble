@@ -130,7 +130,7 @@ private struct CollectionBridge<Item, Cell: View>: UIViewRepresentable {
             target: context.coordinator,
             action: #selector(Coordinator.handleLongPress(_:))
         )
-        longPress.minimumPressDuration = 0.35
+        longPress.minimumPressDuration = 0.22
         collectionView.addGestureRecognizer(longPress)
 
         context.coordinator.apply(items: items, animated: false)
@@ -184,12 +184,9 @@ extension CollectionBridge {
         /// detect when external state has changed and trigger a
         /// reconfigureItems pass.
         var lastReconfigureKey: AnyHashable?
-        /// The outer SwiftUI ScrollView's UIScrollView whose
-        /// contentInset.top we expanded at drag-start to make room
-        /// for anchoring the dragged cell. Restored on drag-end.
+        /// Outer ScrollView whose contentInset.top we expanded at
+        /// drag-start to anchor the dragged cell. Restored on drag-end.
         weak var anchoredScrollView: UIScrollView?
-        /// How much we added to anchoredScrollView's contentInset.top
-        /// at drag-start. Subtract on drag-end to restore.
         var anchoredTopInsetDelta: CGFloat = 0
         private var contentSizeObservation: NSKeyValueObservation?
 
@@ -257,14 +254,9 @@ extension CollectionBridge {
                 }
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
 
-                // Walk up the view hierarchy to find the enclosing
-                // SwiftUI ScrollView's UIScrollView. The collection
-                // view itself IS a UIScrollView, so skip it. We use
-                // the outer one to anchor the dragged cell at its
-                // original on-screen position when the surrounding
-                // cells collapse — without this, all the page
-                // content reflows to the top, making it feel like
-                // the page "snaps up" to start the drag.
+                // Walk up to find the enclosing SwiftUI ScrollView's
+                // UIScrollView so we can anchor the dragged cell at
+                // the touch point during collapse.
                 let outerScrollView: UIScrollView? = {
                     var v: UIView? = collectionView.superview
                     while let next = v {
@@ -275,10 +267,6 @@ extension CollectionBridge {
                     }
                     return nil
                 }()
-
-                // Capture the dragged cell's content-space Y BEFORE
-                // the collapse so we can compute how far it moves
-                // and counter-scroll to compensate.
                 let preCellMinY: CGFloat = collectionView
                     .cellForItem(at: indexPath)?
                     .convert(CGPoint.zero, to: outerScrollView).y ?? 0
@@ -307,36 +295,21 @@ extension CollectionBridge {
                 func beginWhenCompact(attempt: Int) {
                     let height = cv.cellForItem(at: targetIndexPath)?.bounds.height ?? 0
                     if height < 80 || attempt >= 10 {
-                        // Cells have collapsed. The dragged cell has
-                        // moved to a new content-space Y because the
-                        // cells above it (if any) are now title-only.
-                        // Adjust the outer scroll offset by the same
-                        // delta so the dragged cell visually stays
-                        // where the finger pressed it. This makes the
-                        // page appear to compress AROUND the drag
-                        // point instead of all flowing toward the top.
+                        // Cells have collapsed. Anchor the dragged
+                        // cell to its original on-screen Y by
+                        // expanding the outer ScrollView's
+                        // contentInset.top by however far the cell
+                        // has moved up in content-space, then
+                        // setting the offset to keep the cell where
+                        // the finger pressed. Restored on drag-end.
                         if let scroll = outerScrollView,
                            let cell = cv.cellForItem(at: targetIndexPath) {
                             let newCellMinY = cell.convert(CGPoint.zero, to: scroll).y
                             let delta = preCellMinY - newCellMinY
                             let targetOffset = preContentOffset - delta
-                            // The dragged cell is now `delta` higher
-                            // in content-space than before, so we
-                            // need to scroll `delta` further UP than
-                            // the scroll view's natural top to keep
-                            // it visually anchored. UIScrollView
-                            // won't normally allow that — the legal
-                            // range stops at -contentInset.top. So
-                            // temporarily expand contentInset.top by
-                            // delta to unlock the room we need, then
-                            // set the offset. The bridge stores the
-                            // delta and the original inset on the
-                            // coordinator so onDragEnd can restore.
                             if delta > 0 {
-                                let originalTopInset = scroll.contentInset.top
-                                let newInset = originalTopInset + delta
                                 var inset = scroll.contentInset
-                                inset.top = newInset
+                                inset.top += delta
                                 scroll.contentInset = inset
                                 self.anchoredScrollView = scroll
                                 self.anchoredTopInsetDelta = delta
@@ -367,14 +340,9 @@ extension CollectionBridge {
             }
         }
 
-        /// Undo the contentInset.top expansion we applied at drag-start
-        /// to anchor the dragged cell. Without this restore, the page
-        /// would keep the extra top padding permanently.
+        /// Undo the contentInset.top expansion applied at drag-start.
         private func restoreAnchorInset() {
             guard let scroll = anchoredScrollView, anchoredTopInsetDelta > 0 else { return }
-            // Compensate the scroll offset by the same amount we're
-            // removing from the inset so the content doesn't visually
-            // jump downward when the inset shrinks.
             let newContentOffset = scroll.contentOffset.y + anchoredTopInsetDelta
             var inset = scroll.contentInset
             inset.top -= anchoredTopInsetDelta

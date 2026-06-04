@@ -210,12 +210,17 @@ struct ActiveWorkoutView: View {
                     onReorder: { newOrder in session.entries = newOrder },
                     onTap: nil,
                     onDragStart: {
-                        // INSTANT — no animation. The collapse must
-                        // be done by the time UCV takes its snapshot
-                        // (next runloop tick). Animating here causes
-                        // the snapshot to capture a mid-animation
-                        // cell, which is what made it choppy before.
-                        reorderState.isReordering = true
+                        // Animate the collapse so cells flow smoothly
+                        // into title-only instead of snapping. The
+                        // bridge polls cell.bounds.height until the
+                        // animation has actually compacted the cell
+                        // past 80pt before calling beginInteractive
+                        // MovementForItem, so UCV's snapshot still
+                        // captures the fully-compact cell (no
+                        // mid-animation snapshot).
+                        withAnimation(.spring(response: 0.26, dampingFraction: 0.86)) {
+                            reorderState.isReordering = true
+                        }
                     },
                     onDragEnd: {
                         // Animated. UCV's drop is already done by
