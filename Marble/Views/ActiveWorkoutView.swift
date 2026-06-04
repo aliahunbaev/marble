@@ -405,14 +405,20 @@ struct ActiveWorkoutView: View {
             setIndex: index,
             context: modelContext
         )
+        // Cascade-fill: prefer the closest non-empty (weight, reps)
+        // pair ABOVE this set in the current workout, fall back to
+        // the previous workout's value.
+        let cascade = cascadeFill(in: entry.wrappedValue.sets, forSetAt: index)
+        let placeholderWeight = cascade.weight ?? prev.weight
+        let placeholderReps = cascade.reps ?? prev.reps
 
         SetRowView(
             setNumber: index + 1,
             weight: set.weight,
             reps: set.reps,
             isCompleted: set.isCompleted,
-            previousWeight: prev.weight,
-            previousReps: prev.reps,
+            previousWeight: placeholderWeight,
+            previousReps: placeholderReps,
             showCheckmark: true,
             onComplete: nil
         )
@@ -726,13 +732,25 @@ struct ExerciseCell: View {
                         setIndex: index,
                         context: modelContext
                     )
+                    // Cascade placeholder: prefer the closest filled
+                    // set ABOVE this one in the current workout (so
+                    // typing 225 × 8 in set 1 shows 225/8 as the
+                    // ghost text for sets 2, 3…). Falls back to the
+                    // previous workout's value if nothing's been
+                    // typed yet. Display-only — the actual value
+                    // doesn't get written until the user types or
+                    // taps the checkmark (which auto-accepts the
+                    // placeholder via SetRowView.handleComplete).
+                    let cascade = cascadeFill(forSetAt: index)
+                    let placeholderWeight = cascade.weight ?? prev.weight
+                    let placeholderReps = cascade.reps ?? prev.reps
                     SetRowView(
                         setNumber: index + 1,
                         weight: $set.weight,
                         reps: $set.reps,
                         isCompleted: $set.isCompleted,
-                        previousWeight: prev.weight,
-                        previousReps: prev.reps,
+                        previousWeight: placeholderWeight,
+                        previousReps: placeholderReps,
                         showCheckmark: showCheckmark,
                         onComplete: onComplete
                     )
@@ -754,8 +772,16 @@ struct ExerciseCell: View {
                                 removeSet(id: setID)
                             }
                         } label: {
-                            Label("Delete", systemImage: "trash")
+                            // No icon, just the word — matches the
+                            // app's editorial typography. `.tint(.red)`
+                            // gives the action its solid background;
+                            // the white foreground comes from the
+                            // destructive button's default styling.
+                            Text("DELETE")
+                                .font(.marbleMono(11, weight: .medium))
+                                .tracking(1.5)
                         }
+                        .tint(.red)
                     }
                 }
             }
@@ -813,4 +839,37 @@ struct ExerciseCell: View {
         guard let idx = entries.firstIndex(where: { $0.id == entry.id }) else { return }
         entries[idx].sets.removeAll { $0.id == id }
     }
+
+    private func cascadeFill(forSetAt index: Int) -> (weight: String?, reps: String?) {
+        cascadeFill(in: live.sets, forSetAt: index)
+    }
+}
+
+/// Look upward through `sets` from `index - 1` and return the
+/// closest non-empty (weight, reps) found. Either component can
+/// come from a different set — if set 1 has weight=225 reps="" and
+/// set 2 has weight="" reps=8, the cascade for set 3 yields (225,
+/// 8). Returns nil for any component that's empty all the way up.
+/// Empty after the usual whitespace trim.
+func cascadeFill(
+    in sets: [EditableSet],
+    forSetAt index: Int
+) -> (weight: String?, reps: String?) {
+    guard index > 0 else { return (nil, nil) }
+    var weight: String? = nil
+    var reps: String? = nil
+    for prior in stride(from: index - 1, through: 0, by: -1) {
+        guard prior < sets.count else { continue }
+        let s = sets[prior]
+        if weight == nil {
+            let w = s.weight.trimmingCharacters(in: .whitespaces)
+            if !w.isEmpty { weight = w }
+        }
+        if reps == nil {
+            let r = s.reps.trimmingCharacters(in: .whitespaces)
+            if !r.isEmpty { reps = r }
+        }
+        if weight != nil && reps != nil { break }
+    }
+    return (weight, reps)
 }
