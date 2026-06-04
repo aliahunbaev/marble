@@ -1,6 +1,23 @@
 import Foundation
 import SwiftData
 
+/// Seeds the local store with the universal exercise library on first
+/// launch. Exercises are the building blocks the rest of the app
+/// references by name (templates point at them, workouts log against
+/// them, the library picker reads from this list) — without them, the
+/// app can't function, so this runs unconditionally when the local
+/// `Exercise` table is empty.
+///
+/// Default *templates* are intentionally NOT seeded. Auto-creating
+/// "Push / Pull / Legs" on every fresh install caused multiple bugs:
+///   - They'd come back after deletion (next launch reseeds them).
+///   - They'd duplicate against the user's existing cloud-restored
+///     templates on reinstall (different cloudIDs, same names).
+///   - Templates the user uploaded to cloud at any point would re-
+///     appear locally even after explicit delete.
+/// Train tab now starts empty on fresh accounts; the user composes
+/// their own. The empty-state copy on Train already invites this
+/// ("No programs yet. Tap + to compose one.").
 enum ExerciseSeed {
     static let exercises: [(name: String, muscleGroup: String)] = [
         ("Bench Press", "Chest"),
@@ -29,30 +46,14 @@ enum ExerciseSeed {
         ("Russian Twist", "Core"),
     ]
 
-    static let defaultTemplates: [(name: String, exerciseNames: [String])] = [
-        ("Push", ["Bench Press", "Incline Bench Press", "Overhead Press", "Lateral Raise", "Tricep Pushdown"]),
-        ("Pull", ["Pull Up", "Barbell Row", "Lat Pulldown", "Face Pull", "Bicep Curl", "Hammer Curl"]),
-        ("Legs", ["Squat", "Leg Press", "Romanian Deadlift", "Leg Extension", "Leg Curl", "Calf Raise"]),
-    ]
-
     static func seedIfNeeded(context: ModelContext) {
         let descriptor = FetchDescriptor<Exercise>()
         let count = (try? context.fetchCount(descriptor)) ?? 0
         guard count == 0 else { return }
 
-        // Insert exercises
-        var exerciseMap: [String: Exercise] = [:]
         for entry in exercises {
             let exercise = Exercise(name: entry.name, muscleGroup: entry.muscleGroup)
             context.insert(exercise)
-            exerciseMap[entry.name] = exercise
-        }
-
-        // Insert default templates
-        for template in defaultTemplates {
-            let exercises = template.exerciseNames.compactMap { exerciseMap[$0] }
-            let workoutTemplate = WorkoutTemplate(name: template.name, exercises: exercises)
-            context.insert(workoutTemplate)
         }
 
         try? context.save()
