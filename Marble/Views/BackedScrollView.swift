@@ -39,6 +39,12 @@ final class BackedScrollViewController<Content: View>: UIViewController {
     init(content: Content) {
         self.hostingController = UIHostingController(rootView: content)
         super.init(nibName: nil, bundle: nil)
+        // Tell the hosting controller to compute its own intrinsic
+        // content size from the SwiftUI tree. Without this, the
+        // hosted view returns a zero intrinsicContentSize, which
+        // makes the scroll view's contentLayoutGuide collapse and
+        // gives us no scrollable range.
+        hostingController.sizingOptions = [.intrinsicContentSize]
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
