@@ -68,15 +68,22 @@ final class BackedScrollViewController<Content: View>: UIViewController {
         hostingController.view.backgroundColor = .clear
         scrollView.addSubview(hostingController.view)
         hostingController.view.translatesAutoresizingMaskIntoConstraints = false
+        // Pin the hosted view inside the scroll view's content
+        // layout guide (NOT the scroll view itself). The content
+        // layout guide represents the actual scrollable content
+        // area, so its size is driven by the hosted view's intrinsic
+        // height — that's what gives us a proper tall scroll. Pinning
+        // to scrollView.topAnchor / bottomAnchor directly clamps the
+        // content to the frame size, which is why the workout only
+        // showed a slice. The width is pinned to the frame layout
+        // guide so the SwiftUI tree lays out at the visible width
+        // and there's no horizontal scroll.
         NSLayoutConstraint.activate([
-            hostingController.view.topAnchor.constraint(equalTo: scrollView.topAnchor),
-            hostingController.view.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
-            hostingController.view.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
-            hostingController.view.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
-            // Pin the hosted view's width to the scroll view's width
-            // so the SwiftUI tree lays out at the visible width and
-            // the scroll only happens vertically.
-            hostingController.view.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
+            hostingController.view.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
+            hostingController.view.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor),
+            hostingController.view.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor),
+            hostingController.view.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
+            hostingController.view.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor),
         ])
         hostingController.didMove(toParent: self)
     }

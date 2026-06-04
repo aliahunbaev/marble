@@ -330,10 +330,12 @@ extension CollectionBridge {
             case .changed:
                 collectionView.updateInteractiveMovementTargetPosition(location)
             case .ended:
+                NSLog("[ReorderAnchor] long-press .ended")
                 collectionView.endInteractiveMovement()
                 restoreAnchorInset()
                 parent.onDragEnd?()
             default:
+                NSLog("[ReorderAnchor] long-press default state=\(gesture.state.rawValue)")
                 collectionView.cancelInteractiveMovement()
                 restoreAnchorInset()
                 parent.onDragEnd?()
@@ -347,29 +349,29 @@ extension CollectionBridge {
         /// haven't, which feels like the page "got stuck" at the
         /// anchored position.
         private func restoreAnchorInset() {
-            guard let scroll = anchoredScrollView, anchoredTopInsetDelta > 0 else { return }
+            NSLog("[ReorderAnchor] restoreAnchorInset called. anchored=\(anchoredScrollView != nil) delta=\(anchoredTopInsetDelta)")
+            guard let scroll = anchoredScrollView, anchoredTopInsetDelta > 0 else {
+                NSLog("[ReorderAnchor] restore guard failed")
+                return
+            }
             let delta = anchoredTopInsetDelta
             let originalInsetTop = scroll.contentInset.top - delta
             let targetOffsetY = scroll.contentOffset.y + delta
+            NSLog("[ReorderAnchor] restoring: current insetTop=\(scroll.contentInset.top) → \(originalInsetTop), current offset=\(scroll.contentOffset.y) → \(targetOffsetY)")
             anchoredScrollView = nil
             anchoredTopInsetDelta = 0
-            UIView.animate(
-                withDuration: 0.32,
-                delay: 0,
-                usingSpringWithDamping: 0.85,
-                initialSpringVelocity: 0,
-                options: [.curveEaseInOut, .allowUserInteraction],
-                animations: {
-                    var inset = scroll.contentInset
-                    inset.top = originalInsetTop
-                    scroll.contentInset = inset
-                    scroll.contentOffset = CGPoint(
-                        x: scroll.contentOffset.x,
-                        y: targetOffsetY
-                    )
-                },
-                completion: nil
+            var inset = scroll.contentInset
+            inset.top = originalInsetTop
+            scroll.contentInset = inset
+            scroll.contentOffset = CGPoint(
+                x: scroll.contentOffset.x,
+                y: targetOffsetY
             )
+            NSLog("[ReorderAnchor] post-restore: insetTop=\(scroll.contentInset.top) offset=\(scroll.contentOffset.y) contentSize=\(scroll.contentSize) bounds=\(scroll.bounds.size)")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak scroll] in
+                guard let s = scroll else { return }
+                NSLog("[ReorderAnchor] +500ms: insetTop=\(s.contentInset.top) offset=\(s.contentOffset.y) contentSize=\(s.contentSize) bounds=\(s.bounds.size)")
+            }
         }
 
         func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
