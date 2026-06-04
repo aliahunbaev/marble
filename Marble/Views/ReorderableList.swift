@@ -250,8 +250,35 @@ extension CollectionBridge {
                 }
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 parent.onDragStart?()
-                DispatchQueue.main.async { [weak collectionView] in
-                    collectionView?.beginInteractiveMovementForItem(at: indexPath)
+                // The cell collapses from full-height (title + sets +
+                // +SET button — can be 400-600pt) down to just the
+                // title (~60pt) when reorderState.isReordering flips.
+                // That chain — SwiftUI state change → cell body
+                // recompute → UIHostingConfiguration intrinsicContentSize
+                // change → UCV invalidateLayout → cellForItem bounds
+                // update — spans multiple runloop hops. UCV's
+                // beginInteractiveMovementForItem snapshots the cell
+                // at whatever size it has RIGHT NOW; if we call it
+                // before the chain settles, UCV captures the tall
+                // version and centers its midpoint on the finger,
+                // making the cell appear way above the touch and
+                // snap back. Poll cellForItem's bounds until it has
+                // actually shrunk, then begin movement. Capped at 10
+                // ticks (~one frame each) so we always begin even if
+                // the cell never compacts (e.g. an exercise with one
+                // set whose total height is already small).
+                let targetIndexPath = indexPath
+                func beginWhenCompact(attempt: Int) {
+                    guard let cv = collectionView else { return }
+                    let height = cv.cellForItem(at: targetIndexPath)?.bounds.height ?? 0
+                    if height < 80 || attempt >= 10 {
+                        cv.beginInteractiveMovementForItem(at: targetIndexPath)
+                    } else {
+                        DispatchQueue.main.async { beginWhenCompact(attempt: attempt + 1) }
+                    }
+                }
+                DispatchQueue.main.async {
+                    beginWhenCompact(attempt: 0)
                 }
             case .changed:
                 collectionView.updateInteractiveMovementTargetPosition(location)
