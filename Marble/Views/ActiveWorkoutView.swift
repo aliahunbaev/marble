@@ -53,6 +53,13 @@ struct ActiveWorkoutView: View {
     /// content view. Entries are still in the session, so they reappear.
     private func undoFinish(workout: Workout) {
         let cloudID = workout.cloudID
+        // Cascade-delete any photos taken during the just-finished
+        // workout (the user is reverting the whole save, so the
+        // pump pic + library imports go with it).
+        PhotoStorageService.shared.deletePhotosLinkedToWorkout(
+            cloudID: cloudID,
+            context: modelContext
+        )
         modelContext.delete(workout)
         try? modelContext.save()
         Task { await CloudSyncService.shared.deleteWorkout(cloudID: cloudID) }

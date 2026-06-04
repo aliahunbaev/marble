@@ -118,6 +118,21 @@ final class PhotoStorageService {
 
     // MARK: - Delete
 
+    /// Cascade-delete every photo linked to the given workout. Used
+    /// when a workout is removed (via WorkoutDetailView delete or
+    /// ActiveWorkoutView.undoFinish) so we don't leave orphan photo
+    /// records and storage files pointing at a workout that no
+    /// longer exists. Each photo goes through the regular `delete`
+    /// path so local file, model record, Firestore mirror, and
+    /// Firebase Storage object all get cleaned up.
+    func deletePhotosLinkedToWorkout(cloudID: String, context: ModelContext) {
+        guard !cloudID.isEmpty else { return }
+        let allPhotos = (try? context.fetch(FetchDescriptor<ProgressPhoto>())) ?? []
+        for photo in allPhotos where photo.workoutCloudID == cloudID {
+            delete(photo, context: context)
+        }
+    }
+
     func delete(_ photo: ProgressPhoto, context: ModelContext) {
         // Local file
         if let url = localURL(for: photo) {

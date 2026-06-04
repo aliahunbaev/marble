@@ -303,8 +303,10 @@ struct MultiPhotoBrowserView: View {
     /// tap. Apple-Photos-ish pattern — gives the user an uninterrupted
     /// view of the image when they want it.
     @State private var chromeVisible: Bool = true
+    @State private var showingDeleteConfirmation = false
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.modelContext) private var modelContext
 
     /// Pure neutral so the photo is the loudest thing on screen. Black
     /// in dark mode, marble bone in light mode — no atmosphere gradient.
@@ -344,6 +346,19 @@ struct MultiPhotoBrowserView: View {
 
                     Spacer()
 
+                    // Trash — delete the currently-viewed photo. Confirms
+                    // before destructive action; dismisses the cover after
+                    // so we don't have to handle "advance to next photo"
+                    // when the underlying photos array shrinks.
+                    Button {
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        showingDeleteConfirmation = true
+                    } label: {
+                        Image(systemName: "trash")
+                            .font(.system(size: 13, weight: .light))
+                    }
+                    .marbleGlassCapsule(size: 44)
+
                     if photos.count >= 2 {
                         Button {
                             UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -374,6 +389,12 @@ struct MultiPhotoBrowserView: View {
             .allowsHitTesting(chromeVisible)
         }
         .onAppear { currentIndex = initialIndex }
+        .alert("Delete photo?", isPresented: $showingDeleteConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) { deleteCurrentPhoto() }
+        } message: {
+            Text("This cannot be undone.")
+        }
         // Drag down to dismiss
         .gesture(
             DragGesture()
@@ -393,6 +414,18 @@ struct MultiPhotoBrowserView: View {
                     }
                 }
         )
+    }
+
+    private func deleteCurrentPhoto() {
+        guard photos.indices.contains(currentIndex) else { return }
+        let photo = photos[currentIndex]
+        PhotoStorageService.shared.delete(photo, context: modelContext)
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        // Dismiss the cover after deletion — the parent @Query
+        // refreshes and the grid behind us already reflects the
+        // shrunk list. Trying to "advance to next" in-place would
+        // need clamp + animation logic that's not worth the code.
+        dismiss()
     }
 }
 

@@ -20,18 +20,21 @@ struct ClosingRitualView: View {
     /// appear, committed back on save (or earlier on commit if the
     /// user explicitly submits).
     @State private var workoutNameDraft: String = ""
-    /// Captured photos, in display order. Each entry is the rendered
-    /// UIImage + the persisted ProgressPhoto record. Tracking as a
-    /// paired array means we can remove individual photos by index
-    /// without losing the photo↔record mapping.
-    @State private var capturedItems: [CapturedPhotoItem] = []
+    /// The "pump pic" — the camera-taken photo that *is* the closing
+    /// ritual's artifact. Zero or one. Distinct from library imports
+    /// because it's the ritualistic creation moment: you took it now,
+    /// in the room, after the work. Lives in its own hero slot above
+    /// the supplementary library carousel.
+    @State private var pumpPicItem: CapturedPhotoItem?
+    /// Supplementary photos imported from the library. Zero or many.
+    /// Context / commentary — not the ritual artifact.
+    @State private var libraryPhotos: [CapturedPhotoItem] = []
     @State private var showingCamera = false
     @State private var showingLibrary = false
     /// PhotosPicker accepts multi-select when bound to a `[PhotosPickerItem]`
     /// with a maxSelectionCount > 1. We keep it as an array and process
-    /// each picked item into the captured strip on .onChange.
-    @State private var libraryItems: [PhotosPickerItem] = []
-    @State private var showingAddPhotoChoice = false
+    /// each picked item into the library strip on .onChange.
+    @State private var libraryPickerSelection: [PhotosPickerItem] = []
     @State private var isRecorded: Bool = false
     @FocusState private var noteFocused: Bool
     @FocusState private var titleFocused: Bool
@@ -47,33 +50,28 @@ struct ClosingRitualView: View {
         .marbleAtmosphereBackground()
         .sheet(isPresented: $showingCamera) {
             CameraPicker { image in
-                if let image { handleImage(image) }
+                if let image { handleCameraImage(image) }
                 showingCamera = false
             }
             .ignoresSafeArea()
         }
         .photosPicker(
             isPresented: $showingLibrary,
-            selection: $libraryItems,
+            selection: $libraryPickerSelection,
             maxSelectionCount: 10,
             matching: .images
         )
-        .onChange(of: libraryItems) { _, newItems in
+        .onChange(of: libraryPickerSelection) { _, newItems in
             guard !newItems.isEmpty else { return }
             Task {
                 for item in newItems {
                     if let data = try? await item.loadTransferable(type: Data.self),
                        let image = UIImage(data: data) {
-                        handleImage(image)
+                        handleLibraryImage(image)
                     }
                 }
-                libraryItems = []
+                libraryPickerSelection = []
             }
-        }
-        .confirmationDialog("Add a photo", isPresented: $showingAddPhotoChoice, titleVisibility: .hidden) {
-            Button("Take Photo") { showingCamera = true }
-            Button("Choose from Library") { showingLibrary = true }
-            Button("Cancel", role: .cancel) { }
         }
         .onTapGesture {
             noteFocused = false
@@ -103,7 +101,9 @@ struct ClosingRitualView: View {
                 VStack(alignment: .leading, spacing: 32) {
                     titleHeader
 
-                    photoZone
+                    pumpPicHero
+
+                    libraryCarousel
 
                     noteZone
                         .padding(.horizontal, 20)
@@ -231,77 +231,111 @@ struct ClosingRitualView: View {
 
     // MARK: - Photo Zone
 
-    /// Fixed height across both empty-state buttons and captured
-    /// thumbs. Photos preserve their natural aspect ratio (width =
-    /// height × ratio), so a landscape pic reads as landscape and a
-    /// portrait pic reads as portrait — instead of every photo being
-    /// crammed into a 4:5 crop. Empty-state PHOTO / LIBRARY buttons
-    /// share this height so the zone reads the same dimensionally
-    /// before and after photos land.
-    private static let photoZoneHeight: CGFloat = 180
+    /// Hero pump pic slot height. Larger than the library strip so
+    /// the moment carries visual weight.
+    private static let pumpPicHeight: CGFloat = 280
+    /// Library strip height — smaller, supplementary.
+    private static let libraryStripHeight: CGFloat = 140
 
-    /// Empty: two equal-width PHOTO / LIBRARY buttons spanning the
-    /// content width, shaped wider than tall for a horizontal feel.
-    /// Otherwise: a horizontal scroll of captured photos at their
-    /// natural aspect ratios + a "+" tile that opens the
-    /// Camera/Library choice via a confirmation dialog.
+    // MARK: - Pump pic hero
+
+    /// Full-width hero slot for the camera photo. Empty state =
+    /// inviting "TAKE A PUMP PIC" call to action. Filled state =
+    /// the photo itself with a small X to retake. Distinct from the
+    /// library strip below because the pump pic *is* the closing
+    /// ritual's artifact — the moment you created in the room.
     @ViewBuilder
-    private var photoZone: some View {
-        if capturedItems.isEmpty {
-            HStack(spacing: 10) {
-                captureOption(icon: "camera", label: "PHOTO") {
-                    showingCamera = true
-                }
-                captureOption(icon: "photo.on.rectangle", label: "LIBRARY") {
-                    showingLibrary = true
-                }
-            }
-            .frame(height: Self.photoZoneHeight)
-            .padding(.horizontal, 20)
-        } else {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 10) {
-                    ForEach(Array(capturedItems.enumerated()), id: \.element.id) { index, item in
-                        capturedThumb(item: item, index: index)
-                    }
-                    addMoreTile
-                }
+    private var pumpPicHero: some View {
+        if let item = pumpPicItem {
+            pumpPicFilled(item: item)
                 .padding(.horizontal, 20)
-            }
-            .frame(height: Self.photoZoneHeight)
+        } else {
+            pumpPicEmpty
+                .padding(.horizontal, 20)
         }
     }
 
-    private func captureOption(icon: String, label: String, action: @escaping () -> Void) -> some View {
+    private var pumpPicEmpty: some View {
         Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            action()
+            showingCamera = true
         } label: {
-            VStack(spacing: 10) {
-                Image(systemName: icon)
-                    .font(.system(size: 20, weight: .ultraLight))
-                Text(label)
-                    .font(.marbleMono(10))
-                    .tracking(1.5)
+            VStack(spacing: 14) {
+                Image(systemName: "camera")
+                    .font(.system(size: 28, weight: .ultraLight))
+                Text("TAKE A PUMP PIC")
+                    .font(.marbleMono(11, weight: .medium))
+                    .tracking(2)
+                Text("Mark the lift.")
+                    .font(.marbleBody(13))
+                    .foregroundStyle(Color("marbleTertiary"))
             }
             .foregroundStyle(Color("marbleSecondary"))
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .frame(maxWidth: .infinity)
+            .frame(height: Self.pumpPicHeight)
             .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5)
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(Color("marblePrimary").opacity(0.15), lineWidth: 0.5)
             )
         }
         .buttonStyle(.plain)
     }
 
-    /// Captured photo thumb — fixed height, natural aspect ratio width.
-    /// Landscape photos render landscape, portrait render portrait.
-    /// An X overlay in the top-right removes the individual photo
-    /// from the strip (and from the underlying storage).
-    private func capturedThumb(item: CapturedPhotoItem, index: Int) -> some View {
-        let height = Self.photoZoneHeight
-        // Guard against zero-size weirdness; fall back to 4:5 portrait
-        // if for some reason we don't have a sane image size yet.
+    private func pumpPicFilled(item: CapturedPhotoItem) -> some View {
+        Image(uiImage: item.image)
+            .resizable()
+            .scaledToFill()
+            .frame(maxWidth: .infinity)
+            .frame(height: Self.pumpPicHeight)
+            .clipped()
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .overlay(alignment: .topTrailing) {
+                Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    removePumpPic()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 12, weight: .light))
+                        .foregroundStyle(.white)
+                        .padding(8)
+                        .background(.black.opacity(0.45))
+                        .clipShape(Circle())
+                }
+                .padding(10)
+            }
+    }
+
+    // MARK: - Library carousel
+
+    /// Horizontal scroll of library photos + "+" tile. Always
+    /// rendered — even when empty, the small mono "LIBRARY" label
+    /// + a single "+" tile invites supplementary photos. Library
+    /// photos preserve their natural aspect ratio at a fixed
+    /// 140pt height (smaller than the pump pic hero — they're
+    /// supplementary, not the ritual artifact).
+    private var libraryCarousel: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("LIBRARY")
+                .font(.marbleMono(10))
+                .tracking(1.5)
+                .foregroundStyle(Color("marbleSecondary"))
+                .padding(.horizontal, 20)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    ForEach(Array(libraryPhotos.enumerated()), id: \.element.id) { index, item in
+                        libraryThumb(item: item, index: index)
+                    }
+                    libraryAddTile
+                }
+                .padding(.horizontal, 20)
+            }
+            .frame(height: Self.libraryStripHeight)
+        }
+    }
+
+    private func libraryThumb(item: CapturedPhotoItem, index: Int) -> some View {
+        let height = Self.libraryStripHeight
         let aspect: CGFloat = {
             let w = item.image.size.width
             let h = item.image.size.height
@@ -315,40 +349,36 @@ struct ClosingRitualView: View {
             .scaledToFill()
             .frame(width: width, height: height)
             .clipped()
-            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .clipShape(RoundedRectangle(cornerRadius: 6))
             .overlay(alignment: .topTrailing) {
                 Button {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    removePhoto(at: index)
+                    removeLibraryPhoto(at: index)
                 } label: {
                     Image(systemName: "xmark")
-                        .font(.system(size: 11, weight: .light))
+                        .font(.system(size: 10, weight: .light))
                         .foregroundStyle(.white)
-                        .padding(7)
+                        .padding(6)
                         .background(.black.opacity(0.45))
                         .clipShape(Circle())
                 }
-                .padding(8)
+                .padding(6)
             }
     }
 
-    /// "+" tile at the end of the captured strip. Opens the
-    /// Camera/Library confirmation dialog so users can keep adding.
-    /// Width matches a typical 4:5 portrait so it reads as "one more
-    /// slot" rather than a different element.
-    private var addMoreTile: some View {
-        let height = Self.photoZoneHeight
+    private var libraryAddTile: some View {
+        let height = Self.libraryStripHeight
         let width = height * 4 / 5
         return Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            showingAddPhotoChoice = true
+            showingLibrary = true
         } label: {
             Image(systemName: "plus")
                 .font(.system(size: 18, weight: .light))
                 .foregroundStyle(Color("marbleSecondary"))
                 .frame(width: width, height: height)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 8)
+                    RoundedRectangle(cornerRadius: 6)
                         .stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5)
                 )
         }
@@ -400,22 +430,43 @@ struct ClosingRitualView: View {
 
     // MARK: - Photo handling
 
-    private func handleImage(_ image: UIImage) {
-        // Persist via the photo storage service (writes local + queues
-        // the cloud upload). Then append the rendered + record pair to
-        // the in-view strip so the user sees their addition immediately.
+    /// Camera-captured photo lands in the hero slot (the pump pic).
+    /// If one's already there, the new one replaces it — the slot is
+    /// singular by design. The replaced photo is deleted from storage
+    /// so we don't leak orphan records.
+    private func handleCameraImage(_ image: UIImage) {
+        if let existing = pumpPicItem {
+            PhotoStorageService.shared.delete(existing.photo, context: modelContext)
+        }
         guard let photo = PhotoStorageService.shared.savePhoto(
             image,
             workoutCloudID: workout.cloudID,
             context: modelContext
         ) else { return }
-        capturedItems.append(CapturedPhotoItem(image: image, photo: photo))
+        pumpPicItem = CapturedPhotoItem(image: image, photo: photo)
         UINotificationFeedbackGenerator().notificationOccurred(.success)
     }
 
-    private func removePhoto(at index: Int) {
-        guard capturedItems.indices.contains(index) else { return }
-        let item = capturedItems.remove(at: index)
+    /// Library-imported photo joins the library carousel. Many allowed.
+    private func handleLibraryImage(_ image: UIImage) {
+        guard let photo = PhotoStorageService.shared.savePhoto(
+            image,
+            workoutCloudID: workout.cloudID,
+            context: modelContext
+        ) else { return }
+        libraryPhotos.append(CapturedPhotoItem(image: image, photo: photo))
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+    }
+
+    private func removePumpPic() {
+        guard let item = pumpPicItem else { return }
+        PhotoStorageService.shared.delete(item.photo, context: modelContext)
+        pumpPicItem = nil
+    }
+
+    private func removeLibraryPhoto(at index: Int) {
+        guard libraryPhotos.indices.contains(index) else { return }
+        let item = libraryPhotos.remove(at: index)
         PhotoStorageService.shared.delete(item.photo, context: modelContext)
     }
 
