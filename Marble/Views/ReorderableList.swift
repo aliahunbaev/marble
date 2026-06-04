@@ -120,17 +120,23 @@ private struct CollectionBridge<Item, Cell: View>: UIViewRepresentable {
     /// Single-column compositional layout with self-sizing rows. Cell
     /// content fills the full width; height is whatever the SwiftUI
     /// view reports via UIHostingConfiguration.
+    ///
+    /// `estimated(180)` is a generous starting point: templateRow can
+    /// render up to ~155pt for a 6-exercise watermark, plus the row's
+    /// own internal padding. A too-low estimate (like 80) leaves cells
+    /// clipped before self-sizing kicks in, which surfaces as the
+    /// handwritten watermark overflowing into the next row visually.
     private static func makeLayout() -> UICollectionViewCompositionalLayout {
         UICollectionViewCompositionalLayout { _, _ in
             let itemSize = NSCollectionLayoutSize(
                 widthDimension: .fractionalWidth(1.0),
-                heightDimension: .estimated(80)
+                heightDimension: .estimated(180)
             )
             let item = NSCollectionLayoutItem(layoutSize: itemSize)
 
             let groupSize = NSCollectionLayoutSize(
                 widthDimension: .fractionalWidth(1.0),
-                heightDimension: .estimated(80)
+                heightDimension: .estimated(180)
             )
             let group = NSCollectionLayoutGroup.vertical(
                 layoutSize: groupSize,

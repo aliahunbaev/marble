@@ -72,19 +72,33 @@ struct ClosingRitualView: View {
             VStack(spacing: 0) {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 32) {
-                        Text(formattedDuration)
-                            .font(.marbleMono(12))
-                            .tracking(2)
-                            .foregroundStyle(Color("marbleSecondary"))
-                            .frame(maxWidth: .infinity)
-                            .padding(.top, 24)
+                        // Header: date + duration. The bare duration
+                        // alone read as floating numbers without
+                        // context; pairing with the date anchors it.
+                        VStack(spacing: 6) {
+                            Text(formattedDate)
+                                .font(.marbleMono(12))
+                                .tracking(2)
+                                .foregroundStyle(Color("marblePrimary"))
+                            Text(formattedDuration)
+                                .font(.marbleMono(11))
+                                .tracking(1.5)
+                                .foregroundStyle(Color("marbleSecondary"))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 24)
 
                         photoZone
 
                         noteZone
                             .padding(.horizontal, 20)
                     }
-                    .padding(.bottom, 40)
+                    // Big bottom padding so the scrollable content
+                    // can clear the floating SAVE button instead of
+                    // sliding under it. SAVE is ~52pt + 32pt bottom
+                    // padding = 84pt safe zone; 120pt gives breathing
+                    // room above that.
+                    .padding(.bottom, 120)
                 }
 
                 Spacer(minLength: 0)
@@ -94,7 +108,7 @@ struct ClosingRitualView: View {
                     save(skipping: false)
                 } label: {
                     Text("SAVE")
-                        .marbleGlassPrimaryCapsule(horizontalPadding: 24, height: 52)
+                        .marbleGlassPill(horizontalPadding: 24, height: 52)
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.plain)
