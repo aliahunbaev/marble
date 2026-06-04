@@ -268,8 +268,8 @@ extension CollectionBridge {
                 // the cell never compacts (e.g. an exercise with one
                 // set whose total height is already small).
                 let targetIndexPath = indexPath
+                let cv = collectionView
                 func beginWhenCompact(attempt: Int) {
-                    guard let cv = collectionView else { return }
                     let height = cv.cellForItem(at: targetIndexPath)?.bounds.height ?? 0
                     if height < 80 || attempt >= 10 {
                         cv.beginInteractiveMovementForItem(at: targetIndexPath)
