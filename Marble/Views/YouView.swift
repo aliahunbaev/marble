@@ -16,10 +16,11 @@ struct YouView: View {
     @State private var editedName: String = ""
     @FocusState private var nameFieldFocused: Bool
 
-    // Avatar state. `avatarImage` is the rendered photo; `avatarPick` is
-    // the PhotosPicker selection that drives the upload pipeline.
+    // Avatar state. `avatarImage` is the rendered photo;
+    // `showingAvatarPicker` drives the UIImagePickerController sheet
+    // (with allowsEditing → built-in square crop UI).
     @State private var avatarImage: UIImage? = nil
-    @State private var avatarPick: PhotosPickerItem? = nil
+    @State private var showingAvatarPicker = false
 
     enum YouTab: String, CaseIterable {
         case record = "RECORD"
@@ -73,6 +74,15 @@ struct YouView: View {
             .sheet(isPresented: $showingSignIn) {
                 SignInView()
                     .environmentObject(auth)
+            }
+            .sheet(isPresented: $showingAvatarPicker) {
+                AvatarPickerSheet { image in
+                    showingAvatarPicker = false
+                    if let image {
+                        handleCroppedAvatar(image)
+                    }
+                }
+                .ignoresSafeArea()
             }
             .onAppear { loadAvatarOnAppear() }
         }
@@ -158,24 +168,20 @@ struct YouView: View {
 
     private var profileHeader: some View {
         HStack(spacing: 16) {
-            // Tap the avatar to pick a new one. PhotosPicker opens the
-            // system library, the selection runs through
-            // PhotoStorageService.saveAvatar (downscale + local write +
-            // upload), then we refresh the in-view image. Only enabled
-            // when signed in — there's no profile to attach to otherwise.
-            PhotosPicker(
-                selection: $avatarPick,
-                matching: .images,
-                photoLibrary: .shared()
-            ) {
+            // Tap the avatar → presents the system image picker with
+            // `allowsEditing = true`, which surfaces iOS's built-in
+            // square crop UI. Whatever the user crops to becomes the
+            // avatar — the square result clips cleanly into the
+            // circle. Only enabled when signed in.
+            Button {
+                if auth.isAuthenticated {
+                    showingAvatarPicker = true
+                }
+            } label: {
                 AvatarCircle(name: avatarName, size: 64, image: avatarImage)
             }
             .buttonStyle(.plain)
             .disabled(!auth.isAuthenticated)
-            .onChange(of: avatarPick) { _, newItem in
-                guard let newItem else { return }
-                Task { await handleAvatarPick(newItem) }
-            }
 
             VStack(alignment: .leading, spacing: 4) {
                 if auth.isAuthenticated, let profile = auth.userProfile {
@@ -253,20 +259,15 @@ struct YouView: View {
         auth.userProfile?.name ?? "—"
     }
 
-    /// PhotosPicker callback. Pulls the selected item's data, hands it
-    /// to PhotoStorageService for downscale + persistence + upload,
-    /// then refreshes the in-view image. Clears the pick after so
-    /// re-selecting the same photo retriggers correctly.
-    private func handleAvatarPick(_ item: PhotosPickerItem) async {
-        defer { avatarPick = nil }
-        guard let data = try? await item.loadTransferable(type: Data.self),
-              let image = UIImage(data: data) else { return }
+    /// AvatarPickerSheet returns the user's cropped UIImage directly
+    /// (the underlying UIImagePickerController hands back the
+    /// .editedImage from its built-in square crop UI). We just
+    /// persist + refresh the in-view rendering.
+    private func handleCroppedAvatar(_ image: UIImage) {
         let ok = PhotoStorageService.shared.saveAvatar(image)
         if ok {
             UINotificationFeedbackGenerator().notificationOccurred(.success)
-            await MainActor.run {
-                avatarImage = PhotoStorageService.shared.avatarImage()
-            }
+            avatarImage = PhotoStorageService.shared.avatarImage()
         } else {
             UINotificationFeedbackGenerator().notificationOccurred(.warning)
         }
@@ -547,4 +548,50 @@ struct WorkoutEntry: View {
 #Preview {
     YouView()
         .modelContainer(for: [Workout.self, Exercise.self, WorkoutTemplate.self], inMemory: true)
+}
+
+// MARK: - Avatar picker (UIImagePickerController with built-in crop)
+
+/// Wraps `UIImagePickerController` with `allowsEditing = true`, which
+/// surfaces iOS's built-in square crop UI. The cropped result comes
+/// back via `.editedImage`. Used for the profile avatar so users can
+/// frame their face inside the circle instead of being stuck with
+/// whatever the photo's original framing was.
+///
+/// `UIImagePickerController` is the simplest path to a free, native
+/// crop interaction — PHPickerViewController (the modern picker) has
+/// no built-in cropping, so for this specific use case the older API
+/// is the pragmatic choice.
+struct AvatarPickerSheet: UIViewControllerRepresentable {
+    let onPicked: (UIImage?) -> Void
+
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.sourceType = .photoLibrary
+        picker.allowsEditing = true
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    final class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+        let parent: AvatarPickerSheet
+
+        init(_ parent: AvatarPickerSheet) { self.parent = parent }
+
+        func imagePickerController(_ picker: UIImagePickerController,
+                                   didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+            // Prefer the cropped result; fall back to the original
+            // if for some reason editing wasn't completed.
+            let image = (info[.editedImage] as? UIImage) ?? (info[.originalImage] as? UIImage)
+            parent.onPicked(image)
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            parent.onPicked(nil)
+        }
+    }
 }

@@ -16,11 +16,15 @@ struct ClosingRitualView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var noteText: String = ""
-    @State private var capturedImage: UIImage?
-    @State private var capturedPhoto: ProgressPhoto?
+    /// Captured photos, in display order. Each entry is the rendered
+    /// UIImage + the persisted ProgressPhoto record. Tracking as a
+    /// paired array means we can remove individual photos by index
+    /// without losing the photo↔record mapping.
+    @State private var capturedItems: [CapturedPhotoItem] = []
     @State private var showingCamera = false
     @State private var showingLibrary = false
     @State private var libraryItem: PhotosPickerItem?
+    @State private var showingAddPhotoChoice = false
     @State private var isRecorded: Bool = false
     @FocusState private var noteFocused: Bool
 
@@ -51,6 +55,11 @@ struct ClosingRitualView: View {
                 libraryItem = nil
             }
         }
+        .confirmationDialog("Add a photo", isPresented: $showingAddPhotoChoice, titleVisibility: .hidden) {
+            Button("Take Photo") { showingCamera = true }
+            Button("Choose from Library") { showingLibrary = true }
+            Button("Cancel", role: .cancel) { }
+        }
         .onTapGesture {
             noteFocused = false
         }
@@ -62,15 +71,15 @@ struct ClosingRitualView: View {
         ZStack(alignment: .topLeading) {
             VStack(spacing: 0) {
                 ScrollView {
-                    VStack(spacing: 28) {
+                    VStack(alignment: .leading, spacing: 32) {
                         Text(formattedDuration)
                             .font(.marbleMono(12))
                             .tracking(2)
                             .foregroundStyle(Color("marbleSecondary"))
+                            .frame(maxWidth: .infinity)
                             .padding(.top, 24)
 
                         photoZone
-                            .padding(.horizontal, 20)
 
                         noteZone
                             .padding(.horizontal, 20)
@@ -93,10 +102,7 @@ struct ClosingRitualView: View {
                 .padding(.bottom, 32)
             }
 
-            // Back chevron — escape hatch to the active workout. Only
-            // rendered when the caller provided an onBack closure (which
-            // handles undoing the just-saved workout and resuming the
-            // timer). Glass capsule matching the rest of the chrome.
+            // Back chevron — escape hatch to the active workout.
             if let onBack {
                 Button {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -168,46 +174,31 @@ struct ClosingRitualView: View {
 
     // MARK: - Photo Zone
 
+    /// Empty: two big capture options (PHOTO / LIBRARY).
+    /// Otherwise: horizontal strip of captured photos + an "add more"
+    /// tile that re-opens the camera/library choice via a confirmation
+    /// dialog. Users can keep adding photos one by one.
+    @ViewBuilder
     private var photoZone: some View {
-        Group {
-            if let img = capturedImage {
-                Color.clear
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 280)
-                    .overlay {
-                        Image(uiImage: img)
-                            .resizable()
-                            .scaledToFill()
-                    }
-                    .clipped()
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                    .overlay(alignment: .topTrailing) {
-                        Button {
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                            capturedImage = nil
-                            if let photo = capturedPhoto {
-                                PhotoStorageService.shared.delete(photo, context: modelContext)
-                                capturedPhoto = nil
-                            }
-                        } label: {
-                            Image(systemName: "xmark")
-                                .font(.system(size: 11, weight: .light))
-                                .foregroundStyle(.white)
-                                .padding(8)
-                                .background(.black.opacity(0.4))
-                                .clipShape(Circle())
-                        }
-                        .padding(8)
-                    }
-            } else {
-                HStack(spacing: 10) {
-                    captureOption(icon: "camera", label: "PHOTO") {
-                        showingCamera = true
-                    }
-                    captureOption(icon: "photo.on.rectangle", label: "LIBRARY") {
-                        showingLibrary = true
-                    }
+        if capturedItems.isEmpty {
+            HStack(spacing: 10) {
+                captureOption(icon: "camera", label: "PHOTO") {
+                    showingCamera = true
                 }
+                captureOption(icon: "photo.on.rectangle", label: "LIBRARY") {
+                    showingLibrary = true
+                }
+            }
+            .padding(.horizontal, 20)
+        } else {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    ForEach(Array(capturedItems.enumerated()), id: \.element.id) { index, item in
+                        capturedThumb(item: item, index: index)
+                    }
+                    addMoreTile
+                }
+                .padding(.horizontal, 20)
             }
         }
     }
@@ -235,10 +226,62 @@ struct ClosingRitualView: View {
         .buttonStyle(.plain)
     }
 
+    /// 4:5 portrait thumb of a captured photo with a small X to remove.
+    private func capturedThumb(item: CapturedPhotoItem, index: Int) -> some View {
+        let thumbWidth: CGFloat = 140
+        let thumbHeight: CGFloat = thumbWidth * 5 / 4
+        return Image(uiImage: item.image)
+            .resizable()
+            .scaledToFill()
+            .frame(width: thumbWidth, height: thumbHeight)
+            .clipped()
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .overlay(alignment: .topTrailing) {
+                Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    removePhoto(at: index)
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 11, weight: .light))
+                        .foregroundStyle(.white)
+                        .padding(7)
+                        .background(.black.opacity(0.45))
+                        .clipShape(Circle())
+                }
+                .padding(8)
+            }
+    }
+
+    /// "+" tile at the end of the captured strip. Opens the
+    /// Camera/Library confirmation dialog so users can keep adding.
+    private var addMoreTile: some View {
+        let thumbWidth: CGFloat = 140
+        let thumbHeight: CGFloat = thumbWidth * 5 / 4
+        return Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            showingAddPhotoChoice = true
+        } label: {
+            Image(systemName: "plus")
+                .font(.system(size: 18, weight: .light))
+                .foregroundStyle(Color("marbleSecondary"))
+                .frame(width: thumbWidth, height: thumbHeight)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color("marblePrimary").opacity(0.12), lineWidth: 0.5)
+                )
+        }
+        .buttonStyle(.plain)
+    }
+
     // MARK: - Note Zone
 
+    /// Editorial note pad. Subtle marble-tinted card surface so the
+    /// writing area reads as an intentional surface to write on,
+    /// rather than text floating on the page. Larger placeholder,
+    /// more breathing room than the previous bare-TextEditor +
+    /// hairline pattern.
     private var noteZone: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 12) {
             Text("NOTE")
                 .font(.marbleMono(10))
                 .tracking(1.5)
@@ -247,35 +290,54 @@ struct ClosingRitualView: View {
             ZStack(alignment: .topLeading) {
                 if noteText.isEmpty {
                     Text("A line about today.")
-                        .font(.marbleBody(16))
-                        .foregroundStyle(Color("marbleSecondary").opacity(0.4))
-                        .padding(.top, 8)
-                        .padding(.leading, 4)
+                        .font(.marbleBody(17))
+                        .foregroundStyle(Color("marblePrimary").opacity(0.3))
+                        .padding(.horizontal, 16)
+                        .padding(.top, 16)
+                        .allowsHitTesting(false)
                 }
                 TextEditor(text: $noteText)
-                    .font(.marbleBody(16))
+                    .font(.marbleBody(17))
                     .foregroundStyle(Color("marblePrimary"))
                     .focused($noteFocused)
                     .scrollContentBackground(.hidden)
-                    .frame(minHeight: 80)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .frame(minHeight: 120)
             }
-            Rectangle()
-                .fill(Color("marblePrimary").opacity(0.15))
-                .frame(height: 0.5)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color("marblePrimary").opacity(0.04))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(Color("marblePrimary").opacity(0.08), lineWidth: 0.5)
+            )
         }
     }
 
-    // MARK: - Save
+    // MARK: - Photo handling
 
     private func handleImage(_ image: UIImage) {
-        capturedImage = image
-        capturedPhoto = PhotoStorageService.shared.savePhoto(
+        // Persist via the photo storage service (writes local + queues
+        // the cloud upload). Then append the rendered + record pair to
+        // the in-view strip so the user sees their addition immediately.
+        guard let photo = PhotoStorageService.shared.savePhoto(
             image,
             workoutCloudID: workout.cloudID,
             context: modelContext
-        )
+        ) else { return }
+        capturedItems.append(CapturedPhotoItem(image: image, photo: photo))
         UINotificationFeedbackGenerator().notificationOccurred(.success)
     }
+
+    private func removePhoto(at index: Int) {
+        guard capturedItems.indices.contains(index) else { return }
+        let item = capturedItems.remove(at: index)
+        PhotoStorageService.shared.delete(item.photo, context: modelContext)
+    }
+
+    // MARK: - Save
 
     private func save(skipping: Bool) {
         let trimmed = noteText.trimmingCharacters(in: .whitespaces)
@@ -305,4 +367,15 @@ struct ClosingRitualView: View {
         }
         return "\(minutes)m"
     }
+}
+
+// MARK: - Captured photo wrapper
+
+/// Pairs the rendered UIImage with the persisted ProgressPhoto so we
+/// can remove individual photos by index while still being able to
+/// delete the underlying record correctly.
+private struct CapturedPhotoItem: Identifiable {
+    let id = UUID()
+    let image: UIImage
+    let photo: ProgressPhoto
 }
