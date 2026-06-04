@@ -796,48 +796,54 @@ struct SwipeToDeleteRow<Content: View>: View {
             content()
                 .offset(x: offset)
                 .opacity(isDeleting ? 0 : 1)
-                .simultaneousGesture(
-                    DragGesture(minimumDistance: 15, coordinateSpace: .local)
-                        .onChanged { value in
-                            guard abs(value.translation.width) > abs(value.translation.height) else {
-                                return
-                            }
-                            let baseline: CGFloat = isSwiped ? deleteThreshold : 0
-                            let raw = baseline + value.translation.width
-                            if raw < 0 {
-                                if raw < fullSwipeThreshold {
-                                    let over = fullSwipeThreshold - raw
-                                    offset = fullSwipeThreshold - sqrt(over) * 4
-                                } else {
-                                    offset = raw
-                                }
-                            } else {
-                                offset = 0
-                            }
-                        }
-                        .onEnded { value in
-                            guard abs(value.translation.width) > abs(value.translation.height) else {
-                                snapBack()
-                                return
-                            }
-                            if offset < fullSwipeThreshold {
-                                commitDelete()
-                            } else if offset < deleteThreshold {
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                                    offset = deleteThreshold
-                                }
-                                isSwiped = true
-                            } else {
-                                snapBack()
-                            }
-                        }
-                )
                 .onTapGesture {
                     if isSwiped { snapBack() }
                 }
         }
         .frame(maxHeight: isDeleting ? 0 : nil)
         .clipped()
+        // Gesture on the outer ZStack with `highPriorityGesture` so it
+        // takes precedence over the inner TextFields (which would
+        // otherwise consume the touches before SwiftUI's DragGesture
+        // gets a chance). minimumDistance: 15 means a tap to focus
+        // a field still works — the drag only activates after real
+        // horizontal motion.
+        .highPriorityGesture(
+            DragGesture(minimumDistance: 15, coordinateSpace: .local)
+                .onChanged { value in
+                    guard abs(value.translation.width) > abs(value.translation.height) else {
+                        return
+                    }
+                    let baseline: CGFloat = isSwiped ? deleteThreshold : 0
+                    let raw = baseline + value.translation.width
+                    if raw < 0 {
+                        if raw < fullSwipeThreshold {
+                            let over = fullSwipeThreshold - raw
+                            offset = fullSwipeThreshold - sqrt(over) * 4
+                        } else {
+                            offset = raw
+                        }
+                    } else {
+                        offset = 0
+                    }
+                }
+                .onEnded { value in
+                    guard abs(value.translation.width) > abs(value.translation.height) else {
+                        snapBack()
+                        return
+                    }
+                    if offset < fullSwipeThreshold {
+                        commitDelete()
+                    } else if offset < deleteThreshold {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                            offset = deleteThreshold
+                        }
+                        isSwiped = true
+                    } else {
+                        snapBack()
+                    }
+                }
+        )
     }
 
     private func snapBack() {
