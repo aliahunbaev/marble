@@ -129,36 +129,20 @@ private struct CollectionBridge<Item, Cell: View>: UIViewRepresentable {
         coordinator.stopObservingContentSize()
     }
 
-    /// Single-column compositional layout with self-sizing rows. Cell
-    /// content fills the full width; height is whatever the SwiftUI
-    /// view reports via UIHostingConfiguration.
-    ///
-    /// `estimated(180)` is a generous starting point: templateRow can
-    /// render up to ~155pt for a 6-exercise watermark, plus the row's
-    /// own internal padding. A too-low estimate (like 80) leaves cells
-    /// clipped before self-sizing kicks in, which surfaces as the
-    /// handwritten watermark overflowing into the next row visually.
+    /// `UICollectionLayoutListConfiguration` — Apple's modern API for
+    /// self-sizing list cells. Custom compositional layouts with
+    /// `.estimated()` heights fight self-sizing when cells are much
+    /// taller than the estimate (exercise cells render 400-600pt vs
+    /// any reasonable estimate of 180pt), causing cell content to
+    /// overflow into the next row visually. List config handles the
+    /// height measurement correctly across the full range.
     private static func makeLayout() -> UICollectionViewCompositionalLayout {
-        UICollectionViewCompositionalLayout { _, _ in
-            let itemSize = NSCollectionLayoutSize(
-                widthDimension: .fractionalWidth(1.0),
-                heightDimension: .estimated(180)
-            )
-            let item = NSCollectionLayoutItem(layoutSize: itemSize)
-
-            let groupSize = NSCollectionLayoutSize(
-                widthDimension: .fractionalWidth(1.0),
-                heightDimension: .estimated(180)
-            )
-            let group = NSCollectionLayoutGroup.vertical(
-                layoutSize: groupSize,
-                subitem: item,
-                count: 1
-            )
-
-            let section = NSCollectionLayoutSection(group: group)
-            return section
-        }
+        var config = UICollectionLayoutListConfiguration(appearance: .plain)
+        config.backgroundColor = .clear
+        config.showsSeparators = false
+        config.headerMode = .none
+        config.footerMode = .none
+        return UICollectionViewCompositionalLayout.list(using: config)
     }
 }
 

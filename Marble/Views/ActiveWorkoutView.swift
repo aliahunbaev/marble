@@ -575,74 +575,75 @@ struct ExerciseCell: View {
     /// workouts.
     var showCheckmark: Bool = true
 
+    /// Single view tree, conditional sections. The title bar is
+    /// always visible at the same position; the sets section is
+    /// conditionally rendered with a SwiftUI transition. SwiftUI
+    /// animates the layout reflow naturally — the sets fade and the
+    /// divider below slides up to where they were, which is exactly
+    /// the document-flow effect Strong has.
     var body: some View {
-        if reorderState.isReordering {
-            compactView
-        } else {
-            expandedView
+        VStack(alignment: .leading, spacing: 0) {
+            titleBar
+
+            if !reorderState.isReordering {
+                setsSection
+                    .transition(.opacity)
+            }
+
+            Rectangle()
+                .fill(Color("marblePrimary").opacity(0.08))
+                .frame(height: 0.5)
         }
     }
 
-    /// Compact form during drag — just the exercise name in a fixed
-    /// row height. Hairline divider sits at the bottom so the strip
-    /// of titles reads as a single inline list.
-    private var compactView: some View {
-        Text(entry.exercise.name)
-            .font(.marbleBody(22))
-            .foregroundStyle(Color("marblePrimary"))
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 20)
-            .padding(.vertical, 18)
-            .background(
-                VStack {
-                    Spacer()
-                    Rectangle()
-                        .fill(Color("marblePrimary").opacity(0.08))
-                        .frame(height: 0.5)
-                }
-            )
-    }
+    /// Title bar — name + ⋯ menu. Menu hides during reorder so the
+    /// title can sit cleanly alongside its siblings. Padding stays
+    /// constant in both modes so the title doesn't shift vertically.
+    private var titleBar: some View {
+        HStack {
+            Text(entry.exercise.name)
+                .font(.marbleBody(22))
+                .foregroundStyle(Color("marblePrimary"))
 
-    /// Expanded form — full exercise card with header, column titles,
-    /// each set, and the +SET button.
-    private var expandedView: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Header: name + ⋯ menu
-            HStack {
-                Text(entry.exercise.name)
-                    .font(.marbleBody(22))
-                    .foregroundStyle(Color("marblePrimary"))
+            Spacer()
 
-                Spacer()
-
-                Menu {
-                    Button {
-                        DispatchQueue.main.async {
-                            onReplace(entry.id)
-                        }
-                    } label: {
-                        Label("Replace exercise", systemImage: "arrow.triangle.2.circlepath")
-                    }
-                    Button(role: .destructive) {
-                        let entryID = entry.id
-                        DispatchQueue.main.async {
-                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                                entries.removeAll { $0.id == entryID }
-                            }
-                        }
-                    } label: {
-                        Label("Remove", systemImage: "trash")
+            Menu {
+                Button {
+                    DispatchQueue.main.async {
+                        onReplace(entry.id)
                     }
                 } label: {
-                    Image(systemName: "ellipsis")
-                        .font(.system(size: 13, weight: .medium))
-                        .marbleGlassCapsule(size: 32)
+                    Label("Replace exercise", systemImage: "arrow.triangle.2.circlepath")
                 }
-                .buttonStyle(.plain)
+                Button(role: .destructive) {
+                    let entryID = entry.id
+                    DispatchQueue.main.async {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                            entries.removeAll { $0.id == entryID }
+                        }
+                    }
+                } label: {
+                    Label("Remove", systemImage: "trash")
+                }
+            } label: {
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 13, weight: .medium))
+                    .marbleGlassCapsule(size: 32)
             }
-            .padding(.horizontal, 20)
-            .padding(.bottom, 14)
+            .buttonStyle(.plain)
+            .opacity(reorderState.isReordering ? 0 : 1)
+            .allowsHitTesting(!reorderState.isReordering)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 18)
+    }
 
+    /// Sets section — column headers + sets + +SET button. Conditional
+    /// rendering with `.transition(.opacity)` so SwiftUI handles the
+    /// fade and adjacent views slide up automatically when this
+    /// section is removed.
+    private var setsSection: some View {
+        VStack(alignment: .leading, spacing: 0) {
             // Column headers
             HStack(spacing: 14) {
                 Text("SET").frame(width: 32, alignment: .center)
@@ -661,10 +662,6 @@ struct ExerciseCell: View {
             .padding(.horizontal, 20)
             .padding(.bottom, 8)
 
-            // Sets — each row uses .contextMenu for delete (long-press
-            // shows a Delete option). Avoids conflicting with the
-            // cell-level long-press that drives reorder: the gestures
-            // operate at different levels of the view hierarchy.
             ForEach(setsBinding) { $set in
                 let index = entry.sets.firstIndex(where: { $0.id == set.id }) ?? 0
                 let prev = PreviousPerformance.previousComponents(
@@ -701,7 +698,6 @@ struct ExerciseCell: View {
                 }
             }
 
-            // + SET button
             Button {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 withAnimation(.spring(response: 0.4, dampingFraction: 0.82)) {
@@ -719,14 +715,6 @@ struct ExerciseCell: View {
             .padding(.top, 8)
             .padding(.bottom, 24)
         }
-        .background(
-            VStack {
-                Spacer()
-                Rectangle()
-                    .fill(Color("marblePrimary").opacity(0.06))
-                    .frame(height: 0.5)
-            }
-        )
     }
 
     /// Binding into the SwiftData-backed entries array for *this*
