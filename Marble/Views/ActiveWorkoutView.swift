@@ -604,6 +604,20 @@ struct ExerciseCell: View {
     /// workouts.
     var showCheckmark: Bool = true
 
+    /// The entry as it currently exists in `entries`. The cell's
+    /// `entry` parameter is captured by value at the time the cell
+    /// was last reconfigured — its `sets` array is a stale snapshot.
+    /// Reading mutating fields (weight / reps / isCompleted / sets
+    /// count) through `live` instead of `entry` ensures the cell's
+    /// body re-evaluates against the latest binding source whenever
+    /// entries changes, so typed values persist, the checkmark flips
+    /// when tapped, and the +SET / swipe-to-delete actions stay in
+    /// sync with the visible state. Falls back to the captured value
+    /// if the entry was just removed (mid-animation only).
+    private var live: ExerciseEntry {
+        entries.first(where: { $0.id == entry.id }) ?? entry
+    }
+
     /// Cells collapse to title-only during drag. UCV's interactive
     /// movement snapshots the cell synchronously when it begins —
     /// but the bridge defers `beginInteractiveMovementForItem` to
@@ -706,9 +720,9 @@ struct ExerciseCell: View {
             // reorder by accident.
             List {
                 ForEach(setsBinding) { $set in
-                    let index = entry.sets.firstIndex(where: { $0.id == set.id }) ?? 0
+                    let index = live.sets.firstIndex(where: { $0.id == set.id }) ?? 0
                     let prev = PreviousPerformance.previousComponents(
-                        for: entry.exercise,
+                        for: live.exercise,
                         setIndex: index,
                         context: modelContext
                     )
@@ -751,7 +765,7 @@ struct ExerciseCell: View {
             // Each SetRowView is fieldHeight (52) + vertical padding
             // (10*2) = 72pt. Sum gives the exact list height so it
             // doesn't try to fill the screen.
-            .frame(height: CGFloat(entry.sets.count) * 72)
+            .frame(height: CGFloat(live.sets.count) * 72)
 
             Button {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -773,11 +787,16 @@ struct ExerciseCell: View {
     }
 
     /// Binding into the SwiftData-backed entries array for *this*
-    /// entry's sets. Updates here mutate `entries` through the
-    /// passed Binding, which the WorkoutSession observes.
+    /// entry's sets. Reads through `entries` (not the captured
+    /// `entry`) so the getter returns the latest values — typed
+    /// weights/reps and tapped checkmarks all flow back through
+    /// here, and the downstream Bindings created by ForEach($)
+    /// see the updated state on the next read.
     private var setsBinding: Binding<[EditableSet]> {
         Binding(
-            get: { entry.sets },
+            get: {
+                entries.first(where: { $0.id == entry.id })?.sets ?? entry.sets
+            },
             set: { newSets in
                 guard let idx = entries.firstIndex(where: { $0.id == entry.id }) else { return }
                 entries[idx].sets = newSets
