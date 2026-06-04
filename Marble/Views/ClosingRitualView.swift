@@ -73,11 +73,15 @@ struct ClosingRitualView: View {
                 libraryPickerSelection = []
             }
         }
-        .confirmationDialog("Add a photo", isPresented: $showingAddPhotoChoice, titleVisibility: .hidden) {
-            Button("Take Photo") { showingCamera = true }
-            Button("Choose from Library") { showingLibrary = true }
-            Button("Cancel", role: .cancel) { }
-        }
+        .marbleDialog(
+            "Add a photo",
+            isPresented: $showingAddPhotoChoice,
+            buttons: [
+                .standard("Take Photo") { showingCamera = true },
+                .standard("Choose from Library") { showingLibrary = true },
+                .cancel(),
+            ]
+        )
         .onTapGesture {
             noteFocused = false
             titleFocused = false

@@ -131,45 +131,35 @@ struct TrainView: View {
                 )
             }
             // Confirmation when the user tries to start a workout
-            // while another is already active. Resume re-expands the
-            // current one; End&Start tears it down and kicks off
-            // the pending one.
-            .confirmationDialog(
+            // while another is already active.
+            .marbleDialog(
                 "A workout is already in progress",
+                message: "What do you want to do?",
                 isPresented: Binding(
                     get: { pendingStart != nil },
                     set: { if !$0 { pendingStart = nil } }
                 ),
-                titleVisibility: .visible,
-                presenting: pendingStart
-            ) { start in
-                Button("Resume current workout") {
-                    pendingStart = nil
-                    workoutSession.expand()
-                }
-                Button("End current and start new", role: .destructive) {
-                    workoutSession.end()
-                    // Defer the new start one runloop so the end's
-                    // state flush (mini-bar disappearing, sourceTemplate
-                    // cleared) lands before we kick off the next
-                    // workout. Otherwise SwiftUI conflates the two
-                    // transitions and the cover doesn't present.
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                        switch start {
-                        case .empty:
-                            workoutSession.start()
-                        case .template(let template):
-                            workoutSession.start(template: template)
-                        }
-                    }
-                    pendingStart = nil
-                }
-                Button("Cancel", role: .cancel) {
-                    pendingStart = nil
-                }
-            } message: { _ in
-                Text("What do you want to do?")
-            }
+                buttons: {
+                    guard let start = pendingStart else { return [] }
+                    return [
+                        .standard("Resume current workout") {
+                            workoutSession.expand()
+                        },
+                        .destructive("End current and start new") {
+                            workoutSession.end()
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+                                switch start {
+                                case .empty:
+                                    workoutSession.start()
+                                case .template(let template):
+                                    workoutSession.start(template: template)
+                                }
+                            }
+                        },
+                        .cancel(),
+                    ]
+                }()
+            )
         }
     }
 

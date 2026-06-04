@@ -26,6 +26,7 @@
 		AA000042 /* MarbleButtonStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000042 /* MarbleButtonStyle.swift */; };
 		AA000043 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000043 /* SettingsView.swift */; };
 		AA000050 /* MarbleGlass.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000050 /* MarbleGlass.swift */; };
+		AA000058 /* MarbleDialog.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000058 /* MarbleDialog.swift */; };
 		AA000052 /* MarbleDate.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000052 /* MarbleDate.swift */; };
 		AA000053 /* WorkoutSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000053 /* WorkoutSession.swift */; };
 		AA000054 /* GalleryTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000054 /* GalleryTab.swift */; };
@@ -78,6 +79,7 @@
 		AB000042 /* MarbleButtonStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarbleButtonStyle.swift; sourceTree = "<group>"; };
 		AB000043 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		AB000050 /* MarbleGlass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarbleGlass.swift; sourceTree = "<group>"; };
+		AB000058 /* MarbleDialog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarbleDialog.swift; sourceTree = "<group>"; };
 		AB000052 /* MarbleDate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarbleDate.swift; sourceTree = "<group>"; };
 		AB000053 /* WorkoutSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutSession.swift; sourceTree = "<group>"; };
 		AB000054 /* GalleryTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryTab.swift; sourceTree = "<group>"; };
@@ -162,6 +164,7 @@
 				AB000041 /* MarbleColor.swift */,
 				AB000042 /* MarbleButtonStyle.swift */,
 				AB000050 /* MarbleGlass.swift */,
+				AB000058 /* MarbleDialog.swift */,
 				AB000052 /* MarbleDate.swift */,
 			);
 			path = Theme;
@@ -342,6 +345,7 @@
 				AA000042 /* MarbleButtonStyle.swift in Sources */,
 				AA000043 /* SettingsView.swift in Sources */,
 				AA000050 /* MarbleGlass.swift in Sources */,
+				AA000058 /* MarbleDialog.swift in Sources */,
 				AA000052 /* MarbleDate.swift in Sources */,
 				AA000053 /* WorkoutSession.swift in Sources */,
 				AA000054 /* GalleryTab.swift in Sources */,

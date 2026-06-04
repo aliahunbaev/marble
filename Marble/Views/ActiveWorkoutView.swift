@@ -117,24 +117,30 @@ struct ActiveWorkoutView: View {
         .sheet(isPresented: $showingRestTimer) {
             RestTimerModal(state: session.restTimer)
         }
-        .alert("Discard this workout?", isPresented: $showingDiscardAlert) {
-            Button("Discard", role: .destructive) {
-                session.end()
-                dismiss()
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("All progress will be lost.")
-        }
-        .alert("No sets completed", isPresented: $showingEmptyFinishAlert) {
-            Button("Discard", role: .destructive) {
-                session.end()
-                dismiss()
-            }
-            Button("Keep going", role: .cancel) {}
-        } message: {
-            Text("There's nothing to save yet. Discard the workout, or keep going.")
-        }
+        .marbleDialog(
+            "Discard this workout?",
+            message: "All progress will be lost.",
+            isPresented: $showingDiscardAlert,
+            buttons: [
+                .destructive("Discard") {
+                    session.end()
+                    dismiss()
+                },
+                .cancel(),
+            ]
+        )
+        .marbleDialog(
+            "No sets completed",
+            message: "There's nothing to save yet. Discard the workout, or keep going.",
+            isPresented: $showingEmptyFinishAlert,
+            buttons: [
+                .destructive("Discard") {
+                    session.end()
+                    dismiss()
+                },
+                .cancel("Keep going"),
+            ]
+        )
     }
 
     // MARK: - List Rows

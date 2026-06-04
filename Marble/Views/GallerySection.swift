@@ -147,13 +147,14 @@ struct PhotoViewerView: View {
         .task {
             image = PhotoStorageService.shared.image(for: photo)
         }
-        .alert("Delete photo?", isPresented: $showingDeleteConfirmation) {
-            Button("Cancel", role: .cancel) { }
-            Button("Delete", role: .destructive) {
-                onDelete()
-            }
-        } message: {
-            Text("This cannot be undone.")
-        }
+        .marbleDialog(
+            "Delete photo?",
+            message: "This cannot be undone.",
+            isPresented: $showingDeleteConfirmation,
+            buttons: [
+                .destructive("Delete") { onDelete() },
+                .cancel(),
+            ]
+        )
     }
 }

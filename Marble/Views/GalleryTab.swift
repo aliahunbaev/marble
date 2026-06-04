@@ -389,12 +389,15 @@ struct MultiPhotoBrowserView: View {
             .allowsHitTesting(chromeVisible)
         }
         .onAppear { currentIndex = initialIndex }
-        .alert("Delete photo?", isPresented: $showingDeleteConfirmation) {
-            Button("Cancel", role: .cancel) { }
-            Button("Delete", role: .destructive) { deleteCurrentPhoto() }
-        } message: {
-            Text("This cannot be undone.")
-        }
+        .marbleDialog(
+            "Delete photo?",
+            message: "This cannot be undone.",
+            isPresented: $showingDeleteConfirmation,
+            buttons: [
+                .destructive("Delete") { deleteCurrentPhoto() },
+                .cancel(),
+            ]
+        )
         // Drag down to dismiss
         .gesture(
             DragGesture()

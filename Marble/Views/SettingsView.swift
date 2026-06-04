@@ -77,14 +77,15 @@ struct SettingsView: View {
                     }
                 }
             }
-            .alert("Clear All Data", isPresented: $showingClearConfirmation) {
-                Button("Cancel", role: .cancel) { }
-                Button("Clear", role: .destructive) {
-                    clearAllData()
-                }
-            } message: {
-                Text("This will delete all workouts, templates, and exercise data. This cannot be undone.")
-            }
+            .marbleDialog(
+                "Clear all data?",
+                message: "This will delete all workouts, templates, and exercise data. This cannot be undone.",
+                isPresented: $showingClearConfirmation,
+                buttons: [
+                    .destructive("Clear") { clearAllData() },
+                    .cancel(),
+                ]
+            )
         }
         .preferredColorScheme(resolvedScheme)
     }
@@ -260,13 +261,16 @@ struct SettingsView: View {
             }
             .buttonStyle(.plain)
         }
-        .alert("Cleanup Complete", isPresented: $showingCleanupResult) {
-            Button("OK", role: .cancel) { }
-        } message: {
-            Text(cleanupCount == 0
-                 ? "No empty or orphan templates found."
-                 : "Removed \(cleanupCount) empty template\(cleanupCount == 1 ? "" : "s").")
-        }
+        .marbleDialog(
+            "Cleanup complete",
+            message: cleanupCount == 0
+                ? "No empty or orphan templates found."
+                : "Removed \(cleanupCount) empty template\(cleanupCount == 1 ? "" : "s").",
+            isPresented: $showingCleanupResult,
+            buttons: [
+                .cancel("OK"),
+            ]
+        )
     }
 
     // MARK: - Account
@@ -283,13 +287,17 @@ struct SettingsView: View {
                     .marbleSecondaryButton()
             }
             .buttonStyle(.plain)
-            .confirmationDialog("Sign Out", isPresented: $showingSignOutConfirmation) {
-                Button("Sign Out") {
-                    auth.signOut()
-                    dismiss()
-                }
-                Button("Cancel", role: .cancel) { }
-            }
+            .marbleDialog(
+                "Sign out?",
+                isPresented: $showingSignOutConfirmation,
+                buttons: [
+                    .standard("Sign Out") {
+                        auth.signOut()
+                        dismiss()
+                    },
+                    .cancel(),
+                ]
+            )
 
             // Delete Account — destructive, irreversible
             Button {
@@ -299,17 +307,20 @@ struct SettingsView: View {
                     .marbleDestructiveButton()
             }
             .buttonStyle(.plain)
-            .alert("Delete Account", isPresented: $showingDeleteConfirmation) {
-                Button("Cancel", role: .cancel) { }
-                Button("Delete", role: .destructive) {
-                    Task {
-                        await auth.deleteAccount()
-                        dismiss()
-                    }
-                }
-            } message: {
-                Text("This will permanently delete your account and profile. Your local workout data will remain on this device.")
-            }
+            .marbleDialog(
+                "Delete account?",
+                message: "This will permanently delete your account and profile. Your local workout data will remain on this device.",
+                isPresented: $showingDeleteConfirmation,
+                buttons: [
+                    .destructive("Delete") {
+                        Task {
+                            await auth.deleteAccount()
+                            dismiss()
+                        }
+                    },
+                    .cancel(),
+                ]
+            )
         }
     }
 

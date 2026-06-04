@@ -84,23 +84,25 @@ struct WorkoutDetailView: View {
         }
         .marbleAtmosphereBackground()
         .navigationBarTitleDisplayMode(.inline)
-        .alert("Delete this workout? This cannot be undone.", isPresented: $showingDeleteConfirmation) {
-            Button("Cancel", role: .cancel) { }
-            Button("Delete", role: .destructive) {
-                let cloudID = workout.cloudID
-                // Cascade-delete linked photos first so we don't leak
-                // orphan ProgressPhoto records + cloud storage objects
-                // pointing at a workout that no longer exists.
-                PhotoStorageService.shared.deletePhotosLinkedToWorkout(
-                    cloudID: cloudID,
-                    context: modelContext
-                )
-                modelContext.delete(workout)
-                try? modelContext.save()
-                Task { await CloudSyncService.shared.deleteWorkout(cloudID: cloudID) }
-                dismiss()
-            }
-        }
+        .marbleDialog(
+            "Delete this workout?",
+            message: "This cannot be undone.",
+            isPresented: $showingDeleteConfirmation,
+            buttons: [
+                .destructive("Delete") {
+                    let cloudID = workout.cloudID
+                    PhotoStorageService.shared.deletePhotosLinkedToWorkout(
+                        cloudID: cloudID,
+                        context: modelContext
+                    )
+                    modelContext.delete(workout)
+                    try? modelContext.save()
+                    Task { await CloudSyncService.shared.deleteWorkout(cloudID: cloudID) }
+                    dismiss()
+                },
+                .cancel(),
+            ]
+        )
         .fullScreenCover(item: $selectedPhoto) { photo in
             PhotoViewerView(
                 photo: photo,

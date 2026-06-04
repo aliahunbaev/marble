@@ -125,14 +125,15 @@ struct TemplateDetailSheet: View {
             .padding(.top, 16)
             .padding(.trailing, 16)
         }
-        .alert("Delete this program?", isPresented: $showingDeleteConfirmation) {
-            Button("Cancel", role: .cancel) { }
-            Button("Delete", role: .destructive) {
-                onDelete?()
-            }
-        } message: {
-            Text("This cannot be undone.")
-        }
+        .marbleDialog(
+            "Delete this program?",
+            message: "This cannot be undone.",
+            isPresented: $showingDeleteConfirmation,
+            buttons: [
+                .destructive("Delete") { onDelete?() },
+                .cancel(),
+            ]
+        )
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.hidden)
         .presentationCornerRadius(28)
