@@ -74,31 +74,11 @@ struct ActiveWorkoutView: View {
         @Bindable var session = session
 
         return ZStack(alignment: .top) {
-            // Native List handles swipe-to-delete and vertical scroll
-            // natively at the framework level. Flat structure (no
-            // Sections) so exercise headers don't get the sticky-pin
-            // behavior that List gives section headers — they scroll
-            // with content like everything else.
-            //
-            // Reorder mode: when isReordering is true, the sets collapse
-            // and a single ForEach of headers replaces the expanded
-            // structure so native .onMove drag-to-reorder works on the
-            // exercise list. Exit via Done in the toolbar.
-            List {
-                workoutHeaderRow(session: session)
-
-                if isReordering {
-                    reorderingHeadersForEach(entries: $session.entries)
-                } else {
-                    expandedExercisesContent(entries: $session.entries)
-                    addExerciseRow
-                }
+            if isReordering {
+                reorderingCanvas(session: session)
+            } else {
+                expandedCanvas(session: session)
             }
-            .listStyle(.plain)
-            .scrollContentBackground(.hidden)
-            .scrollDismissesKeyboard(.interactively)
-            .environment(\.defaultMinListRowHeight, 0)
-            .environment(\.editMode, .constant(isReordering ? .active : .inactive))
 
             // Floating glass buttons over the workout content
             floatingToolbar
@@ -214,33 +194,64 @@ struct ActiveWorkoutView: View {
         }
     }
 
-    /// Reorder mode rendering — just exercise titles with hairlines,
-    /// wrapped in a single ForEach with .onMove so native iOS drag-to-
-    /// reorder activates. Edit mode is forced .active on the List so the
-    /// drag handles + ordering gestures kick in immediately, without
-    /// needing the user to long-press a row first.
+    /// Normal mode — full List with expanded exercises, native swipe-
+    /// to-delete on sets, +SET buttons, the whole live-workout UX.
     @ViewBuilder
-    private func reorderingHeadersForEach(entries: Binding<[ExerciseEntry]>) -> some View {
-        ForEach(entries) { $entry in
-            reorderingTitleRow(entry: $entry)
+    private func expandedCanvas(session: WorkoutSession) -> some View {
+        @Bindable var session = session
+        List {
+            workoutHeaderRow(session: session)
+            expandedExercisesContent(entries: $session.entries)
+            addExerciseRow
         }
-        .onMove { from, to in
-            session.entries.move(fromOffsets: from, toOffset: to)
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .scrollDismissesKeyboard(.interactively)
+        .environment(\.defaultMinListRowHeight, 0)
+        .background(Color("marbleBackground"))
     }
 
-    private func reorderingTitleRow(entry: Binding<ExerciseEntry>) -> some View {
-        Text(entry.wrappedValue.exercise.name)
-            .font(.marbleBody(22))
-            .foregroundStyle(Color("marblePrimary"))
-            .padding(.horizontal, 20)
-            .padding(.vertical, 18)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .listRowInsets(EdgeInsets())
-            .listRowSeparator(.visible, edges: .bottom)
-            .listRowSeparatorTint(Color("marblePrimary").opacity(0.08))
-            .listRowBackground(Color.clear)
+    /// Reorder mode — exercises collapse to title rows in a
+    /// `ReorderableList` (UICollectionView bridge). Same iOS-native
+    /// long-press → lift → drag → reflow → snap UX as Train templates
+    /// and Track metrics. Exit via DONE in the toolbar.
+    @ViewBuilder
+    private func reorderingCanvas(session: WorkoutSession) -> some View {
+        @Bindable var session = session
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                Text(session.name)
+                    .font(.marbleBody(32))
+                    .foregroundStyle(Color("marblePrimary"))
+                    .padding(.horizontal, 20)
+                    .padding(.top, 88)
+                    .padding(.bottom, 24)
+
+                ReorderableList(
+                    items: session.entries,
+                    itemID: { $0.id.uuidString },
+                    onReorder: { newOrder in session.entries = newOrder },
+                    onTap: nil
+                ) { entry in
+                    Text(entry.exercise.name)
+                        .font(.marbleBody(22))
+                        .foregroundStyle(Color("marblePrimary"))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 18)
+                        .background(
+                            VStack {
+                                Spacer()
+                                Rectangle()
+                                    .fill(Color("marblePrimary").opacity(0.08))
+                                    .frame(height: 0.5)
+                            }
+                        )
+                }
+            }
+            .padding(.bottom, 140)
+        }
+        .background(Color("marbleBackground"))
     }
 
     /// Exercise header as a regular List row (not a Section header) so
@@ -258,6 +269,21 @@ struct ActiveWorkoutView: View {
                 Text(entry.wrappedValue.exercise.name)
                     .font(.marbleBody(22))
                     .foregroundStyle(Color("marblePrimary"))
+                    // Long-press the name to enter reorder mode
+                    // directly — no dedicated "Reorder" menu button.
+                    // Long-press is gesture-isolated to the Text so it
+                    // doesn't compete with set field focus, swipe-to-
+                    // delete on sets, or the ⋯ menu's own tap.
+                    .gesture(
+                        LongPressGesture(minimumDuration: 0.4)
+                            .onEnded { _ in
+                                guard session.entries.count >= 2 else { return }
+                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+                                    isReordering = true
+                                }
+                            }
+                    )
 
                 Spacer()
 
@@ -422,22 +448,10 @@ struct ActiveWorkoutView: View {
 
             Spacer()
 
-            // Workout-level menu — reorder + discard live here.
-            // Note: iOS 26's Liquid Glass Menu transition animation can
-            // briefly show the trigger's elevation/shadow state during
-            // open/close. It's a platform rendering artifact that's hard
-            // to fully suppress without losing the native Menu UX.
+            // Workout-level menu — discard only now. Reorder is
+            // triggered via long-press on an exercise name (no
+            // dedicated menu button).
             Menu {
-                Button {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-                        isReordering = true
-                    }
-                } label: {
-                    Label("Reorder exercises", systemImage: "arrow.up.arrow.down")
-                }
-                .disabled(session.entries.count < 2)
-
                 Button(role: .destructive) {
                     showingDiscardAlert = true
                 } label: {

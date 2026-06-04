@@ -70,21 +70,11 @@ struct TemplateEditorView: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            List {
-                templateHeaderRow
-
-                if isReordering {
-                    reorderingHeadersForEach
-                } else {
-                    expandedExercisesContent
-                    addExerciseRow
-                }
+            if isReordering {
+                reorderingCanvas
+            } else {
+                expandedCanvas
             }
-            .listStyle(.plain)
-            .scrollContentBackground(.hidden)
-            .scrollDismissesKeyboard(.interactively)
-            .environment(\.defaultMinListRowHeight, 0)
-            .environment(\.editMode, .constant(isReordering ? .active : .inactive))
 
             floatingToolbar
         }
@@ -165,28 +155,62 @@ struct TemplateEditorView: View {
         }
     }
 
+    /// Normal mode — full List with expanded exercises, swipe-to-
+    /// delete on sets, +SET buttons, the whole template-editing UX.
     @ViewBuilder
-    private var reorderingHeadersForEach: some View {
-        ForEach($entries) { $entry in
-            reorderingTitleRow(entry: $entry)
+    private var expandedCanvas: some View {
+        List {
+            templateHeaderRow
+            expandedExercisesContent
+            addExerciseRow
         }
-        .onMove { from, to in
-            entries.move(fromOffsets: from, toOffset: to)
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .scrollDismissesKeyboard(.interactively)
+        .environment(\.defaultMinListRowHeight, 0)
+        .background(Color("marbleBackground"))
     }
 
-    private func reorderingTitleRow(entry: Binding<ExerciseEntry>) -> some View {
-        Text(entry.wrappedValue.exercise.name)
-            .font(.marbleBody(22))
-            .foregroundStyle(Color("marblePrimary"))
-            .padding(.horizontal, 20)
-            .padding(.vertical, 18)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .listRowInsets(EdgeInsets())
-            .listRowSeparator(.visible, edges: .bottom)
-            .listRowSeparatorTint(Color("marblePrimary").opacity(0.08))
-            .listRowBackground(Color.clear)
+    /// Reorder mode — exercises collapse to title rows in a
+    /// `ReorderableList` (UICollectionView bridge). Same iOS-native
+    /// long-press → lift → drag → reflow → snap UX as Train templates
+    /// and Track metrics. Exit via DONE in the toolbar.
+    @ViewBuilder
+    private var reorderingCanvas: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                Text(name.isEmpty ? "Template" : name)
+                    .font(.marbleBody(32))
+                    .foregroundStyle(Color("marblePrimary"))
+                    .padding(.horizontal, 20)
+                    .padding(.top, 88)
+                    .padding(.bottom, 24)
+
+                ReorderableList(
+                    items: entries,
+                    itemID: { $0.id.uuidString },
+                    onReorder: { newOrder in entries = newOrder },
+                    onTap: nil
+                ) { entry in
+                    Text(entry.exercise.name)
+                        .font(.marbleBody(22))
+                        .foregroundStyle(Color("marblePrimary"))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 18)
+                        .background(
+                            VStack {
+                                Spacer()
+                                Rectangle()
+                                    .fill(Color("marblePrimary").opacity(0.08))
+                                    .frame(height: 0.5)
+                            }
+                        )
+                }
+            }
+            .padding(.bottom, 140)
+        }
+        .background(Color("marbleBackground"))
     }
 
     /// Exercise header — name + ⋯ menu (Replace / Remove). Same ID-
@@ -201,6 +225,18 @@ struct TemplateEditorView: View {
                 Text(entry.wrappedValue.exercise.name)
                     .font(.marbleBody(22))
                     .foregroundStyle(Color("marblePrimary"))
+                    // Long-press the name to enter reorder mode
+                    // directly — no dedicated "Reorder" menu button.
+                    .gesture(
+                        LongPressGesture(minimumDuration: 0.4)
+                            .onEnded { _ in
+                                guard entries.count >= 2 else { return }
+                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+                                    isReordering = true
+                                }
+                            }
+                    )
 
                 Spacer()
 
@@ -355,24 +391,10 @@ struct TemplateEditorView: View {
 
             Spacer()
 
-            // Template-level menu — only Reorder for now (no Discard,
-            // since dismiss == undo for an unsaved template).
-            Menu {
-                Button {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-                        isReordering = true
-                    }
-                } label: {
-                    Label("Reorder exercises", systemImage: "arrow.up.arrow.down")
-                }
-                .disabled(entries.count < 2)
-            } label: {
-                Image(systemName: "ellipsis")
-                    .font(.system(size: 15, weight: .medium))
-                    .marbleGlassCapsule(size: 44)
-            }
-            .buttonStyle(.plain)
+            // No template-level ⋯ menu — Reorder is triggered via
+            // long-press on an exercise name, and there's no Discard
+            // for a template (dismiss == undo for an unsaved one,
+            // SAVE is what commits).
 
             // SAVE — glass pill, mirrors FINISH on ActiveWorkoutView so
             // both commits look like the same gesture. Disabled when the
