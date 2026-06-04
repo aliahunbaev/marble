@@ -188,6 +188,14 @@ extension CollectionBridge {
         /// drag-start to anchor the dragged cell. Restored on drag-end.
         weak var anchoredScrollView: UIScrollView?
         var anchoredTopInsetDelta: CGFloat = 0
+        /// Outer ScrollView captured at drag-start regardless of
+        /// whether we anchored — used to drive edge-zone auto-scroll
+        /// while the user is dragging an exercise toward the top or
+        /// bottom of the visible area.
+        weak var dragScrollView: UIScrollView?
+        private var dragDisplayLink: CADisplayLink?
+        private var dragScrollVelocity: CGFloat = 0
+        private var lastTouchInWindow: CGPoint = .zero
         private var contentSizeObservation: NSKeyValueObservation?
 
         init(parent: CollectionBridge) {
@@ -272,6 +280,12 @@ extension CollectionBridge {
                     .convert(CGPoint.zero, to: outerScrollView).y ?? 0
                 let preContentOffset = outerScrollView?.contentOffset.y ?? 0
 
+                // Cache the outer scroll view for the duration of
+                // the drag so .changed can drive edge-zone
+                // auto-scroll independent of whether the anchor
+                // ended up needing inset expansion.
+                self.dragScrollView = outerScrollView
+
                 parent.onDragStart?()
                 // The cell collapses from full-height (title + sets +
                 // +SET button — can be 400-600pt) down to just the
@@ -329,17 +343,85 @@ extension CollectionBridge {
                 }
             case .changed:
                 collectionView.updateInteractiveMovementTargetPosition(location)
+                // Drive edge-zone auto-scroll. If the finger is
+                // within `edgeZone` points of the top or bottom of
+                // the outer scroll view's visible area, kick off a
+                // CADisplayLink that scrolls in that direction
+                // continuously (faster the closer to the edge) and
+                // re-targets UCV each frame so the drop position
+                // tracks the finger. Outside the edge zones, stop.
+                if let scroll = dragScrollView, let host = scroll.superview {
+                    let touchInHost = gesture.location(in: host)
+                    lastTouchInWindow = gesture.location(in: nil)
+                    let edgeZone: CGFloat = 110
+                    let topZone = scroll.frame.minY + edgeZone
+                    let botZone = scroll.frame.maxY - edgeZone
+                    var velocity: CGFloat = 0
+                    if touchInHost.y < topZone {
+                        let depth = topZone - touchInHost.y
+                        velocity = -min(max(depth * 0.18, 1.5), 18)
+                    } else if touchInHost.y > botZone {
+                        let depth = touchInHost.y - botZone
+                        velocity = min(max(depth * 0.18, 1.5), 18)
+                    }
+                    dragScrollVelocity = velocity
+                    if velocity != 0 {
+                        startAutoScroll()
+                    } else {
+                        stopAutoScroll()
+                    }
+                }
             case .ended:
-                NSLog("[ReorderAnchor] long-press .ended")
+                stopAutoScroll()
+                dragScrollView = nil
                 collectionView.endInteractiveMovement()
                 restoreAnchorInset()
                 parent.onDragEnd?()
             default:
-                NSLog("[ReorderAnchor] long-press default state=\(gesture.state.rawValue)")
+                stopAutoScroll()
+                dragScrollView = nil
                 collectionView.cancelInteractiveMovement()
                 restoreAnchorInset()
                 parent.onDragEnd?()
             }
+        }
+
+        /// CADisplayLink callback driving edge-zone auto-scroll. Each
+        /// frame, advance the outer scroll view by `dragScrollVelocity`
+        /// (clamped to its valid range) and re-target the UCV
+        /// interactive movement at the finger's current window-space
+        /// position, so the drop position tracks the finger as the
+        /// page slides under it.
+        @objc private func autoScrollTick() {
+            guard let scroll = dragScrollView, dragScrollVelocity != 0 else {
+                stopAutoScroll()
+                return
+            }
+            let newY = scroll.contentOffset.y + dragScrollVelocity
+            let minY = -scroll.contentInset.top
+            let maxY = max(minY,
+                scroll.contentSize.height
+                - scroll.bounds.height
+                + scroll.contentInset.bottom)
+            let clampedY = max(minY, min(newY, maxY))
+            if clampedY == scroll.contentOffset.y { return }
+            scroll.contentOffset.y = clampedY
+            guard let cv = collectionView else { return }
+            let inUCV = cv.convert(lastTouchInWindow, from: nil)
+            cv.updateInteractiveMovementTargetPosition(inUCV)
+        }
+
+        private func startAutoScroll() {
+            guard dragDisplayLink == nil else { return }
+            let link = CADisplayLink(target: self, selector: #selector(autoScrollTick))
+            link.add(to: .main, forMode: .common)
+            dragDisplayLink = link
+        }
+
+        private func stopAutoScroll() {
+            dragDisplayLink?.invalidate()
+            dragDisplayLink = nil
+            dragScrollVelocity = 0
         }
 
         /// Undo the contentInset.top expansion applied at drag-start.
@@ -349,15 +431,10 @@ extension CollectionBridge {
         /// haven't, which feels like the page "got stuck" at the
         /// anchored position.
         private func restoreAnchorInset() {
-            NSLog("[ReorderAnchor] restoreAnchorInset called. anchored=\(anchoredScrollView != nil) delta=\(anchoredTopInsetDelta)")
-            guard let scroll = anchoredScrollView, anchoredTopInsetDelta > 0 else {
-                NSLog("[ReorderAnchor] restore guard failed")
-                return
-            }
+            guard let scroll = anchoredScrollView, anchoredTopInsetDelta > 0 else { return }
             let delta = anchoredTopInsetDelta
             let originalInsetTop = scroll.contentInset.top - delta
             let targetOffsetY = scroll.contentOffset.y + delta
-            NSLog("[ReorderAnchor] restoring: current insetTop=\(scroll.contentInset.top) → \(originalInsetTop), current offset=\(scroll.contentOffset.y) → \(targetOffsetY)")
             anchoredScrollView = nil
             anchoredTopInsetDelta = 0
             var inset = scroll.contentInset
@@ -367,11 +444,6 @@ extension CollectionBridge {
                 x: scroll.contentOffset.x,
                 y: targetOffsetY
             )
-            NSLog("[ReorderAnchor] post-restore: insetTop=\(scroll.contentInset.top) offset=\(scroll.contentOffset.y) contentSize=\(scroll.contentSize) bounds=\(scroll.bounds.size)")
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak scroll] in
-                guard let s = scroll else { return }
-                NSLog("[ReorderAnchor] +500ms: insetTop=\(s.contentInset.top) offset=\(s.contentOffset.y) contentSize=\(s.contentSize) bounds=\(s.bounds.size)")
-            }
         }
 
         func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
