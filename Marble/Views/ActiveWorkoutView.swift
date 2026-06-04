@@ -668,21 +668,25 @@ struct ExerciseCell: View {
             .padding(.horizontal, 20)
             .padding(.bottom, 8)
 
-            ForEach(setsBinding) { $set in
-                let index = entry.sets.firstIndex(where: { $0.id == set.id }) ?? 0
-                let prev = PreviousPerformance.previousComponents(
-                    for: entry.exercise,
-                    setIndex: index,
-                    context: modelContext
-                )
-                SwipeToDeleteRow(
-                    onDelete: {
-                        let setID = set.id
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                            removeSet(id: setID)
-                        }
-                    }
-                ) {
+            // Native SwiftUI List for set rows so we get `.swipeActions`
+            // for free — same swipe-to-delete UX as Strong, with iOS's
+            // bulletproof gesture coordination handling field taps,
+            // horizontal swipe, and vertical scroll without us having
+            // to choreograph priorities. We confine the list with a
+            // measured fixed height and `.scrollDisabled` so it lays
+            // out statically inside the UCV-bridged exercise cell.
+            // The cell-level long-press for exercise reorder is now
+            // restricted to the top 60pt of the cell (the title bar),
+            // so swiping anywhere on these rows can't ever trigger a
+            // reorder by accident.
+            List {
+                ForEach(setsBinding) { $set in
+                    let index = entry.sets.firstIndex(where: { $0.id == set.id }) ?? 0
+                    let prev = PreviousPerformance.previousComponents(
+                        for: entry.exercise,
+                        setIndex: index,
+                        context: modelContext
+                    )
                     SetRowView(
                         setNumber: index + 1,
                         weight: $set.weight,
@@ -695,13 +699,34 @@ struct ExerciseCell: View {
                     )
                     .padding(.horizontal, 20)
                     .padding(.vertical, 10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .background(
                         set.isCompleted
                             ? Color("marblePrimary").opacity(0.04)
                             : Color("marbleBackground")
                     )
+                    .listRowInsets(EdgeInsets())
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                        Button(role: .destructive) {
+                            let setID = set.id
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                                removeSet(id: setID)
+                            }
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                    }
                 }
             }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .scrollDisabled(true)
+            // Each SetRowView is fieldHeight (52) + vertical padding
+            // (10*2) = 72pt. Sum gives the exact list height so it
+            // doesn't try to fill the screen.
+            .frame(height: CGFloat(entry.sets.count) * 72)
 
             Button {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()

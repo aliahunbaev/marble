@@ -235,18 +235,17 @@ extension CollectionBridge {
             switch gesture.state {
             case .began:
                 guard let indexPath = collectionView.indexPathForItem(at: location) else { return }
+                // Restrict reorder to the cell's header region (top
+                // 60pt). Long-presses on sets, fields, buttons further
+                // down should be handled by their own gestures (swipe-
+                // to-delete on set rows, etc.) without triggering
+                // exercise reorder. This is the pattern Strong uses —
+                // only the title area initiates reorder.
+                if let cell = collectionView.cellForItem(at: indexPath) {
+                    let cellLocation = collectionView.convert(location, to: cell)
+                    guard cellLocation.y <= 60 else { return }
+                }
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                // Tell SwiftUI to compact cells FIRST, then defer
-                // begin-interactive-movement to the next runloop tick.
-                // This sequence is critical for tall cells: UCV takes
-                // its drag snapshot synchronously at begin-time. If
-                // the cells haven't re-rendered compact yet, UCV
-                // snapshots the tall expanded cell, then centers it
-                // on the finger — making the cell appear to "jump up"
-                // hundreds of points. Deferring gives SwiftUI time
-                // to render the compact version, so UCV snapshots
-                // that. Small snapshot = small centering offset =
-                // cell stays under the finger.
                 parent.onDragStart?()
                 DispatchQueue.main.async { [weak collectionView] in
                     collectionView?.beginInteractiveMovementForItem(at: indexPath)
