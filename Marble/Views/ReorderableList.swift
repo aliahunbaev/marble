@@ -353,19 +353,26 @@ extension CollectionBridge {
                 if let scroll = dragScrollView, let host = scroll.superview {
                     let touchInHost = gesture.location(in: host)
                     lastTouchInWindow = gesture.location(in: nil)
+                    // Quadratic ramp keyed off normalized depth into
+                    // the edge zone, so just inside the zone you get
+                    // a near-zero crawl and only the very edge maxes
+                    // out the speed. Slower max overall — the
+                    // previous 18 px/frame (~1080 px/s) felt
+                    // teleport-y on a short list.
                     let edgeZone: CGFloat = 110
-                    let topZone = scroll.frame.minY + edgeZone
-                    let botZone = scroll.frame.maxY - edgeZone
+                    let maxVelocity: CGFloat = 7
+                    let topEdge = scroll.frame.minY + edgeZone
+                    let botEdge = scroll.frame.maxY - edgeZone
                     var velocity: CGFloat = 0
-                    if touchInHost.y < topZone {
-                        let depth = topZone - touchInHost.y
-                        velocity = -min(max(depth * 0.18, 1.5), 18)
-                    } else if touchInHost.y > botZone {
-                        let depth = touchInHost.y - botZone
-                        velocity = min(max(depth * 0.18, 1.5), 18)
+                    if touchInHost.y < topEdge {
+                        let ratio = min(1, (topEdge - touchInHost.y) / edgeZone)
+                        velocity = -(ratio * ratio) * maxVelocity
+                    } else if touchInHost.y > botEdge {
+                        let ratio = min(1, (touchInHost.y - botEdge) / edgeZone)
+                        velocity = (ratio * ratio) * maxVelocity
                     }
                     dragScrollVelocity = velocity
-                    if velocity != 0 {
+                    if abs(velocity) > 0.05 {
                         startAutoScroll()
                     } else {
                         stopAutoScroll()
