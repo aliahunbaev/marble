@@ -405,14 +405,7 @@ extension CollectionBridge {
                 return
             }
             let newY = scroll.contentOffset.y + dragScrollVelocity
-            // Use the ORIGINAL top inset (i.e. before we expanded
-            // it for anchoring) so auto-scroll stops at the natural
-            // top of the page where the workout title + timer sit.
-            // Without this subtraction, scrolling up would pull
-            // into the expanded inset's empty headroom, exposing a
-            // blank strip above the title.
-            let originalTopInset = scroll.contentInset.top - anchoredTopInsetDelta
-            let minY = -originalTopInset
+            let minY = -scroll.contentInset.top
             let maxY = max(minY,
                 scroll.contentSize.height
                 - scroll.bounds.height
