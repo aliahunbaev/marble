@@ -225,7 +225,18 @@ struct ActiveWorkoutView: View {
                             reorderState.isReordering = false
                         }
                     },
-                    reconfigureKey: AnyHashable(reorderState.isReordering)
+                    // Include each entry's set IDs so adding/removing
+                    // a set within any cell forces that cell to
+                    // reconfigure with the new content. Without this,
+                    // UCV reuses the cached cell (same exercise ID,
+                    // no diff) and the visible row list is stale even
+                    // though the underlying data changed.
+                    reconfigureKey: AnyHashable(
+                        "\(reorderState.isReordering)|" +
+                        session.entries.map { e in
+                            "\(e.id):\(e.sets.map { $0.id.uuidString }.joined(separator: ","))"
+                        }.joined(separator: ";")
+                    )
                 ) { entry in
                     ExerciseCell(
                         entry: entry,

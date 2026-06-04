@@ -185,7 +185,12 @@ struct TemplateEditorView: View {
                             reorderState.isReordering = false
                         }
                     },
-                    reconfigureKey: AnyHashable(reorderState.isReordering)
+                    reconfigureKey: AnyHashable(
+                        "\(reorderState.isReordering)|" +
+                        entries.map { e in
+                            "\(e.id):\(e.sets.map { $0.id.uuidString }.joined(separator: ","))"
+                        }.joined(separator: ";")
+                    )
                 ) { entry in
                     ExerciseCell(
                         entry: entry,
