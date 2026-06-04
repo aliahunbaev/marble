@@ -201,49 +201,42 @@ struct TrainView: View {
         }
     }
 
-    /// Native `List` + `.onMove`. iOS handles long-press → lift → drag
-    /// → drop natively with proper scroll coordination. The drag
-    /// preview is iOS-native (a slightly off-white lifted card) —
-    /// not a custom marble surface, but the *behavior* is exactly the
-    /// "lift, drag, others reflow" UX from Reminders / Files.
+    /// Uses the `ReorderableList` UICollectionView bridge (same
+    /// architecture as Track's metrics grid, single-column variant)
+    /// for the iOS-native long-press → lift → drag → reflow → snap
+    /// reorder UX. Consistent behavior across every reorderable
+    /// surface in the app.
     private var templatesList: some View {
-        List {
-            ForEach(templates) { template in
-                Button {
-                    selectedTemplate = template
-                } label: {
-                    templateRow(template)
-                }
-                .buttonStyle(.plain)
-                .listRowInsets(EdgeInsets())
-                .listRowSeparator(.visible, edges: .bottom)
-                .listRowSeparatorTint(Color("marblePrimary").opacity(0.06))
-                .listRowBackground(Color.clear)
-            }
-            .onMove(perform: moveTemplates)
+        ReorderableList(
+            items: Array(templates),
+            itemID: { $0.cloudID },
+            onReorder: { newOrder in commitTemplateOrder(newOrder) },
+            onTap: { template in selectedTemplate = template }
+        ) { template in
+            templateRow(template)
+                .background(
+                    // Hairline under each row except the last. Lives
+                    // inside the cell content so it travels into the
+                    // collection-view rendering (and the lifted-card
+                    // drag preview drops it correctly when needed).
+                    VStack {
+                        Spacer()
+                        Rectangle()
+                            .fill(Color("marblePrimary").opacity(0.06))
+                            .frame(height: 0.5)
+                    }
+                )
         }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-        .scrollDisabled(true)
-        // Fixed approximate height per row × count. Generous enough
-        // (160pt) to accommodate templates with longer handwritten
-        // watermarks (6 exercises = ~6 lines of script font) without
-        // clipping. List rows still size themselves intrinsically;
-        // this frame is just the outer container so the nested List
-        // doesn't collapse inside the outer ScrollView.
-        .frame(height: CGFloat(templates.count) * 160)
     }
 
-    private func moveTemplates(from source: IndexSet, to destination: Int) {
-        var reordered = templates
-        reordered.move(fromOffsets: source, toOffset: destination)
-        for (index, template) in reordered.enumerated() {
+    private func commitTemplateOrder(_ newOrder: [WorkoutTemplate]) {
+        for (index, template) in newOrder.enumerated() {
             if template.displayOrder != index {
                 template.displayOrder = index
             }
         }
         try? modelContext.save()
-        for template in reordered {
+        for template in newOrder {
             CloudSyncService.shared.uploadTemplate(template)
         }
     }
