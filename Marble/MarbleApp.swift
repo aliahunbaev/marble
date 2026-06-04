@@ -32,6 +32,12 @@ struct MarbleApp: App {
         ]) { result in
             if case .success(let container) = result {
                 ExerciseSeed.seedIfNeeded(context: container.mainContext)
+                // Repair templates whose `.exercises` relationship is
+                // empty but `exerciseNames` is populated — the legacy
+                // fingerprint of the pre-8c234ac upload bug. Runs after
+                // seeds so the Exercise lookup table is fully present;
+                // idempotent, no-op on healthy templates.
+                CloudSyncService.shared.repairBrokenTemplates(context: container.mainContext)
                 Task { @MainActor in
                     auth.modelContext = container.mainContext
                 }

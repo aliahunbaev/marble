@@ -217,6 +217,43 @@ final class CloudSyncService {
     /// cloud docs whose local row was already removed but never
     /// propagated — the fingerprint of the pre-await-deletes bug).
     /// Returns total deleted count for a confirmation alert.
+    /// Backfill the SwiftData `.exercises` relationship from
+    /// `exerciseNames` for any template that's in the "broken" state
+    /// (names populated, relationship empty). This is the legacy
+    /// fingerprint of the upload bug fixed in 8c234ac, plus any
+    /// restore where Exercise lookup failed during the post-restore
+    /// resolve. Idempotent — repairing a template that's already
+    /// healthy is a no-op.
+    ///
+    /// Safe to run on every app launch. Reads local data only;
+    /// touches no network.
+    @discardableResult
+    func repairBrokenTemplates(context: ModelContext) -> Int {
+        let templates = (try? context.fetch(FetchDescriptor<WorkoutTemplate>())) ?? []
+        let allExercises = (try? context.fetch(FetchDescriptor<Exercise>())) ?? []
+        let byName = Dictionary(uniqueKeysWithValues: allExercises.map { ($0.name, $0) })
+
+        var repaired = 0
+        for template in templates {
+            guard template.exercises.isEmpty, !template.exerciseNames.isEmpty else {
+                continue
+            }
+            let resolved = template.exerciseNames.compactMap { byName[$0] }
+            // Only commit if we actually found matches — if exercise
+            // names in the template don't resolve to any local
+            // Exercise (e.g. custom exercises not seeded), leave the
+            // relationship empty rather than partially populate it.
+            if !resolved.isEmpty {
+                template.exercises = resolved
+                repaired += 1
+            }
+        }
+        if repaired > 0 {
+            try? context.save()
+        }
+        return repaired
+    }
+
     func cleanupEmptyTemplates(context: ModelContext) async -> Int {
         var localDeleted = 0
         var cloudDeleted = 0
