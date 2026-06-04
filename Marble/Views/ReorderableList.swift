@@ -341,18 +341,35 @@ extension CollectionBridge {
         }
 
         /// Undo the contentInset.top expansion applied at drag-start.
+        /// Animated so the scroll position changes in lockstep with
+        /// the cells' spring expansion — doing it instantly leaves a
+        /// frame where the inset has snapped back but the cells
+        /// haven't, which feels like the page "got stuck" at the
+        /// anchored position.
         private func restoreAnchorInset() {
             guard let scroll = anchoredScrollView, anchoredTopInsetDelta > 0 else { return }
-            let newContentOffset = scroll.contentOffset.y + anchoredTopInsetDelta
-            var inset = scroll.contentInset
-            inset.top -= anchoredTopInsetDelta
-            scroll.contentInset = inset
-            scroll.setContentOffset(
-                CGPoint(x: scroll.contentOffset.x, y: newContentOffset),
-                animated: false
-            )
+            let delta = anchoredTopInsetDelta
+            let originalInsetTop = scroll.contentInset.top - delta
+            let targetOffsetY = scroll.contentOffset.y + delta
             anchoredScrollView = nil
             anchoredTopInsetDelta = 0
+            UIView.animate(
+                withDuration: 0.32,
+                delay: 0,
+                usingSpringWithDamping: 0.85,
+                initialSpringVelocity: 0,
+                options: [.curveEaseInOut, .allowUserInteraction],
+                animations: {
+                    var inset = scroll.contentInset
+                    inset.top = originalInsetTop
+                    scroll.contentInset = inset
+                    scroll.contentOffset = CGPoint(
+                        x: scroll.contentOffset.x,
+                        y: targetOffsetY
+                    )
+                },
+                completion: nil
+            )
         }
 
         func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
