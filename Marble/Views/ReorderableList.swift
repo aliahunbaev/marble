@@ -196,11 +196,21 @@ extension CollectionBridge {
             case .began:
                 guard let indexPath = collectionView.indexPathForItem(at: location) else { return }
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                // Tell SwiftUI the drag is starting so cells can
-                // re-render compact BEFORE the interactive movement
-                // snapshots the cell content.
+                // Tell SwiftUI to compact cells FIRST, then defer
+                // begin-interactive-movement to the next runloop tick.
+                // This sequence is critical for tall cells: UCV takes
+                // its drag snapshot synchronously at begin-time. If
+                // the cells haven't re-rendered compact yet, UCV
+                // snapshots the tall expanded cell, then centers it
+                // on the finger — making the cell appear to "jump up"
+                // hundreds of points. Deferring gives SwiftUI time
+                // to render the compact version, so UCV snapshots
+                // that. Small snapshot = small centering offset =
+                // cell stays under the finger.
                 parent.onDragStart?()
-                collectionView.beginInteractiveMovementForItem(at: indexPath)
+                DispatchQueue.main.async { [weak collectionView] in
+                    collectionView?.beginInteractiveMovementForItem(at: indexPath)
+                }
             case .changed:
                 collectionView.updateInteractiveMovementTargetPosition(location)
             case .ended:

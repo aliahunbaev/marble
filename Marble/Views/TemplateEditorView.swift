@@ -50,6 +50,11 @@ struct TemplateEditorView: View {
     /// via @Query so the count is always live.
     @Query(sort: \WorkoutTemplate.displayOrder) private var allTemplates: [WorkoutTemplate]
 
+    /// Shared collapse state across all exercise cells. Same pattern
+    /// as ActiveWorkoutView — cells compact synchronously when drag
+    /// starts so UCV's snapshot is small, animate back on release.
+    @StateObject private var reorderState = ExerciseReorderState()
+
     private let existingTemplate: WorkoutTemplate?
 
     init(template: WorkoutTemplate? = nil) {
@@ -171,11 +176,20 @@ struct TemplateEditorView: View {
                     items: entries,
                     itemID: { $0.id.uuidString },
                     onReorder: { newOrder in entries = newOrder },
-                    onTap: nil
+                    onTap: nil,
+                    onDragStart: {
+                        reorderState.isReordering = true
+                    },
+                    onDragEnd: {
+                        withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
+                            reorderState.isReordering = false
+                        }
+                    }
                 ) { entry in
                     ExerciseCell(
                         entry: entry,
                         entries: $entries,
+                        reorderState: reorderState,
                         onReplace: { entryID in
                             replacingEntryID = entryID
                             showingLibrary = true
