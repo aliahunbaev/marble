@@ -113,15 +113,29 @@ struct ExerciseLibraryView: View {
                     }
                 }
             }
-            .alert("New Exercise", isPresented: $showingCreate) {
-                TextField("Exercise name", text: $newName)
-                TextField("Muscle group (e.g. Chest)", text: $newMuscleGroup)
-                Button("Add") { createExercise() }
-                Button("Cancel", role: .cancel) {
+            .marbleInputDialog(
+                "New exercise",
+                isPresented: $showingCreate,
+                fields: [
+                    MarbleDialogField(
+                        placeholder: "Exercise name",
+                        text: $newName,
+                        autocapitalization: .words
+                    ),
+                    MarbleDialogField(
+                        placeholder: "Muscle group (e.g. Chest)",
+                        text: $newMuscleGroup,
+                        autocapitalization: .words
+                    ),
+                ],
+                confirmLabel: "Add",
+                confirmEnabled: !newName.trimmingCharacters(in: .whitespaces).isEmpty,
+                onConfirm: { createExercise() },
+                onCancel: {
                     newName = ""
                     newMuscleGroup = ""
                 }
-            }
+            )
         }
     }
 

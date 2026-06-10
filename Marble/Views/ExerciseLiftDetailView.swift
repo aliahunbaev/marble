@@ -81,11 +81,13 @@ struct ExerciseLiftDetailView: View {
         }
         .marbleAtmosphereBackground()
         .navigationBarTitleDisplayMode(.inline)
-        .alert(manualEntryTitle, isPresented: $showingManualEntry) {
-            manualEntryAlertContent
-        } message: {
-            Text("Enter value manually")
-        }
+        .marbleInputDialog(
+            manualEntryTitle,
+            isPresented: $showingManualEntry,
+            fields: manualEntryFields,
+            confirmLabel: "Save",
+            onConfirm: { saveManualEntry() }
+        )
         .onDisappear {
             // Skip the catch-all upload when the user removed the
             // lift via the destructive button — uploading a deleted
@@ -338,37 +340,36 @@ struct ExerciseLiftDetailView: View {
         manualValueText = ""
     }
 
-    @ViewBuilder
-    private var manualEntryAlertContent: some View {
+    /// Fields for the manual-entry card — weight + reps for the
+    /// bestWeight metric, a single value for the others.
+    private var manualEntryFields: [MarbleDialogField] {
         if trackedLift.metricType == "bestWeight" {
-            TextField("Weight (lb)", text: $manualWeightText)
-                .keyboardType(.decimalPad)
-            TextField("Reps", text: $manualRepsText)
-                .keyboardType(.numberPad)
-            Button("Save") {
-                if let w = Double(manualWeightText), let r = Int(manualRepsText) {
-                    trackedLift.manualBestWeight = w
-                    trackedLift.manualBestWeightReps = r
-                    try? modelContext.save()
-                }
+            return [
+                MarbleDialogField(placeholder: "Weight (lb)", text: $manualWeightText, keyboard: .decimalPad),
+                MarbleDialogField(placeholder: "Reps", text: $manualRepsText, keyboard: .numberPad),
+            ]
+        }
+        return [
+            MarbleDialogField(placeholder: "Value (lb)", text: $manualValueText, keyboard: .decimalPad),
+        ]
+    }
+
+    private func saveManualEntry() {
+        if trackedLift.metricType == "bestWeight" {
+            if let w = Double(manualWeightText), let r = Int(manualRepsText) {
+                trackedLift.manualBestWeight = w
+                trackedLift.manualBestWeightReps = r
+                try? modelContext.save()
             }
-            Button("Cancel", role: .cancel) {}
-        } else {
-            TextField("Value (lb)", text: $manualValueText)
-                .keyboardType(.decimalPad)
-            Button("Save") {
-                if let v = Double(manualValueText) {
-                    switch trackedLift.metricType {
-                    case "oneRepMax":
-                        trackedLift.manualOneRepMax = v
-                    case "maxVolume":
-                        trackedLift.manualMaxVolume = v
-                    default: break
-                    }
-                    try? modelContext.save()
-                }
+        } else if let v = Double(manualValueText) {
+            switch trackedLift.metricType {
+            case "oneRepMax":
+                trackedLift.manualOneRepMax = v
+            case "maxVolume":
+                trackedLift.manualMaxVolume = v
+            default: break
             }
-            Button("Cancel", role: .cancel) {}
+            try? modelContext.save()
         }
     }
 

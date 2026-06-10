@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // MARK: - Branded confirmation dialog
 
@@ -169,5 +170,174 @@ extension View {
             isPresented: isPresented,
             buttons: buttons
         ))
+    }
+
+    /// Input-bearing sibling of `marbleDialog` — replaces system
+    /// alerts that contain TextFields. Fields render between the
+    /// title and the buttons, in the same editorial card.
+    func marbleInputDialog(
+        _ title: String,
+        message: String? = nil,
+        isPresented: Binding<Bool>,
+        fields: [MarbleDialogField],
+        confirmLabel: String,
+        confirmEnabled: Bool = true,
+        onConfirm: @escaping () -> Void,
+        onCancel: @escaping () -> Void = {}
+    ) -> some View {
+        modifier(MarbleInputDialogModifier(
+            title: title,
+            message: message,
+            isPresented: isPresented,
+            fields: fields,
+            confirmLabel: confirmLabel,
+            confirmEnabled: confirmEnabled,
+            onConfirm: onConfirm,
+            onCancel: onCancel
+        ))
+    }
+}
+
+// MARK: - Input dialog
+
+/// One text field inside a `marbleInputDialog` card.
+struct MarbleDialogField: Identifiable {
+    let id = UUID()
+    let placeholder: String
+    let text: Binding<String>
+    var keyboard: UIKeyboardType = .default
+    var autocapitalization: TextInputAutocapitalization = .never
+}
+
+private struct MarbleInputDialogModifier: ViewModifier {
+    let title: String
+    let message: String?
+    @Binding var isPresented: Bool
+    let fields: [MarbleDialogField]
+    let confirmLabel: String
+    let confirmEnabled: Bool
+    let onConfirm: () -> Void
+    let onCancel: () -> Void
+
+    @FocusState private var focusedFieldID: UUID?
+
+    func body(content: Content) -> some View {
+        content.overlay {
+            if isPresented {
+                ZStack {
+                    Color.black.opacity(0.45)
+                        .ignoresSafeArea()
+                        .transition(.opacity)
+                        .onTapGesture { dismiss(thenRun: onCancel) }
+
+                    card
+                        .padding(.horizontal, 32)
+                        .transition(.opacity.combined(with: .scale(scale: 0.94)))
+                }
+                .animation(.spring(response: 0.28, dampingFraction: 0.86), value: isPresented)
+                .onAppear {
+                    // Focus the first field once the card has landed.
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                        focusedFieldID = fields.first?.id
+                    }
+                }
+            }
+        }
+    }
+
+    private var card: some View {
+        VStack(spacing: 0) {
+            VStack(spacing: 10) {
+                Text(title)
+                    .font(.marbleBody(20))
+                    .foregroundStyle(Color("marblePrimary"))
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let message {
+                    Text(message)
+                        .font(.marbleBody(14))
+                        .foregroundStyle(Color("marbleSecondary"))
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(.horizontal, 28)
+            .padding(.top, 28)
+            .padding(.bottom, 20)
+
+            // Fields — underlined editorial inputs, matching the
+            // onboarding name screen's treatment rather than boxed
+            // system fields.
+            VStack(spacing: 18) {
+                ForEach(fields) { field in
+                    VStack(spacing: 8) {
+                        TextField(field.placeholder, text: field.text)
+                            .font(.marbleBody(18))
+                            .foregroundStyle(Color("marblePrimary"))
+                            .multilineTextAlignment(.center)
+                            .keyboardType(field.keyboard)
+                            .textInputAutocapitalization(field.autocapitalization)
+                            .autocorrectionDisabled()
+                            .focused($focusedFieldID, equals: field.id)
+                        Rectangle()
+                            .fill(Color("marblePrimary").opacity(0.15))
+                            .frame(height: 0.5)
+                    }
+                }
+            }
+            .padding(.horizontal, 36)
+            .padding(.bottom, 24)
+
+            Rectangle()
+                .fill(Color("marblePrimary").opacity(0.08))
+                .frame(height: 0.5)
+
+            VStack(spacing: 0) {
+                Button {
+                    dismiss(thenRun: onConfirm)
+                } label: {
+                    Text(confirmLabel)
+                        .font(.marbleBody(16))
+                        .foregroundStyle(Color("marblePrimary").opacity(confirmEnabled ? 1 : 0.3))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .disabled(!confirmEnabled)
+
+                Rectangle()
+                    .fill(Color("marblePrimary").opacity(0.06))
+                    .frame(height: 0.5)
+
+                Button {
+                    dismiss(thenRun: onCancel)
+                } label: {
+                    Text("Cancel")
+                        .font(.marbleBody(16))
+                        .foregroundStyle(Color("marbleSecondary"))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .frame(maxWidth: 340)
+        .background {
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(Color("marbleBackground"))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .stroke(Color("marblePrimary").opacity(0.08), lineWidth: 0.5)
+                )
+                .shadow(color: Color.black.opacity(0.35), radius: 24, x: 0, y: 8)
+        }
+    }
+
+    private func dismiss(thenRun action: @escaping () -> Void) {
+        focusedFieldID = nil
+        isPresented = false
+        DispatchQueue.main.async { action() }
     }
 }
