@@ -77,12 +77,52 @@ struct SettingsView: View {
                     }
                 }
             }
+            // All dialogs attached at the screen root so their
+            // full-screen overlay centres on the page. Attaching a
+            // marbleDialog to an inner Button sizes the overlay to
+            // the button, which made them appear next to the button
+            // instead of centred.
             .marbleDialog(
                 "Clear all data?",
                 message: "This will delete all workouts, templates, and exercise data. This cannot be undone.",
                 isPresented: $showingClearConfirmation,
                 buttons: [
                     .destructive("Clear") { clearAllData() },
+                    .cancel(),
+                ]
+            )
+            .marbleDialog(
+                "Cleanup complete",
+                message: cleanupCount == 0
+                    ? "No empty or orphan templates found."
+                    : "Removed \(cleanupCount) empty template\(cleanupCount == 1 ? "" : "s").",
+                isPresented: $showingCleanupResult,
+                buttons: [
+                    .cancel("OK"),
+                ]
+            )
+            .marbleDialog(
+                "Sign out?",
+                isPresented: $showingSignOutConfirmation,
+                buttons: [
+                    .standard("Sign Out") {
+                        auth.signOut()
+                        dismiss()
+                    },
+                    .cancel(),
+                ]
+            )
+            .marbleDialog(
+                "Delete account?",
+                message: "This will permanently delete your account and profile. Your local workout data will remain on this device.",
+                isPresented: $showingDeleteConfirmation,
+                buttons: [
+                    .destructive("Delete") {
+                        Task {
+                            await auth.deleteAccount()
+                            dismiss()
+                        }
+                    },
                     .cancel(),
                 ]
             )
@@ -261,16 +301,6 @@ struct SettingsView: View {
             }
             .buttonStyle(.plain)
         }
-        .marbleDialog(
-            "Cleanup complete",
-            message: cleanupCount == 0
-                ? "No empty or orphan templates found."
-                : "Removed \(cleanupCount) empty template\(cleanupCount == 1 ? "" : "s").",
-            isPresented: $showingCleanupResult,
-            buttons: [
-                .cancel("OK"),
-            ]
-        )
     }
 
     // MARK: - Account
@@ -287,17 +317,6 @@ struct SettingsView: View {
                     .marbleSecondaryButton()
             }
             .buttonStyle(.plain)
-            .marbleDialog(
-                "Sign out?",
-                isPresented: $showingSignOutConfirmation,
-                buttons: [
-                    .standard("Sign Out") {
-                        auth.signOut()
-                        dismiss()
-                    },
-                    .cancel(),
-                ]
-            )
 
             // Delete Account — destructive, irreversible
             Button {
@@ -307,20 +326,6 @@ struct SettingsView: View {
                     .marbleDestructiveButton()
             }
             .buttonStyle(.plain)
-            .marbleDialog(
-                "Delete account?",
-                message: "This will permanently delete your account and profile. Your local workout data will remain on this device.",
-                isPresented: $showingDeleteConfirmation,
-                buttons: [
-                    .destructive("Delete") {
-                        Task {
-                            await auth.deleteAccount()
-                            dismiss()
-                        }
-                    },
-                    .cancel(),
-                ]
-            )
         }
     }
 
