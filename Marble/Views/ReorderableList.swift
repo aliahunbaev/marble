@@ -38,7 +38,18 @@ struct ReorderableList<Item, Cell: View>: View {
     var reconfigureKey: AnyHashable? = nil
     @ViewBuilder let cellContent: (Item) -> Cell
 
-    @State private var measuredHeight: CGFloat = 60
+    // The collection view's contentSize, observed via KVO. 0 means
+    // "not measured yet."
+    @State private var measuredHeight: CGFloat = 0
+
+    /// Height enough to realize the first row so the self-sizing cascade
+    /// can start. Used ONLY before the first real measurement — once the
+    /// KVO reports a real contentSize we use that exactly. Without a
+    /// non-zero bootstrap, an empty→non-empty list (e.g. a brand-new
+    /// template gaining its first exercise) stays at height 0: a
+    /// 0-height collection view realizes no cells, so contentSize never
+    /// grows and the list is invisible forever.
+    private let bootstrapHeight: CGFloat = 320
 
     var body: some View {
         CollectionBridge(
@@ -50,13 +61,20 @@ struct ReorderableList<Item, Cell: View>: View {
             onDragEnd: onDragEnd,
             reconfigureKey: reconfigureKey,
             onHeightChange: { newHeight in
-                if abs(newHeight - measuredHeight) > 0.5 {
-                    measuredHeight = newHeight
+                // Defer the @State write off the current runloop turn:
+                // the contentSize KVO can fire while UIKit is laying out
+                // inside a SwiftUI update, and mutating @State there
+                // trips AttributeGraph's "setting value during update"
+                // precondition (a crash). Async hops us out of it.
+                DispatchQueue.main.async {
+                    if abs(newHeight - measuredHeight) > 0.5 {
+                        measuredHeight = newHeight
+                    }
                 }
             },
             cellContent: cellContent
         )
-        .frame(height: measuredHeight)
+        .frame(height: items.isEmpty ? 0 : (measuredHeight > 0 ? measuredHeight : bootstrapHeight))
     }
 }
 
@@ -138,6 +156,11 @@ private struct CollectionBridge<Item, Cell: View>: UIViewRepresentable {
         return collectionView
     }
 
+    /// Self-size to the collection view's content. Forcing a layout at
+    /// the proposed width computes the real content height even when the
+    /// list was previously empty (proposed height 0) — which is what
+    /// breaks the empty→non-empty deadlock the old measuredHeight frame
+    /// suffered. Returning nil width lets the list fill its container.
     func updateUIView(_ collectionView: UICollectionView, context: Context) {
         context.coordinator.parent = self
         context.coordinator.apply(items: items, animated: true)
@@ -250,21 +273,32 @@ extension CollectionBridge {
             switch gesture.state {
             case .began:
                 guard let indexPath = collectionView.indexPathForItem(at: location) else { return }
-                // Restrict reorder to the cell's header region (top
-                // 60pt). Long-presses on sets, fields, buttons further
-                // down should be handled by their own gestures (swipe-
-                // to-delete on set rows, etc.) without triggering
-                // exercise reorder. This is the pattern Strong uses —
-                // only the title area initiates reorder.
-                if let cell = collectionView.cellForItem(at: indexPath) {
+
+                // Two kinds of consumer:
+                //   * Collapsing lists (ActiveWorkout / TemplateEditor
+                //     exercise cells) shrink each cell to its title
+                //     while dragging. They signal this by providing an
+                //     onDragStart closure. For them we restrict the
+                //     drag grab to the top 60pt (so taps on sets/fields
+                //     lower down keep their own gestures) and run the
+                //     collapse-aware anchor + polling below.
+                //   * Simple lists (Train templates, Track metrics)
+                //     don't collapse — onDragStart is nil. The WHOLE
+                //     row must initiate reorder, and movement can begin
+                //     immediately with no polling/anchor. Applying the
+                //     60pt restriction here was a regression that broke
+                //     reorder on those lists.
+                let collapses = parent.onDragStart != nil
+
+                if collapses, let cell = collectionView.cellForItem(at: indexPath) {
                     let cellLocation = collectionView.convert(location, to: cell)
                     guard cellLocation.y <= 60 else { return }
                 }
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
 
                 // Walk up to find the enclosing SwiftUI ScrollView's
-                // UIScrollView so we can anchor the dragged cell at
-                // the touch point during collapse.
+                // UIScrollView — used for the collapse anchor and for
+                // edge-zone auto-scroll (which both kinds of list get).
                 let outerScrollView: UIScrollView? = {
                     var v: UIView? = collectionView.superview
                     while let next = v {
@@ -275,35 +309,33 @@ extension CollectionBridge {
                     }
                     return nil
                 }()
+                self.dragScrollView = outerScrollView
+
+                parent.onDragStart?()
+
+                guard collapses else {
+                    // Simple list: cell size is stable, begin on the
+                    // whole row right away.
+                    collectionView.beginInteractiveMovementForItem(at: indexPath)
+                    return
+                }
+
+                // Collapsing list: the cell shrinks from full height
+                // (title + sets + +SET, up to 400-600pt) to just the
+                // title (~60pt) when reorderState.isReordering flips.
+                // That chain — SwiftUI state change → body recompute →
+                // UIHostingConfiguration intrinsicContentSize change →
+                // UCV invalidateLayout → cellForItem bounds update —
+                // spans multiple runloop hops. beginInteractiveMovement
+                // snapshots the cell at its size RIGHT NOW; called too
+                // early it captures the tall version and centers it on
+                // the finger, making the cell jump. Poll cellForItem's
+                // bounds until it shrinks, then anchor + begin. Capped
+                // at 10 ticks so we always begin eventually.
                 let preCellMinY: CGFloat = collectionView
                     .cellForItem(at: indexPath)?
                     .convert(CGPoint.zero, to: outerScrollView).y ?? 0
                 let preContentOffset = outerScrollView?.contentOffset.y ?? 0
-
-                // Cache the outer scroll view for the duration of
-                // the drag so .changed can drive edge-zone
-                // auto-scroll independent of whether the anchor
-                // ended up needing inset expansion.
-                self.dragScrollView = outerScrollView
-
-                parent.onDragStart?()
-                // The cell collapses from full-height (title + sets +
-                // +SET button — can be 400-600pt) down to just the
-                // title (~60pt) when reorderState.isReordering flips.
-                // That chain — SwiftUI state change → cell body
-                // recompute → UIHostingConfiguration intrinsicContentSize
-                // change → UCV invalidateLayout → cellForItem bounds
-                // update — spans multiple runloop hops. UCV's
-                // beginInteractiveMovementForItem snapshots the cell
-                // at whatever size it has RIGHT NOW; if we call it
-                // before the chain settles, UCV captures the tall
-                // version and centers its midpoint on the finger,
-                // making the cell appear way above the touch and
-                // snap back. Poll cellForItem's bounds until it has
-                // actually shrunk, then begin movement. Capped at 10
-                // ticks (~one frame each) so we always begin even if
-                // the cell never compacts (e.g. an exercise with one
-                // set whose total height is already small).
                 let targetIndexPath = indexPath
                 let cv = collectionView
                 func beginWhenCompact(attempt: Int) {

@@ -722,18 +722,18 @@ struct ExerciseCell: View {
             .padding(.horizontal, 20)
             .padding(.bottom, 8)
 
-            // Native SwiftUI List for set rows so we get `.swipeActions`
-            // for free — same swipe-to-delete UX as Strong, with iOS's
-            // bulletproof gesture coordination handling field taps,
-            // horizontal swipe, and vertical scroll without us having
-            // to choreograph priorities. We confine the list with a
-            // measured fixed height and `.scrollDisabled` so it lays
-            // out statically inside the UCV-bridged exercise cell.
-            // The cell-level long-press for exercise reorder is now
-            // restricted to the top 60pt of the cell (the title bar),
-            // so swiping anywhere on these rows can't ever trigger a
-            // reorder by accident.
-            List {
+            // Plain VStack of set rows. Each row is a SwipeToDeleteRow
+            // (custom horizontal swipe → delete) wrapping a SetRowView.
+            // We do NOT use a SwiftUI List here: List has no intrinsic
+            // height and is built to scroll/fill, which breaks self-
+            // sizing when this cell is hosted inside the UICollectionView
+            // bridge — it rendered as a zero-height blank in the
+            // TemplateEditor's plain ScrollView. A VStack measures
+            // exactly to its rows, so the cell self-sizes correctly in
+            // every container. SwipeToDeleteRow already owns the swipe
+            // gesture, so List's .swipeActions (the only reason it was
+            // here) isn't needed.
+            VStack(spacing: 0) {
                 ForEach(setsBinding) { $set in
                     let index = live.sets.firstIndex(where: { $0.id == set.id }) ?? 0
                     let prev = PreviousPerformance.previousComponents(
@@ -780,18 +780,8 @@ struct ExerciseCell: View {
                                 : Color("marbleBackground")
                         )
                     }
-                    .listRowInsets(EdgeInsets())
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
                 }
             }
-            .listStyle(.plain)
-            .scrollContentBackground(.hidden)
-            .scrollDisabled(true)
-            // Each SetRowView is fieldHeight (52) + vertical padding
-            // (10*2) = 72pt. Sum gives the exact list height so it
-            // doesn't try to fill the screen.
-            .frame(height: CGFloat(live.sets.count) * 72)
 
             Button {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
