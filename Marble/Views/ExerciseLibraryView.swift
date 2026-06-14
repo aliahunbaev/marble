@@ -248,17 +248,10 @@ struct ExerciseLibraryView: View {
 
     private var emptyState: some View {
         VStack(spacing: 12) {
-            VStack(spacing: 6) {
-                Text("No exercises found.")
-                    .font(.marbleBody(15))
-                    .foregroundStyle(Color("marbleSecondary"))
-                if searchText.isEmpty {
-                    Text("Tap + to add one.")
-                        .font(.marbleMono(11))
-                        .tracking(1)
-                        .foregroundStyle(Color("marbleTertiary"))
-                }
-            }
+            MarbleEmptyState(
+                headline: "No exercises found.",
+                subline: searchText.isEmpty ? "Tap + to add one." : nil
+            )
             if !searchText.isEmpty {
                 Button {
                     newName = searchText

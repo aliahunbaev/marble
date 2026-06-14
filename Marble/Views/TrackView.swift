@@ -112,15 +112,10 @@ struct TrackView: View {
             }
 
             if trackedLifts.isEmpty {
-                VStack(spacing: 6) {
-                    Text("No lifts tracked.")
-                        .font(.marbleBody(15))
-                        .foregroundStyle(Color("marbleSecondary"))
-                    Text("Tap + to follow one.")
-                        .font(.marbleMono(11))
-                        .tracking(1)
-                        .foregroundStyle(Color("marbleTertiary"))
-                }
+                MarbleEmptyState(
+                    headline: "No lifts tracked.",
+                    subline: "Tap + to follow one."
+                )
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 28)
             }
@@ -1002,15 +997,11 @@ struct BodyweightDetailView: View {
                                 .frame(height: 56)
                                 .padding(.top, 4)
                         } else {
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text("Nothing logged yet.")
-                                    .font(.marbleBody(15))
-                                    .foregroundStyle(Color("marbleSecondary"))
-                                Text("Tap + to record your weight.")
-                                    .font(.marbleMono(11))
-                                    .tracking(1)
-                                    .foregroundStyle(Color("marbleTertiary"))
-                            }
+                            MarbleEmptyState(
+                                headline: "Nothing logged yet.",
+                                subline: "Tap + to record your weight."
+                            )
+                            .frame(maxWidth: .infinity)
                             .padding(.vertical, 8)
                         }
                     }

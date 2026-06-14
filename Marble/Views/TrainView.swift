@@ -389,15 +389,10 @@ struct TrainView: View {
     /// absence ("Begin." on YOU, "No data yet" on lift detail). Two-line
     /// poetic prompt that invites first-template creation without nagging.
     private var emptyProgramsPlaceholder: some View {
-        VStack(spacing: 6) {
-            Text("No programs yet.")
-                .font(.marbleBody(15))
-                .foregroundStyle(Color("marbleSecondary"))
-            Text("Tap + to compose one.")
-                .font(.marbleMono(11))
-                .tracking(1)
-                .foregroundStyle(Color("marbleTertiary"))
-        }
+        MarbleEmptyState(
+            headline: "No programs yet.",
+            subline: "Tap + to compose one."
+        )
         .frame(maxWidth: .infinity)
         .padding(.vertical, 40)
     }

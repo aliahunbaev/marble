@@ -303,16 +303,11 @@ struct YouView: View {
     private var emptyFeed: some View {
         VStack(spacing: 14) {
             Spacer(minLength: 60)
-            Text("Begin.")
-                .font(.marbleBody(28))
-                .foregroundStyle(Color("marbleSecondary"))
-            Text("Your finished workouts collect here — date, lifts, notes, a photo if you took one.")
-                .font(.marbleMono(11))
-                .tracking(1)
-                .foregroundStyle(Color("marbleTertiary"))
-                .multilineTextAlignment(.center)
-                .lineSpacing(3)
-                .padding(.horizontal, 36)
+            MarbleEmptyState(
+                headline: "Begin.",
+                subline: "Your finished workouts collect here — date, lifts, notes, a photo if you took one."
+            )
+            .padding(.horizontal, 36)
             Spacer(minLength: 60)
         }
         .frame(maxWidth: .infinity)
