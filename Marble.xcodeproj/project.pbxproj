@@ -49,6 +49,7 @@
 		AA000015 /* ActiveWorkoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000015 /* ActiveWorkoutView.swift */; };
 		AA000016 /* SectionHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000016 /* SectionHeader.swift */; };
 		AA000017 /* ExerciseSeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000017 /* ExerciseSeed.swift */; };
+		AA000059 /* TemplateSeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000059 /* TemplateSeed.swift */; };
 		AA000018 /* ExerciseLibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000018 /* ExerciseLibraryView.swift */; };
 		AA000019 /* TemplateDetailSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000019 /* TemplateDetailSheet.swift */; };
 		AA000020 /* TemplateEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000020 /* TemplateEditorView.swift */; };
@@ -102,6 +103,7 @@
 		AB000015 /* ActiveWorkoutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveWorkoutView.swift; sourceTree = "<group>"; };
 		AB000016 /* SectionHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionHeader.swift; sourceTree = "<group>"; };
 		AB000017 /* ExerciseSeed.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseSeed.swift; sourceTree = "<group>"; };
+		AB000059 /* TemplateSeed.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplateSeed.swift; sourceTree = "<group>"; };
 		AB000018 /* ExerciseLibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseLibraryView.swift; sourceTree = "<group>"; };
 		AB000019 /* TemplateDetailSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplateDetailSheet.swift; sourceTree = "<group>"; };
 		AB000020 /* TemplateEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplateEditorView.swift; sourceTree = "<group>"; };
@@ -179,6 +181,7 @@
 				AB000006 /* ExerciseLog.swift */,
 				AB000007 /* WorkoutSet.swift */,
 				AB000017 /* ExerciseSeed.swift */,
+				AB000059 /* TemplateSeed.swift */,
 				AB000021 /* PreviousPerformance.swift */,
 				AB000024 /* TrackedLift.swift */,
 				AB000030 /* UserProfile.swift */,
@@ -366,6 +369,7 @@
 				AA000015 /* ActiveWorkoutView.swift in Sources */,
 				AA000016 /* SectionHeader.swift in Sources */,
 				AA000017 /* ExerciseSeed.swift in Sources */,
+				AA000059 /* TemplateSeed.swift in Sources */,
 				AA000018 /* ExerciseLibraryView.swift in Sources */,
 				AA000019 /* TemplateDetailSheet.swift in Sources */,
 				AA000020 /* TemplateEditorView.swift in Sources */,

@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct OnboardingFlow: View {
+    @Environment(\.modelContext) private var modelContext
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @AppStorage("userName") private var savedName: String = ""
     @EnvironmentObject private var auth: AuthenticationService
@@ -327,6 +328,13 @@ struct OnboardingFlow: View {
             if auth.isAuthenticated {
                 Task { await auth.updateName(trimmed) }
             }
+        }
+        // Skip-account path: seed Push/Pull/Legs starters here, since
+        // these users never trigger the authenticated post-restore
+        // seed in performInitialSync. Authenticated users are handled
+        // there instead (after cloud restore), so don't double up.
+        if !auth.isAuthenticated {
+            TemplateSeed.seedIfFreshStart(context: modelContext)
         }
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         withAnimation(.easeInOut(duration: 0.4)) {

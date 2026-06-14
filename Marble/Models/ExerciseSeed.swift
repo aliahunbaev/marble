@@ -8,16 +8,14 @@ import SwiftData
 /// app can't function, so this runs unconditionally when the local
 /// `Exercise` table is empty.
 ///
-/// Default *templates* are intentionally NOT seeded. Auto-creating
-/// "Push / Pull / Legs" on every fresh install caused multiple bugs:
-///   - They'd come back after deletion (next launch reseeds them).
-///   - They'd duplicate against the user's existing cloud-restored
-///     templates on reinstall (different cloudIDs, same names).
-///   - Templates the user uploaded to cloud at any point would re-
-///     appear locally even after explicit delete.
-/// Train tab now starts empty on fresh accounts; the user composes
-/// their own. The empty-state copy on Train already invites this
-/// ("No programs yet. Tap + to compose one.").
+/// Default *templates* (Push/Pull/Legs) ARE seeded for fresh users,
+/// but NOT here — see `TemplateSeed`. The naive "reseed whenever the
+/// templates table is empty, every launch" approach caused three bugs
+/// (reseed-after-deletion, duplicate-vs-cloud-restore, cloud
+/// resurrection); `TemplateSeed.seedIfFreshStart` is built to avoid
+/// all three via a persistent once-only flag and post-cloud-restore
+/// timing. Exercise seeding stays unconditional because the app can't
+/// function without the library.
 enum ExerciseSeed {
     static let exercises: [(name: String, muscleGroup: String)] = [
         ("Bench Press", "Chest"),

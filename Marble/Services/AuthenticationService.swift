@@ -42,6 +42,12 @@ final class AuthenticationService: ObservableObject {
         await CloudSyncService.shared.restoreFromCloud(into: context)
         // Restore photos
         await PhotoStorageService.shared.restoreFromCloud(into: context)
+        // Seed Push/Pull/Legs starter templates for a brand-new account.
+        // Safe here because restore has finished — if this account had
+        // its own templates in the cloud they're already present, so
+        // seedIfFreshStart sees a non-empty table and skips. Runs before
+        // the push so a genuinely-new account's starters sync up too.
+        TemplateSeed.seedIfFreshStart(context: context)
         // Push any local-only data that existed before sign-in
         CloudSyncService.shared.pushAllLocalToCloud(from: context)
         // Retry any photo uploads that were pending
