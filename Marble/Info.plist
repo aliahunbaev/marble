@@ -14,5 +14,7 @@
 	<string>Marble lets you attach photos from your library to your training record.</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>UIRequiresFullScreen</key>
+	<true/>
 </dict>
 </plist>
