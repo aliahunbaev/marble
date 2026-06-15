@@ -118,10 +118,21 @@ final class CloudSyncService {
     func restoreFromCloud(into context: ModelContext) async {
         guard let uid else { return }
 
-        // Fetch existing local cloudIDs to avoid duplicates
-        let existingWorkoutIDs = Set((try? context.fetch(FetchDescriptor<Workout>()).map(\.cloudID)) ?? [])
-        let existingTemplateIDs = Set((try? context.fetch(FetchDescriptor<WorkoutTemplate>()).map(\.cloudID)) ?? [])
-        let existingLiftIDs = Set((try? context.fetch(FetchDescriptor<TrackedLift>()).map(\.cloudID)) ?? [])
+        // Existing local objects keyed by cloudID. Restore is
+        // "cloud-wins": for every cloud doc, if a local copy with the
+        // same cloudID exists we DELETE it and re-insert the cloud
+        // version. This (a) keeps the device in step with the cloud on
+        // sign-in and (b) self-heals any stale/empty local record —
+        // e.g. the empty Workout shells left by the old sign-out wipe,
+        // which the previous "skip if cloudID exists" logic could never
+        // repair.
+        func existingByCloudID<T: PersistentModel>(_ type: T.Type, _ id: (T) -> String) -> [String: T] {
+            let all = (try? context.fetch(FetchDescriptor<T>())) ?? []
+            return Dictionary(all.map { (id($0), $0) }, uniquingKeysWith: { first, _ in first })
+        }
+        let existingWorkouts = existingByCloudID(Workout.self, { $0.cloudID })
+        let existingTemplates = existingByCloudID(WorkoutTemplate.self, { $0.cloudID })
+        let existingLifts = existingByCloudID(TrackedLift.self, { $0.cloudID })
 
         // Local exercises (universal seeded set) for name lookup
         let allExercises = (try? context.fetch(FetchDescriptor<Exercise>())) ?? []
@@ -132,8 +143,8 @@ final class CloudSyncService {
             let workoutSnap = try await db.collection("users").document(uid)
                 .collection("workouts").getDocuments()
             for doc in workoutSnap.documents {
-                guard let dto = try? doc.data(as: WorkoutDTO.self),
-                      !existingWorkoutIDs.contains(dto.cloudID) else { continue }
+                guard let dto = try? doc.data(as: WorkoutDTO.self) else { continue }
+                if let stale = existingWorkouts[dto.cloudID] { context.delete(stale) }
                 let workout = Workout(name: dto.name, date: dto.date, duration: dto.duration, notes: dto.notes)
                 workout.cloudID = dto.cloudID
                 workout.exerciseLogs = dto.exerciseLogs.map { logDTO in
@@ -154,8 +165,8 @@ final class CloudSyncService {
             let templateSnap = try await db.collection("users").document(uid)
                 .collection("templates").getDocuments()
             for doc in templateSnap.documents {
-                guard let dto = try? doc.data(as: TemplateDTO.self),
-                      !existingTemplateIDs.contains(dto.cloudID) else { continue }
+                guard let dto = try? doc.data(as: TemplateDTO.self) else { continue }
+                if let stale = existingTemplates[dto.cloudID] { context.delete(stale) }
                 let template = WorkoutTemplate(name: dto.name)
                 template.cloudID = dto.cloudID
                 template.exercises = dto.exerciseNames.compactMap { exerciseByName[$0] }
@@ -172,8 +183,8 @@ final class CloudSyncService {
             let liftSnap = try await db.collection("users").document(uid)
                 .collection("trackedLifts").getDocuments()
             for doc in liftSnap.documents {
-                guard let dto = try? doc.data(as: TrackedLiftDTO.self),
-                      !existingLiftIDs.contains(dto.cloudID) else { continue }
+                guard let dto = try? doc.data(as: TrackedLiftDTO.self) else { continue }
+                if let stale = existingLifts[dto.cloudID] { context.delete(stale) }
                 let lift = TrackedLift(
                     exercise: exerciseByName[dto.exerciseName],
                     metricType: dto.metricType,
@@ -191,13 +202,13 @@ final class CloudSyncService {
         }
 
         // Bodyweight Entries
-        let existingBodyweightIDs = Set((try? context.fetch(FetchDescriptor<BodyweightEntry>()).map(\.cloudID)) ?? [])
+        let existingBodyweight = existingByCloudID(BodyweightEntry.self, { $0.cloudID })
         do {
             let bwSnap = try await db.collection("users").document(uid)
                 .collection("bodyweightEntries").getDocuments()
             for doc in bwSnap.documents {
-                guard let dto = try? doc.data(as: BodyweightEntryDTO.self),
-                      !existingBodyweightIDs.contains(dto.cloudID) else { continue }
+                guard let dto = try? doc.data(as: BodyweightEntryDTO.self) else { continue }
+                if let stale = existingBodyweight[dto.cloudID] { context.delete(stale) }
                 let entry = BodyweightEntry(weight: dto.weight, date: dto.date)
                 entry.cloudID = dto.cloudID
                 entry.createdAt = dto.createdAt
@@ -334,7 +345,16 @@ final class CloudSyncService {
         let templates = (try? context.fetch(FetchDescriptor<WorkoutTemplate>())) ?? []
         let lifts = (try? context.fetch(FetchDescriptor<TrackedLift>())) ?? []
         let bodyweights = (try? context.fetch(FetchDescriptor<BodyweightEntry>())) ?? []
-        workouts.forEach { uploadWorkout($0) }
+        // SAFEGUARD: never push an empty workout shell (no sets) over a
+        // cloud copy. A bulk-delete bug once left set-less shells local,
+        // and this push propagated them to the cloud, overwriting good
+        // data. A real workout always has sets; skip anything that
+        // doesn't so a corrupted/empty local row can't clobber the
+        // cloud. uploadWorkout (single, user-initiated saves) is
+        // unaffected.
+        workouts
+            .filter { w in w.exerciseLogs.contains { !$0.sets.isEmpty } }
+            .forEach { uploadWorkout($0) }
         templates.forEach { uploadTemplate($0) }
         lifts.forEach { uploadTrackedLift($0) }
         bodyweights.forEach { uploadBodyweightEntry($0) }
