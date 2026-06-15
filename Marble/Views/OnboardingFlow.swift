@@ -59,17 +59,20 @@ struct OnboardingFlow: View {
     // MARK: - Screen 1 — The Reveal
 
     @State private var revealOpacity: Double = 0
-    @State private var revealTracking: CGFloat = 24
+    @State private var revealScale: CGFloat = 1.06
 
     private var revealScreen: some View {
         VStack {
             Spacer()
 
-            Text("MARBLE")
-                .font(.marbleBody(22))
-                .tracking(revealTracking)
+            // Wordmark in title case — the brand, set large, fading and
+            // easing in from a hair oversized. (Was mono all-caps with
+            // wide letter-spacing, which read as a label, not a logo.)
+            Text("Marble")
+                .font(.marbleBody(48))
                 .foregroundStyle(.white)
                 .opacity(revealOpacity)
+                .scaleEffect(revealScale)
 
             Spacer()
 
@@ -86,7 +89,7 @@ struct OnboardingFlow: View {
         .onAppear {
             withAnimation(.easeOut(duration: 1.6)) {
                 revealOpacity = 1
-                revealTracking = 8
+                revealScale = 1.0
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()

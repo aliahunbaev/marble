@@ -4,6 +4,7 @@ import AuthenticationServices
 struct SignInView: View {
     @EnvironmentObject private var auth: AuthenticationService
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.dismiss) private var dismiss
 
     @State private var isEmailMode = false
     @State private var isCreateAccount = false
@@ -15,10 +16,11 @@ struct SignInView: View {
         VStack(spacing: 0) {
             Spacer()
 
-            // Logo
-            Text("MARBLE")
-                .font(.marbleBody(13, weight: .regular))
-                .tracking(6)
+            // Wordmark — the brand set in title case, matching the app's
+            // logo treatment rather than the mono all-caps used for
+            // chrome labels.
+            Text("Marble")
+                .font(.marbleBody(40))
                 .foregroundStyle(Color("marblePrimary"))
 
             Spacer()
@@ -46,6 +48,28 @@ struct SignInView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .marbleAtmosphereBackground()
+        // Close affordance — this view is presented as a full-screen
+        // cover from the You tab, so it needs an explicit dismiss.
+        .overlay(alignment: .topLeading) {
+            Button {
+                dismiss()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 14, weight: .regular))
+                    .foregroundStyle(Color("marblePrimary"))
+                    .frame(width: 44, height: 44)
+            }
+            .buttonStyle(.plain)
+            .padding(.leading, 8)
+            .padding(.top, 8)
+        }
+        // Dismiss automatically the moment auth succeeds. Without this
+        // the sign-in surface stayed up on top of the now-signed-in app.
+        // In the onboarding NavigationLink context this simply pops back
+        // to the account step, which then shows its signed-in state.
+        .onChange(of: auth.isAuthenticated) { _, isAuthed in
+            if isAuthed { dismiss() }
+        }
     }
 
     // MARK: - Sign In Buttons

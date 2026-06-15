@@ -71,7 +71,7 @@ struct YouView: View {
                 SettingsView()
                     .environmentObject(auth)
             }
-            .sheet(isPresented: $showingSignIn) {
+            .fullScreenCover(isPresented: $showingSignIn) {
                 SignInView()
                     .environmentObject(auth)
             }
