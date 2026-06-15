@@ -221,6 +221,14 @@ final class PhotoStorageService {
         return UIImage(data: data)
     }
 
+    /// Delete the locally-cached avatar. Called on sign-out so the
+    /// previous account's photo doesn't linger. The cloud copy is left
+    /// intact (it's tied to that account and returns on next sign-in
+    /// via restoreAvatarFromCloud).
+    func clearLocalAvatar() {
+        try? FileManager.default.removeItem(at: avatarLocalURL)
+    }
+
     /// Persist a new avatar image. Downscales to a circle-friendly max
     /// dimension, writes locally for immediate render, then uploads to
     /// Firebase Storage in the background.

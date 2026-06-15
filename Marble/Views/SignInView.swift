@@ -50,18 +50,19 @@ struct SignInView: View {
         .marbleAtmosphereBackground()
         // Close affordance — this view is presented as a full-screen
         // cover from the You tab, so it needs an explicit dismiss.
-        .overlay(alignment: .topLeading) {
+        // Top-right glass capsule, matching the close button on the
+        // workout + template editor screens.
+        .overlay(alignment: .topTrailing) {
             Button {
                 dismiss()
             } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 14, weight: .regular))
-                    .foregroundStyle(Color("marblePrimary"))
-                    .frame(width: 44, height: 44)
+                    .marbleGlassCapsule(size: 44)
             }
             .buttonStyle(.plain)
-            .padding(.leading, 8)
-            .padding(.top, 8)
+            .padding(.trailing, 20)
+            .padding(.top, 12)
         }
         // Dismiss automatically the moment auth succeeds. Without this
         // the sign-in surface stayed up on top of the now-signed-in app.

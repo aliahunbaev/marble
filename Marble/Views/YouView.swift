@@ -85,6 +85,16 @@ struct YouView: View {
                 .ignoresSafeArea()
             }
             .onAppear { loadAvatarOnAppear() }
+            // Drop the in-memory avatar the moment the user signs out
+            // (signOut also clears the on-disk copy), so the signed-out
+            // profile doesn't keep showing the previous photo.
+            .onChange(of: auth.isAuthenticated) { _, isAuthed in
+                if !isAuthed {
+                    avatarImage = nil
+                } else {
+                    loadAvatarOnAppear()
+                }
+            }
         }
     }
 

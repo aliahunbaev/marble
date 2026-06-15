@@ -130,6 +130,10 @@ final class AuthenticationService: ObservableObject {
     func signOut() {
         do {
             try Auth.auth().signOut()
+            // Clear the locally-cached avatar so the signed-out state
+            // doesn't keep showing the previous account's photo. The
+            // cloud copy stays and returns on next sign-in.
+            PhotoStorageService.shared.clearLocalAvatar()
         } catch {
             self.error = error.localizedDescription
         }
