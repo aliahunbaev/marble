@@ -242,6 +242,10 @@ struct OnboardingFlow: View {
 
                     continueButton(label: "BEGIN", emphasized: true, lightOnDark: false)
                 } else {
+                    // Accounts are required — sign-in is the only way
+                    // forward (no "skip"). An account guarantees the
+                    // training record is backed up and gives a single,
+                    // unambiguous identity.
                     NavigationLink {
                         SignInView()
                             .environmentObject(auth)
@@ -255,15 +259,6 @@ struct OnboardingFlow: View {
                             .clipShape(Capsule())
                     }
                     .padding(.horizontal, 32)
-
-                    Button {
-                        finishOnboarding()
-                    } label: {
-                        Text("Skip for now")
-                            .font(.marbleBody(14))
-                            .foregroundStyle(Color("marbleSecondary"))
-                            .padding(.vertical, 12)
-                    }
                 }
             }
             .padding(.bottom, 40)

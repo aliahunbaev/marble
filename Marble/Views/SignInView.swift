@@ -5,6 +5,11 @@ struct SignInView: View {
     @EnvironmentObject private var auth: AuthenticationService
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dismiss) private var dismiss
+    // True only when SignInView is presented (full-screen cover from
+    // the You tab, or pushed in onboarding). When it's the root
+    // sign-in wall for a signed-out user there's nothing to dismiss
+    // to, so the close button is hidden.
+    @Environment(\.isPresented) private var isPresented
 
     @State private var isEmailMode = false
     @State private var isCreateAccount = false
@@ -53,16 +58,18 @@ struct SignInView: View {
         // Top-right glass capsule, matching the close button on the
         // workout + template editor screens.
         .overlay(alignment: .topTrailing) {
-            Button {
-                dismiss()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 14, weight: .regular))
-                    .marbleGlassCapsule(size: 44)
+            if isPresented {
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 14, weight: .regular))
+                        .marbleGlassCapsule(size: 44)
+                }
+                .buttonStyle(.plain)
+                .padding(.trailing, 20)
+                .padding(.top, 12)
             }
-            .buttonStyle(.plain)
-            .padding(.trailing, 20)
-            .padding(.top, 12)
         }
         // Dismiss automatically the moment auth succeeds. Without this
         // the sign-in surface stayed up on top of the now-signed-in app.

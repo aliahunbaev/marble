@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 
 struct ContentView: View {
+    @EnvironmentObject private var auth: AuthenticationService
     @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
     @State private var selectedTab = 1
@@ -22,12 +23,19 @@ struct ContentView: View {
 
     var body: some View {
         Group {
-            if hasCompletedOnboarding {
-                mainAppView
-            } else {
+            if !hasCompletedOnboarding {
+                // First run — the full intro, which now ends by
+                // requiring sign-in (no "skip").
                 NavigationStack {
                     OnboardingFlow()
                 }
+            } else if !auth.isAuthenticated {
+                // Returning, but signed out — accounts are required, so
+                // gate the app behind the sign-in wall instead of
+                // showing the (lingering) local data.
+                SignInView()
+            } else {
+                mainAppView
             }
         }
         .environment(workoutSession)

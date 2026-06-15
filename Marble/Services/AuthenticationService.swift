@@ -134,9 +134,32 @@ final class AuthenticationService: ObservableObject {
             // doesn't keep showing the previous account's photo. The
             // cloud copy stays and returns on next sign-in.
             PhotoStorageService.shared.clearLocalAvatar()
+            // Wipe local user data on sign-out. Accounts are required,
+            // so a signed-in user's data is already synced to the
+            // cloud — clearing the device copy is safe and prevents
+            // one account's data from bleeding into the next person
+            // who signs in on this device (pushAllLocalToCloud would
+            // otherwise upload the stale local data to the new
+            // account). The exercise *library* is intentionally kept
+            // (it's universal seed data, not user data). On next
+            // sign-in, restoreFromCloud repopulates the account's data.
+            clearLocalUserData()
+            didSyncForCurrentSession = false
         } catch {
             self.error = error.localizedDescription
         }
+    }
+
+    private func clearLocalUserData() {
+        guard let context = modelContext else { return }
+        try? context.delete(model: Workout.self)
+        try? context.delete(model: ExerciseLog.self)
+        try? context.delete(model: WorkoutSet.self)
+        try? context.delete(model: WorkoutTemplate.self)
+        try? context.delete(model: TrackedLift.self)
+        try? context.delete(model: ProgressPhoto.self)
+        try? context.delete(model: BodyweightEntry.self)
+        try? context.save()
     }
 
     // MARK: - Delete Account
