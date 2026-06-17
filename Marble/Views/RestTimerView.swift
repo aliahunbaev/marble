@@ -308,38 +308,52 @@ struct RestTimerModal: View {
             .frame(width: 220, height: 220)
             .padding(.top, 4)
 
-            // Controls — adjusters as an even pair, SKIP full-width below.
-            VStack(spacing: 12) {
-                HStack(spacing: 12) {
-                    Button {
-                        state.adjustBy(-10)
-                    } label: {
-                        Text("−10S").marbleSecondaryButton(fullWidth: true)
-                    }
-                    .buttonStyle(.plain)
-
-                    Button {
-                        state.adjustBy(10)
-                    } label: {
-                        Text("+10S").marbleSecondaryButton(fullWidth: true)
-                    }
-                    .buttonStyle(.plain)
+            // Controls in one row: the adjusters are quiet glass pills
+            // (same vocabulary as the nav buttons); SKIP is the solid
+            // primary, carrying the contrast as the consequential action.
+            HStack(spacing: 10) {
+                Button {
+                    state.adjustBy(-10)
+                } label: {
+                    Text("−10S").marbleSecondaryButton(fullWidth: true)
                 }
+                .buttonStyle(.plain)
 
                 Button {
+                    state.adjustBy(10)
+                } label: {
+                    Text("+10S").marbleSecondaryButton(fullWidth: true)
+                }
+                .buttonStyle(.plain)
+
+                controlButton("SKIP") {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     state.skip()
                     dismiss()
-                } label: {
-                    Text("SKIP").marbleDestructiveButton(fullWidth: true)
                 }
-                .buttonStyle(.plain)
             }
             .padding(.horizontal, 24)
 
             Spacer(minLength: 0)
         }
         }
+    }
+
+    /// Solid, high-contrast control button (SKIP) for the running timer.
+    /// Vertical padding matches marbleSecondaryButton (10) so it sits the
+    /// same height as the glass adjuster pills beside it.
+    private func controlButton(_ label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(label)
+                .font(.marbleMono(13, weight: .regular))
+                .tracking(1)
+                .foregroundStyle(Color("marbleBackground"))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .background(Color("marblePrimary"), in: Capsule())
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
     }
 
     private var formattedBig: String {
