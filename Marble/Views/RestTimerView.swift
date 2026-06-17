@@ -245,43 +245,49 @@ struct RestTimerModal: View {
     // MARK: - Preset Picker (inactive)
 
     private var presetPickerView: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: 0) {
             Text("REST TIMER")
-                .font(.custom("ABC Favorit Mono Variable Unlicensed Trial", size: 12).weight(.light))
+                .font(.marbleMono(12))
                 .tracking(1.5)
                 .foregroundStyle(Color("marbleSecondary"))
+                .padding(.bottom, 14)
 
-            LazyVGrid(columns: [
-                GridItem(.flexible(), spacing: 12),
-                GridItem(.flexible(), spacing: 12),
-                GridItem(.flexible(), spacing: 12)
-            ], spacing: 12) {
-                ForEach(presets, id: \.self) { seconds in
-                    Button {
-                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                        state.start(duration: seconds)
-                    } label: {
-                        Text(formatPreset(seconds))
-                            .marbleSecondaryButton()
-                    }
-                    .buttonStyle(.plain)
+            // Full-width rows — big tap targets, hairline-separated,
+            // matching the dialog text-row vocabulary.
+            ForEach(Array(presets.enumerated()), id: \.element) { index, seconds in
+                Button {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    state.start(duration: seconds)
+                } label: {
+                    Text(formatPreset(seconds))
+                        .font(.marbleMono(16))
+                        .tracking(1)
+                        .foregroundStyle(Color("marblePrimary"))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+
+                if index < presets.count - 1 {
+                    Rectangle()
+                        .fill(Color("marblePrimary").opacity(0.08))
+                        .frame(height: 0.5)
                 }
             }
-            .padding(.horizontal, 24)
 
-            Spacer()
+            Spacer(minLength: 0)
         }
+        .padding(.horizontal, 24)
     }
 
     // MARK: - Active Timer
 
     private var activeTimerView: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { _ in
-        VStack(spacing: 36) {
+        VStack(spacing: 32) {
             // Countdown ring — the number is the artifact, the ring is its
-            // depleting clockface around it. Counter-clockwise depletion: the
-            // ring shortens from its end (right of 12 o'clock) back toward
-            // its start as time passes.
+            // depleting clockface around it.
             ZStack {
                 Circle()
                     .stroke(Color("marblePrimary").opacity(0.1), lineWidth: 4)
@@ -300,38 +306,38 @@ struct RestTimerModal: View {
                     .monospacedDigit()
             }
             .frame(width: 220, height: 220)
-            .padding(.top, 8)
+            .padding(.top, 4)
 
-            // Controls
-            HStack(spacing: 12) {
-                Button {
-                    state.adjustBy(-10)
-                } label: {
-                    Text("−10S")
-                        .marbleSecondaryButton(fullWidth: false)
+            // Controls — adjusters as an even pair, SKIP full-width below.
+            VStack(spacing: 12) {
+                HStack(spacing: 12) {
+                    Button {
+                        state.adjustBy(-10)
+                    } label: {
+                        Text("−10S").marbleSecondaryButton(fullWidth: true)
+                    }
+                    .buttonStyle(.plain)
+
+                    Button {
+                        state.adjustBy(10)
+                    } label: {
+                        Text("+10S").marbleSecondaryButton(fullWidth: true)
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
 
                 Button {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     state.skip()
                     dismiss()
                 } label: {
-                    Text("SKIP")
-                        .marbleDestructiveButton(fullWidth: false)
-                }
-                .buttonStyle(.plain)
-
-                Button {
-                    state.adjustBy(10)
-                } label: {
-                    Text("+10S")
-                        .marbleSecondaryButton(fullWidth: false)
+                    Text("SKIP").marbleDestructiveButton(fullWidth: true)
                 }
                 .buttonStyle(.plain)
             }
+            .padding(.horizontal, 24)
 
-            Spacer()
+            Spacer(minLength: 0)
         }
         }
     }
