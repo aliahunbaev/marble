@@ -130,11 +130,15 @@ final class AuthenticationService: ObservableObject {
     func signOut() {
         do {
             try Auth.auth().signOut()
-            // Clear the locally-cached avatar so the signed-out state
-            // doesn't keep showing the previous account's photo. The
-            // cloud copy stays and returns on next sign-in.
-            PhotoStorageService.shared.clearLocalAvatar()
-            // NOTE: we deliberately do NOT wipe local SwiftData here.
+            // NOTE: we intentionally KEEP the cached avatar (and all
+            // local data) on sign-out. Accounts are required, so a
+            // signed-out user only ever sees the sign-in wall — the
+            // previous avatar is never visible. Keeping it cached means
+            // signing back into the same account shows the photo
+            // instantly instead of waiting on a cloud re-download.
+            // restoreAvatarFromCloud still corrects it on the rare
+            // case of a different account signing in on this device.
+            // We deliberately do NOT wipe local SwiftData here either.
             // An earlier version did a bulk context.delete(model:),
             // which deleted child objects (ExerciseLog/WorkoutSet) but
             // left parent Workout shells behind — corrupting the store
