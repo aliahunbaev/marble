@@ -89,23 +89,34 @@ private struct MarbleDialogModifier: ViewModifier {
     @Binding var isPresented: Bool
     let buttons: [MarbleDialogButton]
 
+    // The cover is driven by this mirror of `isPresented`, toggled
+    // inside an animation-disabled transaction so the fullScreenCover's
+    // default slide-up never plays. The card appears in place and does
+    // its own fade + scale via MarbleDialogContent's `shown` state.
+    @State private var coverShown = false
+
     func body(content: Content) -> some View {
-        // Present via fullScreenCover, not .overlay. An overlay is
-        // clipped to the bounds of the view it's attached to — when a
-        // dialog is triggered from inside a sheet (e.g. the template
-        // detail sheet or Settings), that made the dim + card center
-        // within the sheet instead of the whole screen. A full-screen
-        // cover with a cleared background always covers the entire
-        // window, so the card is screen-centered everywhere.
-        content.fullScreenCover(isPresented: $isPresented) {
-            MarbleDialogContent(
-                title: title,
-                message: message,
-                buttons: buttons,
-                isPresented: $isPresented
-            )
-            .presentationBackground(.clear)
-        }
+        // fullScreenCover (not .overlay) so the card centers on the whole
+        // window even when triggered from inside a sheet, where an
+        // overlay would be clipped to the sheet's bounds.
+        content
+            .fullScreenCover(isPresented: $coverShown) {
+                MarbleDialogContent(
+                    title: title,
+                    message: message,
+                    buttons: buttons,
+                    isPresented: $isPresented
+                )
+                .presentationBackground(.clear)
+            }
+            .onChange(of: isPresented) { _, newValue in
+                var t = Transaction()
+                t.disablesAnimations = true
+                withTransaction(t) { coverShown = newValue }
+            }
+            .onChange(of: coverShown) { _, newValue in
+                if !newValue && isPresented { isPresented = false }
+            }
     }
 }
 
@@ -267,23 +278,36 @@ private struct MarbleInputDialogModifier: ViewModifier {
     let onConfirm: () -> Void
     let onCancel: () -> Void
 
+    // Mirror of isPresented toggled without animation, so the cover's
+    // slide-up never plays — card appears in place. See MarbleDialogModifier.
+    @State private var coverShown = false
+
     func body(content: Content) -> some View {
         // Full-screen cover (not .overlay) so the card centers on the
         // whole window even when triggered from inside a sheet. See
         // MarbleDialogContent for the rationale.
-        content.fullScreenCover(isPresented: $isPresented) {
-            MarbleInputDialogContent(
-                title: title,
-                message: message,
-                fields: fields,
-                confirmLabel: confirmLabel,
-                confirmEnabled: confirmEnabled,
-                onConfirm: onConfirm,
-                onCancel: onCancel,
-                isPresented: $isPresented
-            )
-            .presentationBackground(.clear)
-        }
+        content
+            .fullScreenCover(isPresented: $coverShown) {
+                MarbleInputDialogContent(
+                    title: title,
+                    message: message,
+                    fields: fields,
+                    confirmLabel: confirmLabel,
+                    confirmEnabled: confirmEnabled,
+                    onConfirm: onConfirm,
+                    onCancel: onCancel,
+                    isPresented: $isPresented
+                )
+                .presentationBackground(.clear)
+            }
+            .onChange(of: isPresented) { _, newValue in
+                var t = Transaction()
+                t.disablesAnimations = true
+                withTransaction(t) { coverShown = newValue }
+            }
+            .onChange(of: coverShown) { _, newValue in
+                if !newValue && isPresented { isPresented = false }
+            }
     }
 }
 
