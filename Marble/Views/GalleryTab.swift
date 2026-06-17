@@ -59,7 +59,7 @@ struct GalleryTabContent: View {
                 }
             )
             .modifier(ZoomNavigationModifier(
-                sourceID: photos[wrapper.value].id,
+                sourceID: photos[wrapper.value].cloudID,
                 namespace: photoZoom
             ))
         }
@@ -140,7 +140,7 @@ struct GalleryTabContent: View {
                 .opacity(isPicking && !isFirstPick ? 0.55 : 1.0)
         }
         .buttonStyle(.plain)
-        .modifier(ZoomSourceModifier(id: photo.id, namespace: photoZoom))
+        .modifier(ZoomSourceModifier(id: photo.cloudID, namespace: photoZoom))
     }
 
     private func handleTap(index: Int) {
@@ -218,7 +218,13 @@ private struct GlassChipBackground: ViewModifier {
 /// check. On iOS < 18 the modifier is a no-op — the photo opens with the
 /// default fullScreenCover slide-up animation instead of the zoom.
 private struct ZoomSourceModifier: ViewModifier {
-    let id: PersistentIdentifier
+    /// Stable string id (the photo's cloudID), NOT the SwiftData
+    /// PersistentIdentifier. A just-inserted object's PersistentIdentifier
+    /// is temporary until the store settles, and on iOS 18 the zoom
+    /// transition can't match an unstable source id — which silently
+    /// blocks the cover from presenting at all. That's why the newest
+    /// photo wouldn't open on the first tap(s) while older ones did.
+    let id: String
     let namespace: Namespace.ID
 
     func body(content: Content) -> some View {
@@ -233,7 +239,7 @@ private struct ZoomSourceModifier: ViewModifier {
 /// Wraps the iOS 18 `.navigationTransition(.zoom(...))` modifier behind
 /// an availability check. Same fallback semantics as the source modifier.
 private struct ZoomNavigationModifier: ViewModifier {
-    let sourceID: PersistentIdentifier
+    let sourceID: String
     let namespace: Namespace.ID
 
     func body(content: Content) -> some View {

@@ -256,7 +256,7 @@ final class PhotoStorageService {
         do {
             _ = try await ref.putDataAsync(data, metadata: metadata)
         } catch {
-            print("Avatar upload failed: \(error)")
+            NSLog("[Avatar] upload failed: \(error)")
         }
     }
 
@@ -269,10 +269,9 @@ final class PhotoStorageService {
             let data = try await ref.data(maxSize: 4 * 1024 * 1024)
             try data.write(to: avatarLocalURL, options: .atomic)
         } catch {
-            // "object-not-found" is normal when the user hasn't set
-            // an avatar; suppress the noisy log for that case.
+            // "object-not-found" is normal when no avatar is set yet.
             if (error as NSError).domain != StorageErrorDomain {
-                print("Avatar restore failed: \(error)")
+                NSLog("[Avatar] restore failed: \(error)")
             }
         }
     }
