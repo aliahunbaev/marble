@@ -283,16 +283,19 @@ struct YouView: View {
         }
     }
 
-    /// On appear, pull the avatar off disk so signed-in users see their
-    /// photo immediately. Also kicks a cloud restore for fresh devices.
+    /// Show the locally-cached avatar immediately, then ALWAYS refresh
+    /// from the cloud when signed in. Previously the cloud fetch only
+    /// ran when there was no local cache — so a device holding a stale
+    /// avatar (e.g. you changed your photo on another device) never
+    /// picked up the new one. Now the cache is just an instant first
+    /// paint; the cloud copy is the source of truth and overwrites it.
     private func loadAvatarOnAppear() {
         avatarImage = PhotoStorageService.shared.avatarImage()
-        if auth.isAuthenticated && avatarImage == nil {
-            Task {
-                await PhotoStorageService.shared.restoreAvatarFromCloud()
-                await MainActor.run {
-                    avatarImage = PhotoStorageService.shared.avatarImage()
-                }
+        guard auth.isAuthenticated else { return }
+        Task {
+            await PhotoStorageService.shared.restoreAvatarFromCloud()
+            await MainActor.run {
+                avatarImage = PhotoStorageService.shared.avatarImage()
             }
         }
     }
