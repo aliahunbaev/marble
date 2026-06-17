@@ -43,6 +43,46 @@ struct MarbleDialogButton: Identifiable {
     }
 }
 
+/// One dialog action, rendered as a clean full-width text row (no
+/// fill) — the structure of a refined alert in Marble's type. Color
+/// carries the role; allcaps mono matches every other action button.
+/// High contrast in both light and dark because there's no fill to
+/// wash out. Rows are separated by hairlines in the container.
+///   - destructive → oxblood-red text
+///   - standard    → primary (ink) text
+///   - cancel      → muted secondary text
+struct MarbleDialogPill: View {
+    let label: String
+    let style: MarbleDialogButton.Style
+
+    var body: some View {
+        Text(label.uppercased())
+            .font(.marbleMono(13, weight: .regular))
+            .tracking(1.5)
+            .foregroundStyle(textColor)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 17)
+            .contentShape(Rectangle())
+    }
+
+    private var textColor: Color {
+        switch style {
+        case .destructive: return Color.marbleDestructive
+        case .standard:    return Color("marblePrimary")
+        case .cancel:      return Color("marbleSecondary")
+        }
+    }
+}
+
+/// Hairline divider between dialog rows.
+private struct MarbleDialogDivider: View {
+    var body: some View {
+        Rectangle()
+            .fill(Color("marblePrimary").opacity(0.08))
+            .frame(height: 0.5)
+    }
+}
+
 private struct MarbleDialogModifier: ViewModifier {
     let title: String
     let message: String?
@@ -103,74 +143,51 @@ private struct MarbleDialogContent: View {
 
     private var card: some View {
         VStack(spacing: 0) {
-            VStack(spacing: 10) {
+            // Title + message share one size, centered as a single
+            // balanced statement; only color separates them.
+            VStack(spacing: 6) {
                 Text(title)
-                    .font(.marbleBody(20))
+                    .font(.marbleBody(18))
                     .foregroundStyle(Color("marblePrimary"))
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
                 if let message {
                     Text(message)
-                        .font(.marbleBody(14))
+                        .font(.marbleBody(18))
                         .foregroundStyle(Color("marbleSecondary"))
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
             .padding(.horizontal, 28)
-            .padding(.top, 28)
-            .padding(.bottom, 22)
+            .padding(.top, 30)
+            .padding(.bottom, 26)
 
-            // Buttons use the app's own capsule treatments (the same
-            // mono-uppercase glass pills as CLEAR ALL DATA / SIGN OUT /
-            // +SET), so a dialog reads as part of the app rather than a
-            // system alert. Cancel is a plain de-emphasized text row
-            // for clear hierarchy.
-            VStack(spacing: 10) {
-                ForEach(buttons) { button in
+            // Full-width text-row buttons separated by hairlines — no
+            // fills to wash out or shout. Color carries the role.
+            VStack(spacing: 0) {
+                MarbleDialogDivider()
+                ForEach(Array(buttons.enumerated()), id: \.element.id) { index, button in
                     Button {
                         close(then: button.action)
                     } label: {
-                        dialogButtonLabel(button)
+                        MarbleDialogPill(label: button.label, style: button.style)
                     }
                     .buttonStyle(.plain)
+                    if index < buttons.count - 1 {
+                        MarbleDialogDivider()
+                    }
                 }
             }
-            .padding(.horizontal, 20)
-            .padding(.bottom, 20)
         }
         .frame(maxWidth: 340)
-        .background {
+        .background(Color("marbleBackground"))
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(Color("marbleBackground"))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .stroke(Color("marblePrimary").opacity(0.08), lineWidth: 0.5)
-                )
-                .shadow(color: Color.black.opacity(0.35), radius: 24, x: 0, y: 8)
-        }
-    }
-
-    /// Render each dialog button in the app's button vocabulary:
-    /// destructive → oxblood glass capsule, standard → glass capsule,
-    /// cancel → plain de-emphasized text. Labels are uppercased to
-    /// match the mono treatment of the rest of the app's actions.
-    @ViewBuilder
-    private func dialogButtonLabel(_ button: MarbleDialogButton) -> some View {
-        switch button.style {
-        case .destructive:
-            Text(button.label.uppercased()).marbleDestructiveButton()
-        case .standard:
-            Text(button.label.uppercased()).marbleSecondaryButton()
-        case .cancel:
-            Text(button.label.uppercased())
-                .font(.marbleMono(13, weight: .regular))
-                .tracking(1)
-                .foregroundStyle(Color("marbleSecondary"))
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-                .contentShape(Rectangle())
-        }
+                .stroke(Color("marblePrimary").opacity(0.08), lineWidth: 0.5)
+        )
+        .shadow(color: Color.black.opacity(0.35), radius: 24, x: 0, y: 8)
     }
 
     /// Animate the card out, THEN dismiss the cover and run the action.
@@ -304,15 +321,15 @@ private struct MarbleInputDialogContent: View {
 
     private var card: some View {
         VStack(spacing: 0) {
-            VStack(spacing: 10) {
+            VStack(spacing: 6) {
                 Text(title)
-                    .font(.marbleBody(20))
+                    .font(.marbleBody(18))
                     .foregroundStyle(Color("marblePrimary"))
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
                 if let message {
                     Text(message)
-                        .font(.marbleBody(14))
+                        .font(.marbleBody(18))
                         .foregroundStyle(Color("marbleSecondary"))
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
@@ -343,47 +360,37 @@ private struct MarbleInputDialogContent: View {
                 }
             }
             .padding(.horizontal, 36)
-            .padding(.bottom, 22)
+            .padding(.bottom, 24)
 
-            // Same capsule vocabulary as the confirmation dialog:
-            // confirm is a glass capsule, cancel a plain text row.
-            VStack(spacing: 10) {
+            // Same text-row vocabulary as the confirmation dialog.
+            VStack(spacing: 0) {
+                MarbleDialogDivider()
                 Button {
                     close(then: onConfirm)
                 } label: {
-                    Text(confirmLabel.uppercased())
-                        .marbleSecondaryButton()
-                        .opacity(confirmEnabled ? 1 : 0.4)
+                    MarbleDialogPill(label: confirmLabel, style: .standard)
+                        .opacity(confirmEnabled ? 1 : 0.35)
                 }
                 .buttonStyle(.plain)
                 .disabled(!confirmEnabled)
 
+                MarbleDialogDivider()
                 Button {
                     close(then: onCancel)
                 } label: {
-                    Text("CANCEL")
-                        .font(.marbleMono(13, weight: .regular))
-                        .tracking(1)
-                        .foregroundStyle(Color("marbleSecondary"))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .contentShape(Rectangle())
+                    MarbleDialogPill(label: "Cancel", style: .cancel)
                 }
                 .buttonStyle(.plain)
             }
-            .padding(.horizontal, 20)
-            .padding(.bottom, 20)
         }
         .frame(maxWidth: 340)
-        .background {
+        .background(Color("marbleBackground"))
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(Color("marbleBackground"))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .stroke(Color("marblePrimary").opacity(0.08), lineWidth: 0.5)
-                )
-                .shadow(color: Color.black.opacity(0.35), radius: 24, x: 0, y: 8)
-        }
+                .stroke(Color("marblePrimary").opacity(0.08), lineWidth: 0.5)
+        )
+        .shadow(color: Color.black.opacity(0.35), radius: 24, x: 0, y: 8)
     }
 
     private func close(then action: @escaping () -> Void) {
