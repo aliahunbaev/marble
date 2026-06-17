@@ -119,33 +119,25 @@ private struct MarbleDialogContent: View {
             }
             .padding(.horizontal, 28)
             .padding(.top, 28)
-            .padding(.bottom, 24)
+            .padding(.bottom, 22)
 
-            Rectangle()
-                .fill(Color("marblePrimary").opacity(0.08))
-                .frame(height: 0.5)
-
-            VStack(spacing: 0) {
-                ForEach(Array(buttons.enumerated()), id: \.element.id) { index, button in
+            // Buttons use the app's own capsule treatments (the same
+            // mono-uppercase glass pills as CLEAR ALL DATA / SIGN OUT /
+            // +SET), so a dialog reads as part of the app rather than a
+            // system alert. Cancel is a plain de-emphasized text row
+            // for clear hierarchy.
+            VStack(spacing: 10) {
+                ForEach(buttons) { button in
                     Button {
                         close(then: button.action)
                     } label: {
-                        Text(button.label)
-                            .font(.marbleBody(16))
-                            .foregroundStyle(foregroundColor(for: button.style))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                            .contentShape(Rectangle())
+                        dialogButtonLabel(button)
                     }
                     .buttonStyle(.plain)
-
-                    if index < buttons.count - 1 {
-                        Rectangle()
-                            .fill(Color("marblePrimary").opacity(0.06))
-                            .frame(height: 0.5)
-                    }
                 }
             }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 20)
         }
         .frame(maxWidth: 340)
         .background {
@@ -159,11 +151,25 @@ private struct MarbleDialogContent: View {
         }
     }
 
-    private func foregroundColor(for style: MarbleDialogButton.Style) -> Color {
-        switch style {
-        case .destructive: return .red
-        case .standard:    return Color("marblePrimary")
-        case .cancel:      return Color("marbleSecondary")
+    /// Render each dialog button in the app's button vocabulary:
+    /// destructive → oxblood glass capsule, standard → glass capsule,
+    /// cancel → plain de-emphasized text. Labels are uppercased to
+    /// match the mono treatment of the rest of the app's actions.
+    @ViewBuilder
+    private func dialogButtonLabel(_ button: MarbleDialogButton) -> some View {
+        switch button.style {
+        case .destructive:
+            Text(button.label.uppercased()).marbleDestructiveButton()
+        case .standard:
+            Text(button.label.uppercased()).marbleSecondaryButton()
+        case .cancel:
+            Text(button.label.uppercased())
+                .font(.marbleMono(13, weight: .regular))
+                .tracking(1)
+                .foregroundStyle(Color("marbleSecondary"))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .contentShape(Rectangle())
         }
     }
 
@@ -337,42 +343,36 @@ private struct MarbleInputDialogContent: View {
                 }
             }
             .padding(.horizontal, 36)
-            .padding(.bottom, 24)
+            .padding(.bottom, 22)
 
-            Rectangle()
-                .fill(Color("marblePrimary").opacity(0.08))
-                .frame(height: 0.5)
-
-            VStack(spacing: 0) {
+            // Same capsule vocabulary as the confirmation dialog:
+            // confirm is a glass capsule, cancel a plain text row.
+            VStack(spacing: 10) {
                 Button {
                     close(then: onConfirm)
                 } label: {
-                    Text(confirmLabel)
-                        .font(.marbleBody(16))
-                        .foregroundStyle(Color("marblePrimary").opacity(confirmEnabled ? 1 : 0.3))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .contentShape(Rectangle())
+                    Text(confirmLabel.uppercased())
+                        .marbleSecondaryButton()
+                        .opacity(confirmEnabled ? 1 : 0.4)
                 }
                 .buttonStyle(.plain)
                 .disabled(!confirmEnabled)
 
-                Rectangle()
-                    .fill(Color("marblePrimary").opacity(0.06))
-                    .frame(height: 0.5)
-
                 Button {
                     close(then: onCancel)
                 } label: {
-                    Text("Cancel")
-                        .font(.marbleBody(16))
+                    Text("CANCEL")
+                        .font(.marbleMono(13, weight: .regular))
+                        .tracking(1)
                         .foregroundStyle(Color("marbleSecondary"))
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
+                        .padding(.vertical, 12)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 20)
         }
         .frame(maxWidth: 340)
         .background {
