@@ -120,7 +120,8 @@ struct ExerciseLibraryView: View {
                     MarbleDialogField(
                         placeholder: "Exercise name",
                         text: $newName,
-                        autocapitalization: .words
+                        autocapitalization: .words,
+                        isRequired: true
                     ),
                     MarbleDialogField(
                         placeholder: "Muscle group (e.g. Chest)",
@@ -129,7 +130,6 @@ struct ExerciseLibraryView: View {
                     ),
                 ],
                 confirmLabel: "Add",
-                confirmEnabled: !newName.trimmingCharacters(in: .whitespaces).isEmpty,
                 onConfirm: { createExercise() },
                 onCancel: {
                     newName = ""

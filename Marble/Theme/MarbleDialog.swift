@@ -83,40 +83,96 @@ private struct MarbleDialogDivider: View {
     }
 }
 
+/// Hosts dialog content in a dedicated overlay UIWindow above the whole
+/// app — the same approach the system alert uses. This gives full-screen
+/// coverage from ANY context (root view, inside a sheet, inside the
+/// workout cover) and a pure fade-in-place with no slide, which
+/// fullScreenCover couldn't deliver consistently.
+@MainActor
+final class MarbleDialogWindow {
+    static let shared = MarbleDialogWindow()
+
+    final class Model: ObservableObject {
+        @Published var content: AnyView?
+    }
+
+    private let model = Model()
+    private var window: UIWindow?
+
+    /// Present dialog content. `makeKey` brings the window to key status
+    /// so text fields (input dialog) can receive keyboard input.
+    func present<V: View>(makeKey: Bool = false, @ViewBuilder _ view: () -> V) {
+        ensureWindow()
+        model.content = AnyView(view())
+        if makeKey {
+            window?.makeKeyAndVisible()
+        } else {
+            window?.isHidden = false
+        }
+    }
+
+    func dismiss() {
+        // The card has already faded itself out (its `shown` state) by
+        // the time this runs, so clearing + hiding is invisible.
+        model.content = nil
+        window?.isHidden = true
+    }
+
+    private func ensureWindow() {
+        guard window == nil,
+              let scene = UIApplication.shared.connectedScenes
+                .compactMap({ $0 as? UIWindowScene })
+                .first(where: { $0.activationState == .foregroundActive })
+                ?? UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first
+        else { return }
+
+        let host = UIHostingController(rootView: HostView(model: model))
+        host.view.backgroundColor = .clear
+        let w = UIWindow(windowScene: scene)
+        w.windowLevel = .alert + 1
+        w.backgroundColor = .clear
+        w.rootViewController = host
+        window = w
+    }
+
+    private struct HostView: View {
+        @ObservedObject var model: Model
+        var body: some View {
+            ZStack {
+                if let content = model.content {
+                    content
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .ignoresSafeArea()
+        }
+    }
+}
+
 private struct MarbleDialogModifier: ViewModifier {
     let title: String
     let message: String?
     @Binding var isPresented: Bool
     let buttons: [MarbleDialogButton]
 
-    // The cover is driven by this mirror of `isPresented`, toggled
-    // inside an animation-disabled transaction so the fullScreenCover's
-    // default slide-up never plays. The card appears in place and does
-    // its own fade + scale via MarbleDialogContent's `shown` state.
-    @State private var coverShown = false
-
     func body(content: Content) -> some View {
-        // fullScreenCover (not .overlay) so the card centers on the whole
-        // window even when triggered from inside a sheet, where an
-        // overlay would be clipped to the sheet's bounds.
-        content
-            .fullScreenCover(isPresented: $coverShown) {
-                MarbleDialogContent(
-                    title: title,
-                    message: message,
-                    buttons: buttons,
-                    isPresented: $isPresented
-                )
-                .presentationBackground(.clear)
+        // Present through the overlay window (see MarbleDialogWindow):
+        // covers the whole screen from any context and fades in place
+        // with no slide-up.
+        content.onChange(of: isPresented) { _, now in
+            if now {
+                MarbleDialogWindow.shared.present {
+                    MarbleDialogContent(
+                        title: title,
+                        message: message,
+                        buttons: buttons,
+                        isPresented: $isPresented
+                    )
+                }
+            } else {
+                MarbleDialogWindow.shared.dismiss()
             }
-            .onChange(of: isPresented) { _, newValue in
-                var t = Transaction()
-                t.disablesAnimations = true
-                withTransaction(t) { coverShown = newValue }
-            }
-            .onChange(of: coverShown) { _, newValue in
-                if !newValue && isPresented { isPresented = false }
-            }
+        }
     }
 }
 
@@ -240,7 +296,6 @@ extension View {
         isPresented: Binding<Bool>,
         fields: [MarbleDialogField],
         confirmLabel: String,
-        confirmEnabled: Bool = true,
         onConfirm: @escaping () -> Void,
         onCancel: @escaping () -> Void = {}
     ) -> some View {
@@ -250,7 +305,6 @@ extension View {
             isPresented: isPresented,
             fields: fields,
             confirmLabel: confirmLabel,
-            confirmEnabled: confirmEnabled,
             onConfirm: onConfirm,
             onCancel: onCancel
         ))
@@ -266,6 +320,10 @@ struct MarbleDialogField: Identifiable {
     let text: Binding<String>
     var keyboard: UIKeyboardType = .default
     var autocapitalization: TextInputAutocapitalization = .never
+    /// When true, Confirm stays disabled until this field is non-empty.
+    /// Evaluated live from the field's text, so it works even though the
+    /// dialog is hosted in a separate window.
+    var isRequired: Bool = false
 }
 
 private struct MarbleInputDialogModifier: ViewModifier {
@@ -274,40 +332,28 @@ private struct MarbleInputDialogModifier: ViewModifier {
     @Binding var isPresented: Bool
     let fields: [MarbleDialogField]
     let confirmLabel: String
-    let confirmEnabled: Bool
     let onConfirm: () -> Void
     let onCancel: () -> Void
 
-    // Mirror of isPresented toggled without animation, so the cover's
-    // slide-up never plays — card appears in place. See MarbleDialogModifier.
-    @State private var coverShown = false
-
     func body(content: Content) -> some View {
-        // Full-screen cover (not .overlay) so the card centers on the
-        // whole window even when triggered from inside a sheet. See
-        // MarbleDialogContent for the rationale.
-        content
-            .fullScreenCover(isPresented: $coverShown) {
-                MarbleInputDialogContent(
-                    title: title,
-                    message: message,
-                    fields: fields,
-                    confirmLabel: confirmLabel,
-                    confirmEnabled: confirmEnabled,
-                    onConfirm: onConfirm,
-                    onCancel: onCancel,
-                    isPresented: $isPresented
-                )
-                .presentationBackground(.clear)
+        // Overlay window, keyed so the text fields get the keyboard.
+        content.onChange(of: isPresented) { _, now in
+            if now {
+                MarbleDialogWindow.shared.present(makeKey: true) {
+                    MarbleInputDialogContent(
+                        title: title,
+                        message: message,
+                        fields: fields,
+                        confirmLabel: confirmLabel,
+                        onConfirm: onConfirm,
+                        onCancel: onCancel,
+                        isPresented: $isPresented
+                    )
+                }
+            } else {
+                MarbleDialogWindow.shared.dismiss()
             }
-            .onChange(of: isPresented) { _, newValue in
-                var t = Transaction()
-                t.disablesAnimations = true
-                withTransaction(t) { coverShown = newValue }
-            }
-            .onChange(of: coverShown) { _, newValue in
-                if !newValue && isPresented { isPresented = false }
-            }
+        }
     }
 }
 
@@ -316,13 +362,20 @@ private struct MarbleInputDialogContent: View {
     let message: String?
     let fields: [MarbleDialogField]
     let confirmLabel: String
-    let confirmEnabled: Bool
     let onConfirm: () -> Void
     let onCancel: () -> Void
     @Binding var isPresented: Bool
 
     @FocusState private var focusedFieldID: UUID?
     @State private var shown = false
+
+    /// Derived live from the field bindings (read in body) so it stays
+    /// correct even though this view lives in a separate window.
+    private var confirmEnabled: Bool {
+        fields
+            .filter(\.isRequired)
+            .allSatisfy { !$0.text.wrappedValue.trimmingCharacters(in: .whitespaces).isEmpty }
+    }
 
     var body: some View {
         ZStack {
