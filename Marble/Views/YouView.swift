@@ -52,7 +52,8 @@ struct YouView: View {
                         GalleryTabContent(photos: allPhotos)
                     }
                 }
-                .padding(.bottom, 40)
+                // Clear the floating tab-bar glass, matching Track/Train.
+                .padding(.bottom, 140)
             }
             .marbleAtmosphereBackground()
             .navigationBarTitleDisplayMode(.inline)
