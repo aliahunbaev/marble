@@ -21,15 +21,13 @@ struct SignInView: View {
         VStack(spacing: 0) {
             Spacer()
 
-            // Wordmark — the brand set in title case, matching the app's
-            // logo treatment rather than the mono all-caps used for
-            // chrome labels.
+            // Wordmark — the hero, centered in the upper space; actions
+            // sit toward the bottom where the thumb is.
             Text("Marble")
-                .font(.marbleBody(40))
+                .font(.marbleBody(44))
                 .foregroundStyle(Color("marblePrimary"))
 
             Spacer()
-                .frame(height: 40)
 
             if isEmailMode {
                 emailForm
@@ -37,19 +35,17 @@ struct SignInView: View {
                 signInButtons
             }
 
-            Spacer()
-                .frame(height: 24)
-
             if let error = auth.error {
                 Text(error)
                     .font(.marbleBody(13))
                     .foregroundStyle(.red.opacity(0.8))
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 40)
+                    .padding(.top, 20)
             }
 
             Spacer()
-                .frame(height: 40)
+                .frame(height: 50)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .marbleAtmosphereBackground()
@@ -94,6 +90,10 @@ struct SignInView: View {
             .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
             .frame(height: 52)
             .clipShape(RoundedRectangle(cornerRadius: 14))
+            // Force a rebuild when the appearance resolves — the UIKit-
+            // backed button otherwise keeps the style from its first
+            // render, which showed a white button on the light screen.
+            .id(colorScheme)
 
             Button {
                 withAnimation(.easeInOut(duration: 0.25)) {
@@ -101,15 +101,21 @@ struct SignInView: View {
                 }
             } label: {
                 Text("Continue with email")
-                    .font(.marbleBody(15, weight: .regular))
+                    .font(.marbleBody(16, weight: .regular))
                     .foregroundStyle(Color("marblePrimary"))
                     .frame(maxWidth: .infinity)
                     .frame(height: 52)
-                    .background(Color("marbleCard"))
-                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                    // Neutral secondary: a faint primary-tinted fill +
+                    // hairline border. Adapts to light/dark and pairs
+                    // cleanly with the solid Apple button above (no more
+                    // warm "marbleCard" cast).
+                    .background(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(Color("marblePrimary").opacity(0.05))
+                    )
                     .overlay(
-                        RoundedRectangle(cornerRadius: 14)
-                            .stroke(Color("marbleTertiary"), lineWidth: 1)
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .stroke(Color("marblePrimary").opacity(0.12), lineWidth: 1)
                     )
             }
         }
