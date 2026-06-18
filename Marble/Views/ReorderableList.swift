@@ -240,10 +240,13 @@ extension CollectionBridge {
         func reconfigureAllCells() {
             guard var snapshot = dataSource?.snapshot() else { return }
             snapshot.reconfigureItems(snapshot.itemIdentifiers)
-            // Animate the diff so cell height changes (a set added /
-            // removed grows or shrinks the exercise cell) flow into
-            // the surrounding layout instead of snapping.
-            dataSource?.apply(snapshot, animatingDifferences: true)
+            // Apply WITHOUT the default diff animation — UIKit's built-in
+            // diffable animation is a spring that overshoots, which read
+            // as a bounce when a set was added/removed. The cell's height
+            // change is instead driven by the SwiftUI animation wrapping
+            // the data mutation (the List's measured-height frame), which
+            // we keep critically damped → smooth, no bounce.
+            dataSource?.apply(snapshot, animatingDifferences: false)
         }
 
         func handleDidReorder(newIDs: [String]) {

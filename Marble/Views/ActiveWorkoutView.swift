@@ -246,21 +246,12 @@ struct ActiveWorkoutView: View {
                     // UCV reuses the cached cell (same exercise ID,
                     // no diff) and the visible row list is stale even
                     // though the underlying data changed.
-                    reconfigureKey: AnyHashable(
-                        "\(reorderState.isReordering)|" +
-                        session.entries.map { e in
-                            "\(e.id):" + e.sets.map {
-                                // Fold isCompleted into the hash so
-                                // tapping the checkmark causes the
-                                // cell to reconfigure with the new
-                                // state — without this, the binding
-                                // writes through to the parent but
-                                // the visible button is the cached
-                                // pre-tap view and never updates.
-                                "\($0.id.uuidString):\($0.isCompleted)"
-                            }.joined(separator: ",")
-                        }.joined(separator: ";")
-                    )
+                    // Only the reorder state drives a full reconfigure
+                    // now. Set add/remove/edit re-render the cell in
+                    // place via Observation (ExerciseCell observes the
+                    // session) so SwiftUI animates the rows natively —
+                    // no rebuild, no "space appears late" jump.
+                    reconfigureKey: AnyHashable("\(reorderState.isReordering)")
                 ) { entry in
                     ExerciseCell(
                         entry: entry,
@@ -272,6 +263,9 @@ struct ActiveWorkoutView: View {
                         },
                         onComplete: nil
                     )
+                    // Inject the session so the cell can observe set
+                    // changes and re-render in place.
+                    .environment(session)
                 }
 
                 addExerciseInline
@@ -608,6 +602,17 @@ final class ExerciseReorderState: ObservableObject {
 /// all cells visually compact together when any one is being dragged.
 struct ExerciseCell: View {
     @Environment(\.modelContext) private var modelContext
+    /// The live workout's session, injected into the cell's environment
+    /// by ActiveWorkoutView (nil for the template editor, which has no
+    /// session). Reading `observedSession?.entries` in `body` registers
+    /// an Observation dependency on the @Observable session, so the
+    /// hosting cell re-renders IN PLACE when a set is added/removed/
+    /// edited — that lets SwiftUI animate the row insert/remove natively
+    /// (siblings stay put, the space opens/closes), instead of the UCV
+    /// rebuilding the whole cell (which couldn't animate and looked like
+    /// the space appeared a beat after the content). The template editor
+    /// keeps the reconfigure-key path since it has no session to observe.
+    @Environment(WorkoutSession.self) private var observedSession: WorkoutSession?
 
     let entry: ExerciseEntry
     @Binding var entries: [ExerciseEntry]
@@ -618,6 +623,11 @@ struct ExerciseCell: View {
     /// (which are structural — no "completed" concept). True for live
     /// workouts.
     var showCheckmark: Bool = true
+    /// Structural mode (templates): set rows show only the set number,
+    /// no weight/reps fields, no checkmark, no previous-performance
+    /// ghost. Templates store exercise + set count; the numbers come
+    /// from previous performance, surfaced live in the workout.
+    var structural: Bool = false
 
     /// The entry as it currently exists in `entries`. The cell's
     /// `entry` parameter is captured by value at the time the cell
@@ -642,17 +652,96 @@ struct ExerciseCell: View {
     /// that small snapshot on the finger with minimal offset, and
     /// the cell stays where the finger is.
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        // Register an Observation dependency on the session's entries so
+        // this cell re-renders in place on any set change (see the
+        // observedSession doc above). No-op for the template editor.
+        _ = observedSession?.entries
+        return VStack(alignment: .leading, spacing: 0) {
             titleBar
 
             if !reorderState.isReordering {
-                setsSection
-                    .transition(.opacity)
+                Group {
+                    // Templates render a stack of set "boxes" — no
+                    // fields, just the count. The stack's height
+                    // visualizes volume and keeps parity with the
+                    // workout's row layout.
+                    if structural {
+                        structuralSetsSection
+                    } else {
+                        setsSection
+                    }
+                }
+                .transition(.opacity)
             }
 
             Rectangle()
                 .fill(Color("marblePrimary").opacity(0.08))
                 .frame(height: 0.5)
+        }
+    }
+
+    /// Structural (template) set list — a stack of full-width set
+    /// "boxes," each a tactile object carrying just its set number.
+    /// The stack's height visualizes how many sets, and it keeps the
+    /// row layout / +SET / swipe-to-delete parity with the workout.
+    /// No fields, no checkmark, no previous-performance ghost — a
+    /// template stores only the count. Swiping away the last set
+    /// removes the exercise (handled in `removeSet`).
+    private var structuralSetsSection: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("SETS")
+                .font(.marbleMono(11))
+                .tracking(1.5)
+                .foregroundStyle(Color("marbleSecondary"))
+                .padding(.horizontal, 20)
+                .padding(.bottom, 10)
+
+            VStack(spacing: 8) {
+                ForEach(setsBinding) { $set in
+                    let index = live.sets.firstIndex(where: { $0.id == set.id }) ?? 0
+                    SwipeToDismissRow(onDelete: {
+                        let setID = set.id
+                        withAnimation(.easeOut(duration: 0.25)) {
+                            removeSet(id: setID)
+                        }
+                    }) {
+                        HStack {
+                            Text("\(index + 1)")
+                                .font(.marbleBody(20))
+                                .foregroundStyle(Color("marblePrimary").opacity(0.7))
+                            Spacer()
+                        }
+                        .padding(.horizontal, 20)
+                        .frame(height: 54)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .fill(Color("marblePrimary").opacity(0.05))
+                        )
+                        .padding(.horizontal, 20)
+                    }
+                }
+            }
+
+            Button {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                // Plain ease, no spring overshoot (the bounce), at a
+                // duration close to the collection view's own resize so
+                // the rows and the cell height move up/down together.
+                withAnimation(.easeOut(duration: 0.25)) {
+                    addSet()
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    Text("+")
+                    Text("SET").tracking(1)
+                }
+                .marbleSecondaryButton()
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 20)
+            .padding(.top, 14)
+            .padding(.bottom, 24)
         }
     }
 
@@ -722,18 +811,19 @@ struct ExerciseCell: View {
             .padding(.horizontal, 20)
             .padding(.bottom, 8)
 
-            // Plain VStack of set rows. Each row is a SwipeToDeleteRow
-            // (custom horizontal swipe → delete) wrapping a SetRowView.
-            // We do NOT use a SwiftUI List here: List has no intrinsic
-            // height and is built to scroll/fill, which breaks self-
-            // sizing when this cell is hosted inside the UICollectionView
-            // bridge — it rendered as a zero-height blank in the
-            // TemplateEditor's plain ScrollView. A VStack measures
-            // exactly to its rows, so the cell self-sizes correctly in
-            // every container. SwipeToDeleteRow already owns the swipe
-            // gesture, so List's .swipeActions (the only reason it was
-            // here) isn't needed.
-            VStack(spacing: 0) {
+            // Native SwiftUI List for the set rows — its built-in row
+            // insert/delete animation is smooth and bounce-free. The
+            // hand-rolled VStack version had to choreograph the reflow
+            // itself and ended up bouncing / overlapping; List just does
+            // it right (this is the build-8 behavior we're restoring).
+            // `.scrollDisabled` plus an EXACT measured height (each row
+            // is 52pt field + 2×10 padding = 72pt) make it lay out
+            // statically inside the UCV-bridged exercise cell instead of
+            // trying to fill/scroll. Only the live workout uses this —
+            // templates render the structural boxes (structuralSetsSection),
+            // so the old "List blanks out in the template's plain
+            // ScrollView" problem no longer applies.
+            List {
                 ForEach(setsBinding) { $set in
                     let index = live.sets.firstIndex(where: { $0.id == set.id }) ?? 0
                     let prev = PreviousPerformance.previousComponents(
@@ -743,20 +833,18 @@ struct ExerciseCell: View {
                     )
                     // Cascade placeholder: prefer the closest filled
                     // set ABOVE this one in the current workout (so
-                    // typing 225 × 8 in set 1 shows 225/8 as the
-                    // ghost text for sets 2, 3…). Falls back to the
-                    // previous workout's value if nothing's been
-                    // typed yet. Display-only — the actual value
-                    // doesn't get written until the user types or
-                    // taps the checkmark (which auto-accepts the
-                    // placeholder via SetRowView.handleComplete).
+                    // typing 225 × 8 in set 1 shows 225/8 as the ghost
+                    // text for sets 2, 3…). Falls back to the previous
+                    // workout's value if nothing's been typed yet.
                     let cascade = cascadeFill(forSetAt: index)
                     let placeholderWeight = cascade.weight ?? prev.weight
                     let placeholderReps = cascade.reps ?? prev.reps
                     SwipeToDeleteRow(
                         onDelete: {
                             let setID = set.id
-                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                            // Critically damped (no overshoot) so the rows
+                            // flow up smoothly with no bounce.
+                            withAnimation(.spring(response: 0.35, dampingFraction: 1)) {
                                 removeSet(id: setID)
                             }
                         }
@@ -780,12 +868,24 @@ struct ExerciseCell: View {
                                 : Color("marbleBackground")
                         )
                     }
+                    .listRowInsets(EdgeInsets())
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
                 }
             }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .scrollDisabled(true)
+            // Exact height = rows × 72pt so List lays out statically
+            // (no fill/scroll) inside the self-sizing exercise cell.
+            .frame(height: CGFloat(live.sets.count) * 72)
 
             Button {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                withAnimation(.spring(response: 0.4, dampingFraction: 0.82)) {
+                // Critically damped (dampingFraction 1) — same spring
+                // timing as before but with no overshoot, so the new
+                // row eases in and settles without the little bounce.
+                withAnimation(.spring(response: 0.4, dampingFraction: 1)) {
                     addSet()
                 }
             } label: {
@@ -820,6 +920,9 @@ struct ExerciseCell: View {
         )
     }
 
+    // Plain mutations — the animation lives at the call sites (the
+    // +SET button and the swipe's onDelete), matching the original
+    // workout behavior where the spring reflow felt right.
     private func addSet() {
         guard let idx = entries.firstIndex(where: { $0.id == entry.id }) else { return }
         entries[idx].sets.append(EditableSet())
@@ -827,7 +930,16 @@ struct ExerciseCell: View {
 
     private func removeSet(id: UUID) {
         guard let idx = entries.firstIndex(where: { $0.id == entry.id }) else { return }
-        entries[idx].sets.removeAll { $0.id == id }
+        // In a template, swiping away the last set removes the whole
+        // exercise — a template should never hold a 0-set exercise.
+        // Live workouts keep the exercise even at zero sets (you might
+        // be mid-session and about to re-add).
+        if structural && entries[idx].sets.count <= 1 {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            entries.remove(at: idx)
+        } else {
+            entries[idx].sets.removeAll { $0.id == id }
+        }
     }
 
     private func cascadeFill(forSetAt index: Int) -> (weight: String?, reps: String?) {
@@ -916,14 +1028,71 @@ struct SwipeToDeleteRow<Content: View>: View {
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         // Slide the content fully off-screen so the row briefly
         // shows as solid red, then hand off to the parent's
-        // removeSet (already wrapped in a spring withAnimation) —
-        // SwiftUI's diff animates the row's removal and the
-        // surrounding sets flow into the space without an
-        // explicit vertical-collapse step here.
+        // removeSet (wrapped in a spring withAnimation) — SwiftUI's
+        // diff animates the row's removal and the surrounding sets
+        // flow into the space without an explicit vertical-collapse
+        // step here.
         withAnimation(.easeOut(duration: 0.18)) {
             offset = -UIScreen.main.bounds.width
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+            onDelete()
+        }
+    }
+}
+
+// MARK: - Swipe to dismiss (template set boxes)
+
+/// Swipe a template set box left to remove it — no red reveal. The box
+/// just slides out and fades as it goes, then the parent removes it.
+/// The workout's full-bleed red `SwipeToDeleteRow` looks wrong behind a
+/// rounded, inset box, so the boxes use this lighter affordance instead.
+struct SwipeToDismissRow<Content: View>: View {
+    let onDelete: () -> Void
+    @ViewBuilder let content: () -> Content
+
+    @State private var offset: CGFloat = 0
+
+    private let commitThreshold: CGFloat = -110
+
+    var body: some View {
+        content()
+            .offset(x: offset)
+            // Fade gently as it's dragged out (offset is negative), so
+            // it clearly reads as "being removed."
+            .opacity(max(0, 1 + Double(offset) / 360))
+            .highPriorityGesture(
+                DragGesture(minimumDistance: 15, coordinateSpace: .local)
+                    .onChanged { value in
+                        guard abs(value.translation.width) > abs(value.translation.height) else { return }
+                        offset = min(0, value.translation.width)
+                    }
+                    .onEnded { value in
+                        guard abs(value.translation.width) > abs(value.translation.height) else {
+                            snapBack()
+                            return
+                        }
+                        if offset < commitThreshold {
+                            commit()
+                        } else {
+                            snapBack()
+                        }
+                    }
+            )
+    }
+
+    private func snapBack() {
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+            offset = 0
+        }
+    }
+
+    private func commit() {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        withAnimation(.easeOut(duration: 0.2)) {
+            offset = -UIScreen.main.bounds.width
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
             onDelete()
         }
     }

@@ -18,19 +18,20 @@ struct ExerciseEntry: Identifiable {
 
 // MARK: - Template Editor
 //
-// Mirrors ActiveWorkoutView's architecture so the two surfaces feel
-// like the same canvas. Same native List structure, same flat row
-// layout (no Sections — exercise headers scroll naturally), same
-// `.swipeActions` per-set delete, same menu-driven reorder pattern,
-// same floating glass toolbar.
+// Shares ActiveWorkoutView's editing stack exactly: BackedScrollView +
+// ReorderableList + ExerciseCell, so reorder (drag-anchor + auto-
+// scroll), add/replace exercise, +SET, and swipe-to-delete all behave
+// identically across the two surfaces.
 //
 // What's different from ActiveWorkoutView:
 //   - No timer / rest timer / mini-bar (templates aren't "live")
 //   - SAVE replaces FINISH (no completed-set gate)
-//   - Workout-level menu only has Reorder (no Discard — dismiss == undo)
+//   - Cells render in `structural` mode: set rows show only the set
+//     number — no weight/reps fields, no checkmark, no previous ghost.
 //
-// Template data model only persists `name + exercises`. The set rows
-// shown in the editor are demonstrational — values aren't saved.
+// Templates are structural: they persist `name + exercises + order +
+// setCounts`. The actual weights/reps come from previous performance,
+// surfaced live in the workout — never frozen into the template.
 
 struct TemplateEditorView: View {
     @Environment(\.modelContext) private var modelContext
@@ -64,11 +65,12 @@ struct TemplateEditorView: View {
         // edit session land in the correct sequence here. The raw
         // `template.exercises` relationship doesn't reliably preserve
         // order across saves — see WorkoutTemplate for the rationale.
-        let ordered = template?.orderedExercises() ?? []
-        _entries = State(initialValue: ordered.map { exercise in
-            ExerciseEntry(exercise: exercise, sets: [
-                EditableSet(), EditableSet(), EditableSet()
-            ])
+        let ordered = template?.orderedExercisesWithSetCounts() ?? []
+        _entries = State(initialValue: ordered.map { pair in
+            ExerciseEntry(
+                exercise: pair.exercise,
+                sets: (0..<pair.setCount).map { _ in EditableSet() }
+            )
         })
     }
 
@@ -112,49 +114,6 @@ struct TemplateEditorView: View {
         }
     }
 
-    // MARK: - List Rows
-
-    /// Template name field as the first list row. Extra top padding
-    /// gives breathing room below the floating toolbar.
-    private var templateHeaderRow: some View {
-        // Top padding clears the floating toolbar (8pt offset + 44pt
-        // button = 52pt bottom edge) with 36pt of breathing room
-        // beneath. A title pressed against the toolbar reads as
-        // crowded; this restores the editorial generosity.
-        TextField("Template", text: $name)
-            .font(.marbleBody(32))
-            .foregroundStyle(Color("marblePrimary"))
-            .padding(.horizontal, 20)
-            .padding(.top, 88)
-            .padding(.bottom, 32)
-            .listRowInsets(EdgeInsets())
-            .listRowSeparator(.hidden)
-            .listRowBackground(Color.clear)
-    }
-
-    private var exerciseDividerRow: some View {
-        Rectangle()
-            .fill(Color("marblePrimary").opacity(0.06))
-            .frame(height: 0.5)
-            .listRowInsets(EdgeInsets(top: 20, leading: 20, bottom: 20, trailing: 20))
-            .listRowSeparator(.hidden)
-            .listRowBackground(Color.clear)
-    }
-
-    @ViewBuilder
-    private var expandedExercisesContent: some View {
-        ForEach(Array($entries.enumerated()), id: \.element.id) { index, $entry in
-            if index > 0 {
-                exerciseDividerRow
-            }
-            exerciseHeaderRow(entry: $entry)
-            ForEach($entry.sets) { $set in
-                setRowItem(entry: $entry, set: $set)
-            }
-            addSetRow(entry: $entry)
-        }
-    }
-
     /// Single canvas — template name + reorderable exercise list +
     /// add-exercise row. Each exercise cell observes `reorderState`
     /// and renders expanded or compact in place. Same architecture
@@ -163,7 +122,13 @@ struct TemplateEditorView: View {
     /// the checkmark column (templates have no completed concept).
     @ViewBuilder
     private var unifiedCanvas: some View {
-        ScrollView {
+        // UIKit-backed scroll view — same as ActiveWorkoutView, so the
+        // ReorderableList bridge can anchor the dragged cell at the
+        // touch point and auto-scroll. SwiftUI's ScrollView reverts the
+        // bridge's contentInset writes within a runloop tick, which is
+        // why the template editor's reorder felt different from the
+        // workout's. See BackedScrollView.swift.
+        BackedScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 TextField("Template", text: $name)
                     .font(.marbleBody(32))
@@ -178,7 +143,11 @@ struct TemplateEditorView: View {
                     onReorder: { newOrder in entries = newOrder },
                     onTap: nil,
                     onDragStart: {
-                        reorderState.isReordering = true
+                        // Animate the collapse so cells flow into
+                        // title-only, matching ActiveWorkoutView.
+                        withAnimation(.spring(response: 0.26, dampingFraction: 0.86)) {
+                            reorderState.isReordering = true
+                        }
                     },
                     onDragEnd: {
                         withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
@@ -201,7 +170,8 @@ struct TemplateEditorView: View {
                             showingLibrary = true
                         },
                         onComplete: nil,
-                        showCheckmark: false
+                        showCheckmark: false,
+                        structural: true
                     )
                 }
 
@@ -220,150 +190,7 @@ struct TemplateEditorView: View {
             }
             .padding(.bottom, 140)
         }
-        .scrollDismissesKeyboard(.interactively)
         .background(Color("marbleBackground"))
-    }
-
-    /// Exercise header — name + ⋯ menu (Replace / Remove). Same ID-
-    /// capture pattern as ActiveWorkoutView to avoid the Binding-into-
-    /// closure footgun (binding becomes invalid the moment the entries
-    /// array mutates → crash).
-    @ViewBuilder
-    private func exerciseHeaderRow(entry: Binding<ExerciseEntry>) -> some View {
-        let entryID = entry.wrappedValue.id
-        VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                Text(entry.wrappedValue.exercise.name)
-                    .font(.marbleBody(22))
-                    .foregroundStyle(Color("marblePrimary"))
-
-                Spacer()
-
-                Menu {
-                    Button {
-                        DispatchQueue.main.async {
-                            replacingEntryID = entryID
-                            showingLibrary = true
-                        }
-                    } label: {
-                        Label("Replace exercise", systemImage: "arrow.triangle.2.circlepath")
-                    }
-                    Button(role: .destructive) {
-                        DispatchQueue.main.async {
-                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                                entries.removeAll { $0.id == entryID }
-                            }
-                        }
-                    } label: {
-                        Label("Remove", systemImage: "trash")
-                    }
-                } label: {
-                    Image(systemName: "ellipsis")
-                        .font(.system(size: 13, weight: .medium))
-                        .marbleGlassCapsule(size: 32)
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(.horizontal, 20)
-            .padding(.bottom, 14)
-
-            // Column headers — widths track SetRowView field sizes. No
-            // checkmark column here since templates don't have a
-            // "completed" concept.
-            HStack(spacing: 14) {
-                Text("SET").frame(width: 32, alignment: .center)
-                Spacer()
-                Text("LBS").frame(width: 100, alignment: .center)
-                Text("REPS").frame(width: 100, alignment: .center)
-            }
-            .font(.marbleMono(11))
-            .tracking(1.5)
-            .foregroundStyle(Color("marbleSecondary"))
-            .padding(.horizontal, 20)
-            .padding(.bottom, 8)
-        }
-        .listRowInsets(EdgeInsets())
-        .listRowSeparator(.hidden)
-        .listRowBackground(Color.clear)
-    }
-
-    @ViewBuilder
-    private func setRowItem(
-        entry: Binding<ExerciseEntry>,
-        set: Binding<EditableSet>
-    ) -> some View {
-        let index = entry.wrappedValue.sets.firstIndex(where: { $0.id == set.wrappedValue.id }) ?? 0
-        // Ghost-text the previous workout's values per set, same lookup
-        // as ActiveWorkoutView. Templates don't *store* prescribed
-        // numbers — the editor is structural (exercises + set count +
-        // order). The ghost is purely informational: "here's what you
-        // last lifted on this exercise" so the user can shape the
-        // template knowing where they're starting from.
-        let prev = PreviousPerformance.previousComponents(
-            for: entry.wrappedValue.exercise,
-            setIndex: index,
-            context: modelContext
-        )
-
-        SetRowView(
-            setNumber: index + 1,
-            weight: set.weight,
-            reps: set.reps,
-            isCompleted: set.isCompleted,
-            previousWeight: prev.weight,
-            previousReps: prev.reps,
-            showCheckmark: false,
-            onComplete: nil
-        )
-        .listRowInsets(EdgeInsets(top: 10, leading: 20, bottom: 10, trailing: 20))
-        .listRowSeparator(.hidden)
-        .listRowBackground(Color.clear)
-        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-            Button(role: .destructive) {
-                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                    entry.wrappedValue.sets.removeAll { $0.id == set.wrappedValue.id }
-                }
-            } label: {
-                Text("Delete")
-            }
-        }
-    }
-
-    /// + SET row at the end of each exercise's set list.
-    private func addSetRow(entry: Binding<ExerciseEntry>) -> some View {
-        Button {
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            withAnimation(.spring(response: 0.4, dampingFraction: 0.82)) {
-                entry.wrappedValue.sets.append(EditableSet())
-            }
-        } label: {
-            HStack(spacing: 6) {
-                Text("+")
-                Text("SET").tracking(1)
-            }
-            .marbleSecondaryButton()
-        }
-        .buttonStyle(.plain)
-        .listRowInsets(EdgeInsets(top: 12, leading: 20, bottom: 8, trailing: 20))
-        .listRowSeparator(.hidden)
-        .listRowBackground(Color.clear)
-    }
-
-    private var addExerciseRow: some View {
-        Button {
-            showingLibrary = true
-        } label: {
-            HStack(spacing: 6) {
-                Text("+")
-                Text("EXERCISE").tracking(1)
-            }
-            .marbleSecondaryButton()
-        }
-        .buttonStyle(.plain)
-        .listRowInsets(EdgeInsets(top: 24, leading: 20, bottom: 120, trailing: 20))
-        .listRowSeparator(.hidden)
-        .listRowBackground(Color.clear)
     }
 
     // MARK: - Floating Toolbar
@@ -416,6 +243,8 @@ struct TemplateEditorView: View {
         UINotificationFeedbackGenerator().notificationOccurred(.success)
 
         let exercises = entries.map(\.exercise)
+        // Per-exercise set count, index-aligned with exerciseNames.
+        let setCounts = entries.map { $0.sets.count }
 
         if let existing = existingTemplate {
             existing.name = trimmedName
@@ -431,10 +260,13 @@ struct TemplateEditorView: View {
             // exercise refs in the saved order.
             existing.exercises = exercises
             existing.exerciseNames = exercises.map(\.name)
+            existing.setCounts = setCounts
             try? modelContext.save()
             CloudSyncService.shared.uploadTemplate(existing)
         } else {
             let template = WorkoutTemplate(name: trimmedName, exercises: exercises)
+            template.exerciseNames = exercises.map(\.name)
+            template.setCounts = setCounts
             // Land at the end of the list so the user's existing order
             // isn't disturbed by a new entry.
             template.displayOrder = allTemplates.count

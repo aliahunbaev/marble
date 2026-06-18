@@ -45,16 +45,18 @@ final class WorkoutSession {
 
     // MARK: - Lifecycle
 
-    /// Start a fresh workout. Pass `template` to pre-populate exercises +
-    /// 3 empty sets each; pass nil for an empty workout the user fills in.
+    /// Start a fresh workout. Pass `template` to pre-populate exercises
+    /// with the template's prescribed number of empty sets each; pass
+    /// nil for an empty workout the user fills in.
     func start(template: WorkoutTemplate? = nil) {
         sourceTemplate = template
         if let template {
             name = template.name
-            entries = template.orderedExercises().map { exercise in
-                ExerciseEntry(exercise: exercise, sets: [
-                    EditableSet(), EditableSet(), EditableSet()
-                ])
+            entries = template.orderedExercisesWithSetCounts().map { pair in
+                ExerciseEntry(
+                    exercise: pair.exercise,
+                    sets: (0..<pair.setCount).map { _ in EditableSet() }
+                )
             }
         } else {
             name = "Workout"

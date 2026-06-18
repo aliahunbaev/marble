@@ -171,6 +171,7 @@ final class CloudSyncService {
                 template.cloudID = dto.cloudID
                 template.exercises = dto.exerciseNames.compactMap { exerciseByName[$0] }
                 template.exerciseNames = dto.exerciseNames
+                template.setCounts = dto.setCounts
                 template.displayOrder = dto.displayOrder
                 context.insert(template)
             }
@@ -407,10 +408,14 @@ struct TemplateDTO: Codable {
     /// cleanly. Encoded going forward so the user's Train tab ordering
     /// survives a reinstall.
     var displayOrder: Int = 0
+    /// Per-exercise set count, parallel to `exerciseNames`. Defaulted
+    /// so legacy docs decode cleanly (the model fills in 3s on read).
+    var setCounts: [Int] = []
 
     init(from template: WorkoutTemplate) {
         self.cloudID = template.cloudID
         self.name = template.name
+        self.setCounts = template.setCounts
         // Prefer the stored `exerciseNames` directly. Going through
         // `orderedExercises().map(\.name)` is unsafe: if SwiftData
         // hasn't fault-resolved the `.exercises` relationship at this
