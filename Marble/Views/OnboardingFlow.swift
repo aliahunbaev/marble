@@ -29,6 +29,14 @@ struct OnboardingFlow: View {
             }
             .transition(.opacity)
         }
+        // The final step is the real sign-in screen. The moment auth
+        // succeeds, complete onboarding and drop into the app — there's
+        // no separate "begin" tap.
+        .onChange(of: auth.isAuthenticated) { _, isAuthed in
+            if isAuthed && step == totalSteps - 1 {
+                finishOnboarding()
+            }
+        }
     }
 
     // MARK: - Background
@@ -209,60 +217,22 @@ struct OnboardingFlow: View {
         }
     }
 
-    // MARK: - Screen 5 — The Account
+    // MARK: - Screen 5 — Sign In
 
+    // The editorial intro hands straight off to the real sign-in screen
+    // (accounts are required). Signing in completes onboarding via the
+    // auth-success hook on the body. There's no "skip" and no close
+    // button — SignInView only shows its X when presented, and here it's
+    // embedded inline as the final step.
     private var accountScreen: some View {
-        VStack(spacing: 0) {
-            Spacer()
-
-            VStack(spacing: 16) {
-                Text("Save your work.")
-                    .font(.marbleBody(22))
-                    .foregroundStyle(Color("marblePrimary"))
-
-                Text("So your record is yours, forever.")
-                    .font(.marbleBody(14))
-                    .foregroundStyle(Color("marbleSecondary"))
+        SignInView()
+            .environmentObject(auth)
+            .onAppear {
+                // Already authenticated (e.g. the onboarding flag was
+                // reset on a signed-in device) — nothing to sign into,
+                // so finish straight away.
+                if auth.isAuthenticated { finishOnboarding() }
             }
-
-            Spacer()
-
-            VStack(spacing: 12) {
-                if auth.isAuthenticated {
-                    // Already signed in — show confirmation
-                    HStack(spacing: 8) {
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 12, weight: .light))
-                        Text("SIGNED IN")
-                            .font(.marbleMono(11, weight: .medium))
-                            .tracking(2)
-                    }
-                    .foregroundStyle(Color("marbleSecondary"))
-                    .padding(.vertical, 12)
-
-                    continueButton(label: "BEGIN", emphasized: true, lightOnDark: false)
-                } else {
-                    // Accounts are required — sign-in is the only way
-                    // forward (no "skip"). An account guarantees the
-                    // training record is backed up and gives a single,
-                    // unambiguous identity.
-                    NavigationLink {
-                        SignInView()
-                            .environmentObject(auth)
-                    } label: {
-                        Text("Sign in")
-                            .font(.marbleBody(15, weight: .regular))
-                            .foregroundStyle(Color("marbleBackground"))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                            .background(Color("marblePrimary"))
-                            .clipShape(Capsule())
-                    }
-                    .padding(.horizontal, 32)
-                }
-            }
-            .padding(.bottom, 40)
-        }
     }
 
     // MARK: - Helpers
