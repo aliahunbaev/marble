@@ -476,7 +476,12 @@ struct ClosingRitualView: View {
 private struct InlineGlassPillBackground: ViewModifier {
     func body(content: Content) -> some View {
         if #available(iOS 26.0, *) {
-            content.glassEffect(.regular, in: Capsule())
+            content
+                .glassEffect(.regular, in: Capsule())
+                // Make the whole full-width pill tappable, not just the
+                // "SAVE" text — without this the empty stretched frame
+                // doesn't hit-test and you had to tap the word itself.
+                .contentShape(Capsule())
         } else {
             content
                 .background(.ultraThinMaterial, in: Capsule())
@@ -484,6 +489,7 @@ private struct InlineGlassPillBackground: ViewModifier {
                     Capsule()
                         .stroke(Color("marblePrimary").opacity(0.08), lineWidth: 0.5)
                 )
+                .contentShape(Capsule())
         }
     }
 }
