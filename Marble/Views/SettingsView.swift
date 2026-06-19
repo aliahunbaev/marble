@@ -7,19 +7,13 @@ import SwiftData
 /// frees the You tab to be an identity surface (profile + workout feed).
 struct SettingsView: View {
     @EnvironmentObject private var auth: AuthenticationService
-    @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
     @AppStorage("appTheme") private var appTheme: String = "system"
-    @AppStorage("weightUnit") private var weightUnit: String = "lbs"
     @AppStorage("appIcon") private var appIcon: String = "light"
 
-    @State private var showingClearConfirmation = false
     @State private var showingSignOutConfirmation = false
     @State private var showingDeleteConfirmation = false
-    @State private var showingCleanupResult = false
-    @State private var cleanupCount = 0
-    @State private var isCleaningUp = false
 
     /// The sheet's color scheme. We ALWAYS resolve to an explicit .light or
     /// .dark and never pass nil — passing nil to .preferredColorScheme on a
@@ -34,12 +28,15 @@ struct SettingsView: View {
     }
 
     private var systemColorScheme: ColorScheme {
-        let scenes = UIApplication.shared.connectedScenes
-        if let scene = scenes.first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
-           let window = scene.windows.first {
-            return window.traitCollection.userInterfaceStyle == .dark ? .dark : .light
-        }
-        return .light
+        keyWindow?.traitCollection.userInterfaceStyle == .dark ? .dark : .light
+    }
+
+    /// The foreground key window — used both to read the live system
+    /// appearance and to pin it across an app-icon change.
+    private var keyWindow: UIWindow? {
+        let scene = UIApplication.shared.connectedScenes
+            .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene
+        return scene?.windows.first(where: { $0.isKeyWindow }) ?? scene?.windows.first
     }
 
     var body: some View {
@@ -48,8 +45,6 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 32) {
                     appIconSection
                     appearanceSection
-                    preferencesSection
-                    dataSection
                     if auth.isAuthenticated {
                         accountSection
                     }
@@ -82,25 +77,6 @@ struct SettingsView: View {
             // marbleDialog to an inner Button sizes the overlay to
             // the button, which made them appear next to the button
             // instead of centred.
-            .marbleDialog(
-                "Clear all data?",
-                message: "This will delete all workouts, templates, and exercise data. This cannot be undone.",
-                isPresented: $showingClearConfirmation,
-                buttons: [
-                    .destructive("Clear") { clearAllData() },
-                    .cancel(),
-                ]
-            )
-            .marbleDialog(
-                "Cleanup complete",
-                message: cleanupCount == 0
-                    ? "No empty or orphan templates found."
-                    : "Removed \(cleanupCount) empty template\(cleanupCount == 1 ? "" : "s").",
-                isPresented: $showingCleanupResult,
-                buttons: [
-                    .cancel("OK"),
-                ]
-            )
             .marbleDialog(
                 "Sign out?",
                 isPresented: $showingSignOutConfirmation,
@@ -149,10 +125,30 @@ struct SettingsView: View {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             appIcon = value
             let iconName: String? = value == "light" ? nil : "AppIcon-Dark"
+
+            // In "system" appearance the app follows the device via
+            // preferredColorScheme(nil). The system alert that
+            // setAlternateIconName presents momentarily resets the window
+            // to the default (light) appearance, which flashes a
+            // dark-mode app to light and back. Pin the window to its
+            // current style across the swap, then restore system control.
+            let shouldPin = appTheme == "system"
+            let window = keyWindow
+            if shouldPin, let window {
+                window.overrideUserInterfaceStyle = window.traitCollection.userInterfaceStyle
+            }
+
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 UIApplication.shared.setAlternateIconName(iconName) { error in
                     if let error {
                         print("Icon change error: \(error)")
+                    }
+                    if shouldPin, let window {
+                        // Hand appearance back to the system once the
+                        // alert has dismissed.
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                            window.overrideUserInterfaceStyle = .unspecified
+                        }
                     }
                 }
             }
@@ -220,89 +216,6 @@ struct SettingsView: View {
         .buttonStyle(.plain)
     }
 
-    // MARK: - Preferences
-
-    private var preferencesSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: "PREFERENCES")
-
-            VStack(spacing: 0) {
-                // Weight Unit
-                HStack {
-                    Text("Weight Unit")
-                        .font(.marbleBody(14))
-                        .foregroundStyle(Color("marblePrimary"))
-                    Spacer()
-                    HStack(spacing: 0) {
-                        unitOption(label: "lbs", isSelected: weightUnit == "lbs") {
-                            weightUnit = "lbs"
-                        }
-                        unitOption(label: "kg", isSelected: weightUnit == "kg") {
-                            weightUnit = "kg"
-                        }
-                    }
-                }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 12)
-            }
-        }
-    }
-
-    private func unitOption(label: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(label)
-                .font(.marbleMono(13))
-                .foregroundStyle(isSelected ? Color("marblePrimary") : Color("marbleSecondary"))
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 4)
-                        .stroke(
-                            isSelected ? Color("marblePrimary") : Color("marblePrimary").opacity(0.12),
-                            lineWidth: isSelected ? 1 : 0.5
-                        )
-                )
-        }
-        .buttonStyle(.plain)
-    }
-
-    // MARK: - Data
-
-    private var dataSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: "DATA")
-
-            // Sweeps templates with empty name OR empty exercises from
-            // both local store and cloud. Safe to run repeatedly.
-            Button {
-                guard !isCleaningUp else { return }
-                isCleaningUp = true
-                Task {
-                    let n = await CloudSyncService.shared
-                        .cleanupEmptyTemplates(context: modelContext)
-                    await MainActor.run {
-                        cleanupCount = n
-                        isCleaningUp = false
-                        showingCleanupResult = true
-                    }
-                }
-            } label: {
-                Text(isCleaningUp ? "CLEANING UP…" : "CLEAN UP EMPTY TEMPLATES")
-                    .marbleSecondaryButton()
-            }
-            .buttonStyle(.plain)
-            .disabled(isCleaningUp)
-
-            Button {
-                showingClearConfirmation = true
-            } label: {
-                Text("CLEAR ALL DATA")
-                    .marbleDestructiveButton()
-            }
-            .buttonStyle(.plain)
-        }
-    }
-
     // MARK: - Account
 
     private var accountSection: some View {
@@ -327,21 +240,6 @@ struct SettingsView: View {
             }
             .buttonStyle(.plain)
         }
-    }
-
-    private func clearAllData() {
-        do {
-            try modelContext.delete(model: TrackedLift.self)
-            try modelContext.delete(model: Workout.self)
-            try modelContext.delete(model: ExerciseLog.self)
-            try modelContext.delete(model: WorkoutSet.self)
-            try modelContext.delete(model: WorkoutTemplate.self)
-            try modelContext.delete(model: Exercise.self)
-            try modelContext.save()
-        } catch {
-            // Silently handle
-        }
-        Task { await CloudSyncService.shared.clearAllCloudData() }
     }
 }
 

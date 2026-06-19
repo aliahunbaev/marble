@@ -158,14 +158,76 @@ final class AuthenticationService: ObservableObject {
     func deleteAccount() async {
         guard let user else { return }
         isLoading = true
+        error = nil
         do {
-            await CloudSyncService.shared.clearAllCloudData()
-            try await db.collection("users").document(user.uid).delete()
-            try await user.delete()
+            try await performAccountDeletion(user)
         } catch {
-            self.error = error.localizedDescription
+            // Firebase refuses to delete an account on a stale session —
+            // it requires a recent login. Reauthenticate, then retry.
+            if (error as NSError).code == AuthErrorCode.requiresRecentLogin.rawValue {
+                do {
+                    try await reauthenticate(user)
+                    try await performAccountDeletion(user)
+                } catch {
+                    self.error = (error as NSError).localizedDescription
+                }
+            } else {
+                self.error = error.localizedDescription
+            }
         }
         isLoading = false
+    }
+
+    private func performAccountDeletion(_ user: FirebaseAuth.User) async throws {
+        await CloudSyncService.shared.clearAllCloudData()
+        try await db.collection("users").document(user.uid).delete()
+        try await user.delete()
+    }
+
+    /// Reauthenticate the user so a sensitive op (account deletion) can
+    /// proceed. Apple accounts re-run Sign in with Apple silently; other
+    /// providers fall back to an instructive message (the user can sign
+    /// out and back in, which refreshes the session).
+    private func reauthenticate(_ user: FirebaseAuth.User) async throws {
+        let providerID = user.providerData.first?.providerID ?? ""
+        switch providerID {
+        case "apple.com":
+            let credential = try await freshAppleCredential()
+            try await user.reauthenticate(with: credential)
+        default:
+            throw NSError(
+                domain: "Marble",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey:
+                    "For your security, sign out and sign back in, then delete your account."]
+            )
+        }
+    }
+
+    /// Drive a fresh Sign in with Apple programmatically and return a
+    /// Firebase credential for reauthentication.
+    private func freshAppleCredential() async throws -> AuthCredential {
+        let nonce = randomNonceString()
+        currentNonce = nonce
+        let request = ASAuthorizationAppleIDProvider().createRequest()
+        request.requestedScopes = [.fullName, .email]
+        request.nonce = sha256(nonce)
+
+        let authorization = try await AppleAuthBroker.shared.perform(request: request)
+        guard let appleCredential = authorization.credential as? ASAuthorizationAppleIDCredential,
+              let tokenData = appleCredential.identityToken,
+              let idToken = String(data: tokenData, encoding: .utf8) else {
+            throw NSError(
+                domain: "Marble",
+                code: -2,
+                userInfo: [NSLocalizedDescriptionKey: "Couldn't verify your Apple ID."]
+            )
+        }
+        return OAuthProvider.appleCredential(
+            withIDToken: idToken,
+            rawNonce: nonce,
+            fullName: appleCredential.fullName
+        )
     }
 
     // MARK: - Profile
@@ -246,5 +308,52 @@ final class AuthenticationService: ObservableObject {
         let inputData = Data(input.utf8)
         let hashedData = SHA256.hash(data: inputData)
         return hashedData.compactMap { String(format: "%02x", $0) }.joined()
+    }
+}
+
+// MARK: - Apple authorization async bridge
+
+/// Bridges a one-shot ASAuthorizationController flow to async/await, used
+/// for reauthentication (account deletion). The SwiftUI SignInWithApple
+/// button handles the normal sign-in; this drives the same flow
+/// programmatically when we need a fresh credential mid-session.
+private final class AppleAuthBroker: NSObject,
+    ASAuthorizationControllerDelegate,
+    ASAuthorizationControllerPresentationContextProviding {
+
+    static let shared = AppleAuthBroker()
+
+    private var continuation: CheckedContinuation<ASAuthorization, Error>?
+
+    func perform(request: ASAuthorizationAppleIDRequest) async throws -> ASAuthorization {
+        try await withCheckedThrowingContinuation { continuation in
+            self.continuation = continuation
+            let controller = ASAuthorizationController(authorizationRequests: [request])
+            controller.delegate = self
+            controller.presentationContextProvider = self
+            controller.performRequests()
+        }
+    }
+
+    func authorizationController(
+        controller: ASAuthorizationController,
+        didCompleteWithAuthorization authorization: ASAuthorization
+    ) {
+        continuation?.resume(returning: authorization)
+        continuation = nil
+    }
+
+    func authorizationController(
+        controller: ASAuthorizationController,
+        didCompleteWithError error: Error
+    ) {
+        continuation?.resume(throwing: error)
+        continuation = nil
+    }
+
+    func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
+        let scene = UIApplication.shared.connectedScenes
+            .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene
+        return scene?.windows.first(where: { $0.isKeyWindow }) ?? ASPresentationAnchor()
     }
 }
