@@ -250,6 +250,10 @@ struct OnboardingFlow: View {
                 .background(buttonBackground(emphasized: emphasized, lightOnDark: lightOnDark))
                 .overlay(buttonBorder(emphasized: emphasized, lightOnDark: lightOnDark))
                 .clipShape(Capsule())
+                // Non-emphasized variants have a clear background, so
+                // without this only the text would hit-test — make the
+                // whole capsule tappable.
+                .contentShape(Capsule())
         }
         .buttonStyle(.plain)
         .padding(.horizontal, 32)
