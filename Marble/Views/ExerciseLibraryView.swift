@@ -83,6 +83,7 @@ struct ExerciseLibraryView: View {
             .background(Color("marbleBackground"))
             .navigationTitle(navTitle)
             .navigationBarTitleDisplayMode(.inline)
+            .marbleKeyboardDismiss()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button {

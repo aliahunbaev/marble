@@ -387,6 +387,7 @@ private struct MarbleInputDialogContent: View {
                 .opacity(shown ? 1 : 0)
                 .scaleEffect(shown ? 1 : 0.94)
         }
+        .marbleKeyboardDismiss()
         .onAppear {
             withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) { shown = true }
             // Focus the first field once the card has landed.

@@ -48,6 +48,7 @@ struct ClosingRitualView: View {
             }
         }
         .marbleAtmosphereBackground()
+        .marbleKeyboardDismiss()
         .sheet(isPresented: $showingCamera) {
             CameraPicker { image in
                 if let image { handleImage(image) }

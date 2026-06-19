@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Three utility button archetypes. One typography spec across all three —
 /// only color treatment differs by role.
@@ -129,5 +130,29 @@ extension View {
     /// Destructive — oxblood (DISCARD, SKIP).
     func marbleDestructiveButton(fullWidth: Bool = true) -> some View {
         modifier(MarbleDestructiveButton(fullWidth: fullWidth))
+    }
+
+    /// Adds a "close keyboard" button to the keyboard's accessory bar so
+    /// any text field on this surface can be dismissed with a single tap
+    /// — no awkward interactive swipe, and it works for the number pads
+    /// (weight / reps) which have no return key. Apply once on each
+    /// surface that hosts text entry; it covers every field in that
+    /// view hierarchy.
+    func marbleKeyboardDismiss() -> some View {
+        toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button {
+                    UIApplication.shared.sendAction(
+                        #selector(UIResponder.resignFirstResponder),
+                        to: nil, from: nil, for: nil
+                    )
+                } label: {
+                    Image(systemName: "keyboard.chevron.compact.down")
+                        .font(.system(size: 17, weight: .medium))
+                        .foregroundStyle(Color("marblePrimary"))
+                }
+            }
+        }
     }
 }

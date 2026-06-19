@@ -682,6 +682,7 @@ private struct LogBodyweightSheet: View {
                     }
                 }
             }
+            .marbleKeyboardDismiss()
             .onAppear { fieldFocused = true }
             .presentationDetents([.medium])
             .presentationDragIndicator(.hidden)
@@ -810,6 +811,7 @@ private struct AddTrackedLiftSheet: View {
             }
             .background(Color("marbleBackground"))
             .navigationBarTitleDisplayMode(.inline)
+            .marbleKeyboardDismiss()
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     Text("Track Exercise")

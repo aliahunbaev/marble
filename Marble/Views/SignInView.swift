@@ -49,6 +49,7 @@ struct SignInView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .marbleAtmosphereBackground()
+        .marbleKeyboardDismiss()
         // Close affordance — this view is presented as a full-screen
         // cover from the You tab, so it needs an explicit dismiss.
         // Top-right glass capsule, matching the close button on the

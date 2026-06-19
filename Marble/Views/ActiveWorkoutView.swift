@@ -80,6 +80,7 @@ struct ActiveWorkoutView: View {
             floatingToolbar
         }
         .background(Color("marbleBackground"))
+        .marbleKeyboardDismiss()
         .sheet(isPresented: $showingLibrary, onDismiss: {
             replacingEntryID = nil
         }) {
