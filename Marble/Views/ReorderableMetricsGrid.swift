@@ -23,8 +23,16 @@ struct ReorderableMetricsGrid<Cell: View>: View {
             onReorder: onReorder,
             onTap: onTap,
             onHeightChange: { newHeight in
-                if abs(newHeight - measuredHeight) > 0.5 {
-                    measuredHeight = newHeight
+                // Defer the @State write off the current runloop turn:
+                // the contentSize KVO can fire while UIKit is laying out
+                // inside a SwiftUI update (e.g. right after a lift is
+                // added). Writing measuredHeight there gets dropped, so
+                // the grid's frame never grows to reveal the new row
+                // until a relaunch. Async hops us out of that update.
+                DispatchQueue.main.async {
+                    if abs(newHeight - measuredHeight) > 0.5 {
+                        measuredHeight = newHeight
+                    }
                 }
             },
             cellContent: cellContent
