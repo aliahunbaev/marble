@@ -15,29 +15,29 @@ struct ReorderableMetricsGrid<Cell: View>: View {
     let onTap: (TrackedLift) -> Void
     @ViewBuilder let cellContent: (TrackedLift) -> Cell
 
-    @State private var measuredHeight: CGFloat = 170
-
     var body: some View {
         CollectionBridge(
             lifts: lifts,
             onReorder: onReorder,
             onTap: onTap,
-            onHeightChange: { newHeight in
-                // Defer the @State write off the current runloop turn:
-                // the contentSize KVO can fire while UIKit is laying out
-                // inside a SwiftUI update (e.g. right after a lift is
-                // added). Writing measuredHeight there gets dropped, so
-                // the grid's frame never grows to reveal the new row
-                // until a relaunch. Async hops us out of that update.
-                DispatchQueue.main.async {
-                    if abs(newHeight - measuredHeight) > 0.5 {
-                        measuredHeight = newHeight
-                    }
-                }
-            },
             cellContent: cellContent
         )
-        .frame(height: measuredHeight)
+        .frame(height: gridHeight)
+    }
+
+    /// Height is derived directly from the lift count rather than a
+    /// runtime contentSize measurement. The old KVO-measured height
+    /// hadn't settled for the FIRST change after launch, so a
+    /// newly-tracked lift only appeared on relaunch. Each card is a
+    /// fixed 140pt in a 2-column grid with 12pt row spacing, so the
+    /// height is exact and updates synchronously with the data.
+    private var gridHeight: CGFloat {
+        let count = lifts.count
+        guard count > 0 else { return 0 }
+        let rows = (count + 1) / 2          // ceil(count / 2)
+        let cardHeight: CGFloat = 140
+        let rowSpacing: CGFloat = 12
+        return CGFloat(rows) * cardHeight + CGFloat(rows - 1) * rowSpacing
     }
 }
 
@@ -47,7 +47,6 @@ private struct CollectionBridge<Cell: View>: UIViewRepresentable {
     let lifts: [TrackedLift]
     let onReorder: ([TrackedLift]) -> Void
     let onTap: (TrackedLift) -> Void
-    let onHeightChange: (CGFloat) -> Void
     @ViewBuilder let cellContent: (TrackedLift) -> Cell
 
     private static var spacing: CGFloat { 12 }
@@ -107,8 +106,6 @@ private struct CollectionBridge<Cell: View>: UIViewRepresentable {
         collectionView.dataSource = dataSource
         collectionView.delegate = context.coordinator
 
-        context.coordinator.startObservingContentSize()
-
         let longPress = UILongPressGestureRecognizer(
             target: context.coordinator,
             action: #selector(Coordinator.handleLongPress(_:))
@@ -127,7 +124,6 @@ private struct CollectionBridge<Cell: View>: UIViewRepresentable {
     }
 
     static func dismantleUIView(_ uiView: UICollectionView, coordinator: Coordinator) {
-        coordinator.stopObservingContentSize()
     }
 
     private static func makeLayout() -> UICollectionViewCompositionalLayout {
@@ -167,7 +163,6 @@ extension CollectionBridge {
         weak var collectionView: UICollectionView?
         var dataSource: UICollectionViewDiffableDataSource<Int, String>?
         var currentLifts: [TrackedLift] = []
-        private var contentSizeObservation: NSKeyValueObservation?
 
         init(parent: CollectionBridge) {
             self.parent = parent
@@ -187,19 +182,6 @@ extension CollectionBridge {
             }
             currentLifts = reordered
             parent.onReorder(reordered)
-        }
-
-        func startObservingContentSize() {
-            guard let collectionView else { return }
-            contentSizeObservation = collectionView.observe(\.contentSize, options: [.new]) { [weak self] _, change in
-                guard let height = change.newValue?.height else { return }
-                self?.parent.onHeightChange(height)
-            }
-        }
-
-        func stopObservingContentSize() {
-            contentSizeObservation?.invalidate()
-            contentSizeObservation = nil
         }
 
         @objc func handleLongPress(_ gesture: UILongPressGestureRecognizer) {
