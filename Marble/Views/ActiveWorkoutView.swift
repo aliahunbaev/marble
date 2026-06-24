@@ -28,6 +28,32 @@ struct ActiveWorkoutView: View {
     @StateObject private var reorderState = ExerciseReorderState()
 
     @AppStorage("defaultRestTimer") private var defaultRestTimer: Int = 90
+    @AppStorage("restTimerAutoStart") private var restTimerAutoStart: Bool = true
+
+    /// Auto-start the rest countdown when a set is marked complete.
+    /// No-op when the user has switched auto-start off in Settings.
+    /// `entryID`/`setID` anchor the inline countdown bar directly beneath
+    /// the set that was just completed.
+    private func startRestTimer(forExercise entryID: UUID, set setID: UUID) {
+        guard restTimerAutoStart else { return }
+        withAnimation(.easeInOut(duration: 0.2)) {
+            session.restTimer.start(
+                duration: defaultRestTimer,
+                originExerciseID: entryID,
+                originSetID: setID
+            )
+        }
+    }
+
+    /// Cancel the rest timer if it was auto-started by this exact set —
+    /// unchecking that set means the rest no longer applies. A timer the
+    /// user started manually (or from a different set) is left alone.
+    private func stopRestTimer(ifStartedBy setID: UUID) {
+        guard session.restTimer.originSetID == setID else { return }
+        withAnimation(.easeInOut(duration: 0.2)) {
+            session.restTimer.skip()
+        }
+    }
 
     var body: some View {
         if showingSummary, let workout = completedWorkout {
@@ -262,7 +288,13 @@ struct ActiveWorkoutView: View {
                             replacingEntryID = entryID
                             showingLibrary = true
                         },
-                        onComplete: nil
+                        onComplete: { entryID, setID in
+                            startRestTimer(forExercise: entryID, set: setID)
+                        },
+                        onUncomplete: { _, setID in
+                            stopRestTimer(ifStartedBy: setID)
+                        },
+                        onRestTap: { showingRestTimer = true }
                     )
                     // Inject the session so the cell can observe set
                     // changes and re-render in place.
@@ -426,7 +458,7 @@ struct ActiveWorkoutView: View {
             showCheckmark: true,
             onComplete: nil
         )
-        .listRowInsets(EdgeInsets(top: 10, leading: 20, bottom: 10, trailing: 20))
+        .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 6, trailing: 20))
         .listRowSeparator(.hidden)
         .listRowBackground(
             // Subtle warm wash on completed rows. Reads as "settled /
@@ -619,7 +651,15 @@ struct ExerciseCell: View {
     @Binding var entries: [ExerciseEntry]
     @ObservedObject var reorderState: ExerciseReorderState
     let onReplace: (UUID) -> Void
-    let onComplete: (() -> Void)?
+    /// Fires when a set in this exercise is marked complete — passes this
+    /// exercise entry's id and the completed set's id, so the parent can
+    /// anchor the rest timer right beneath that set.
+    let onComplete: ((UUID, UUID) -> Void)?
+    /// Fires when a set is unchecked — passes the entry id and set id so
+    /// the parent can cancel a rest timer that set had started.
+    var onUncomplete: ((UUID, UUID) -> Void)? = nil
+    /// Opens the rest-timer modal (tapped on the inline countdown bar).
+    var onRestTap: (() -> Void)? = nil
     /// Show the checkmark column on each set row. False for templates
     /// (which are structural — no "completed" concept). True for live
     /// workouts.
@@ -818,7 +858,7 @@ struct ExerciseCell: View {
             // itself and ended up bouncing / overlapping; List just does
             // it right (this is the build-8 behavior we're restoring).
             // `.scrollDisabled` plus an EXACT measured height (each row
-            // is 52pt field + 2×10 padding = 72pt) make it lay out
+            // is 48pt field + 2×6 padding = 60pt) make it lay out
             // statically inside the UCV-bridged exercise cell instead of
             // trying to fill/scroll. Only the live workout uses this —
             // templates render the structural boxes (structuralSetsSection),
@@ -858,10 +898,11 @@ struct ExerciseCell: View {
                             previousWeight: placeholderWeight,
                             previousReps: placeholderReps,
                             showCheckmark: showCheckmark,
-                            onComplete: onComplete
+                            onComplete: onComplete.map { handler in { handler(entry.id, set.id) } },
+                            onUncomplete: onUncomplete.map { handler in { handler(entry.id, set.id) } }
                         )
                         .padding(.horizontal, 20)
-                        .padding(.vertical, 10)
+                        .padding(.vertical, 6)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background(
                             set.isCompleted
@@ -872,14 +913,39 @@ struct ExerciseCell: View {
                     .listRowInsets(EdgeInsets())
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
+
+                    // Inline rest bar, slotted directly beneath the set you
+                    // just completed (and above the next set). Lives as its
+                    // own List row so the surrounding rows reflow around it.
+                    if let rest = observedSession?.restTimer, rest.isActive,
+                       rest.originExerciseID == entry.id, rest.originSetID == set.id {
+                        InlineRestTimerBar(
+                            state: rest,
+                            onTap: { onRestTap?() },
+                            onSkip: { withAnimation(.easeInOut(duration: 0.2)) { rest.skip() } }
+                        )
+                        .frame(height: Self.restBarHeight)
+                        .padding(.horizontal, 20)
+                        // Symmetric vertical padding so the bar sits
+                        // equidistant from the set above and below, matching
+                        // the set rows' rhythm (48pt content + 6 + 6 = 60pt,
+                        // a 12pt gap on each side).
+                        .padding(.vertical, 6)
+                        .listRowInsets(EdgeInsets())
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                    }
                 }
             }
+            .animation(.easeInOut(duration: 0.2), value: restBarVisible)
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
             .scrollDisabled(true)
-            // Exact height = rows × 72pt so List lays out statically
+            // Exact height = rows × 60pt so List lays out statically
             // (no fill/scroll) inside the self-sizing exercise cell.
-            .frame(height: CGFloat(live.sets.count) * 72)
+            // Add the rest bar's row height when it's slotted in.
+            .frame(height: CGFloat(live.sets.count) * 60
+                   + (restBarVisible ? Self.restBarHeight + 12 : 0))
 
             Button {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -901,6 +967,19 @@ struct ExerciseCell: View {
             .padding(.top, 8)
             .padding(.bottom, 24)
         }
+    }
+
+    /// Height of the inline rest bar's content (excludes its row padding).
+    static let restBarHeight: CGFloat = 40
+
+    /// True when the inline rest bar should render inside this exercise —
+    /// the rest is running, it was started here, and the originating set
+    /// still exists (so a deleted set doesn't leave a phantom gap).
+    private var restBarVisible: Bool {
+        guard let rest = observedSession?.restTimer, rest.isActive,
+              rest.originExerciseID == entry.id, let sid = rest.originSetID
+        else { return false }
+        return live.sets.contains { $0.id == sid }
     }
 
     /// Binding into the SwiftData-backed entries array for *this*

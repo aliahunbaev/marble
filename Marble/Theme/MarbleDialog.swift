@@ -289,12 +289,16 @@ extension View {
 
     /// Input-bearing sibling of `marbleDialog` — replaces system
     /// alerts that contain TextFields. Fields render between the
-    /// title and the buttons, in the same editorial card.
+    /// title and the buttons, in the same editorial card. An optional
+    /// `selector` adds a single-select chip group below the fields for
+    /// fixed-vocabulary choices (e.g. equipment) that shouldn't be free
+    /// text.
     func marbleInputDialog(
         _ title: String,
         message: String? = nil,
         isPresented: Binding<Bool>,
         fields: [MarbleDialogField],
+        selector: MarbleDialogSelector? = nil,
         confirmLabel: String,
         onConfirm: @escaping () -> Void,
         onCancel: @escaping () -> Void = {}
@@ -304,6 +308,7 @@ extension View {
             message: message,
             isPresented: isPresented,
             fields: fields,
+            selector: selector,
             confirmLabel: confirmLabel,
             onConfirm: onConfirm,
             onCancel: onCancel
@@ -326,11 +331,22 @@ struct MarbleDialogField: Identifiable {
     var isRequired: Bool = false
 }
 
+/// Single-select chip group inside a `marbleInputDialog`, rendered below
+/// the text fields. Used for fixed-vocabulary choices (e.g. equipment)
+/// that shouldn't be free text. Tapping the active chip clears it, so an
+/// empty selection ("" = uncategorized) is allowed.
+struct MarbleDialogSelector {
+    let label: String
+    let options: [String]
+    let selection: Binding<String>
+}
+
 private struct MarbleInputDialogModifier: ViewModifier {
     let title: String
     let message: String?
     @Binding var isPresented: Bool
     let fields: [MarbleDialogField]
+    let selector: MarbleDialogSelector?
     let confirmLabel: String
     let onConfirm: () -> Void
     let onCancel: () -> Void
@@ -344,6 +360,7 @@ private struct MarbleInputDialogModifier: ViewModifier {
                         title: title,
                         message: message,
                         fields: fields,
+                        selector: selector,
                         confirmLabel: confirmLabel,
                         onConfirm: onConfirm,
                         onCancel: onCancel,
@@ -361,6 +378,7 @@ private struct MarbleInputDialogContent: View {
     let title: String
     let message: String?
     let fields: [MarbleDialogField]
+    let selector: MarbleDialogSelector?
     let confirmLabel: String
     let onConfirm: () -> Void
     let onCancel: () -> Void
@@ -438,7 +456,36 @@ private struct MarbleInputDialogContent: View {
                 }
             }
             .padding(.horizontal, 36)
-            .padding(.bottom, 24)
+            .padding(.bottom, selector == nil ? 24 : 20)
+
+            // Optional fixed-vocabulary chip group (e.g. equipment).
+            if let selector {
+                VStack(spacing: 12) {
+                    if !selector.label.isEmpty {
+                        Text(selector.label.uppercased())
+                            .font(.marbleMono(11, weight: .medium))
+                            .tracking(1.5)
+                            .foregroundStyle(Color("marbleSecondary"))
+                    }
+                    FlowLayout(spacing: 8) {
+                        ForEach(selector.options, id: \.self) { option in
+                            Button {
+                                let current = selector.selection.wrappedValue
+                                selector.selection.wrappedValue = (current == option) ? "" : option
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            } label: {
+                                MarbleSelectorChip(
+                                    label: option,
+                                    isSelected: selector.selection.wrappedValue == option
+                                )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+                .padding(.horizontal, 28)
+                .padding(.bottom, 24)
+            }
 
             // Same text-row vocabulary as the confirmation dialog.
             VStack(spacing: 0) {
@@ -478,5 +525,71 @@ private struct MarbleInputDialogContent: View {
             isPresented = false
             DispatchQueue.main.async { action() }
         }
+    }
+}
+
+/// One chip in a `MarbleDialogSelector` group. Filled (ink) when active,
+/// quiet field-fill when not.
+private struct MarbleSelectorChip: View {
+    let label: String
+    let isSelected: Bool
+
+    var body: some View {
+        Text(label)
+            .font(.marbleMono(12, weight: .medium))
+            .foregroundStyle(isSelected ? Color("marbleBackground") : Color("marblePrimary"))
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .background(isSelected ? Color("marblePrimary") : Color("marbleFieldBackground"))
+            .clipShape(Capsule())
+    }
+}
+
+/// Minimal wrapping layout — lays subviews left-to-right, wrapping to a
+/// new line when the next would overflow the proposed width. Centers
+/// each row within the available width. Used for the dialog chip group.
+private struct FlowLayout: Layout {
+    var spacing: CGFloat = 8
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let maxWidth = proposal.width ?? .infinity
+        let rows = computeRows(maxWidth: maxWidth, subviews: subviews)
+        let width = rows.map(\.width).max() ?? 0
+        let height = rows.reduce(0) { $0 + $1.height } + spacing * CGFloat(max(0, rows.count - 1))
+        return CGSize(width: min(width, maxWidth), height: height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let rows = computeRows(maxWidth: bounds.width, subviews: subviews)
+        var y = bounds.minY
+        for row in rows {
+            var x = bounds.minX + (bounds.width - row.width) / 2
+            for index in row.indices {
+                let size = subviews[index].sizeThatFits(.unspecified)
+                subviews[index].place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(size))
+                x += size.width + spacing
+            }
+            y += row.height + spacing
+        }
+    }
+
+    private struct Row { var indices: [Int] = []; var width: CGFloat = 0; var height: CGFloat = 0 }
+
+    private func computeRows(maxWidth: CGFloat, subviews: Subviews) -> [Row] {
+        var rows: [Row] = []
+        var row = Row()
+        for index in subviews.indices {
+            let size = subviews[index].sizeThatFits(.unspecified)
+            let projected = row.width == 0 ? size.width : row.width + spacing + size.width
+            if projected > maxWidth, !row.indices.isEmpty {
+                rows.append(row)
+                row = Row()
+            }
+            row.indices.append(index)
+            row.width = row.width == 0 ? size.width : row.width + spacing + size.width
+            row.height = max(row.height, size.height)
+        }
+        if !row.indices.isEmpty { rows.append(row) }
+        return rows
     }
 }

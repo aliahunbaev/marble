@@ -21,6 +21,16 @@ struct ExerciseLibraryView: View {
     @State private var showingCreate = false
     @State private var newName = ""
     @State private var newMuscleGroup = ""
+    @State private var newEquipment = ""
+    /// Active filters. `nil` means "all" (the default, unfiltered view).
+    @State private var muscleFilter: String? = nil
+    @State private var equipmentFilter: String? = nil
+    /// Non-nil while the "?" guide popup is presented for an exercise.
+    @State private var guideExercise: Exercise? = nil
+
+    /// Canonical equipment ordering for the filter menu. Only values
+    /// actually present in the library are shown (see `equipmentOptions`).
+    private let equipmentOrder = ["Barbell", "Dumbbell", "Machine", "Cable", "Bodyweight"]
     /// Local selection state for add mode — set of exercise IDs the
     /// user has tapped in this pick session. Cleared on dismiss.
     @State private var selectedIDs: Set<PersistentIdentifier> = []
@@ -38,11 +48,31 @@ struct ExerciseLibraryView: View {
     private var isReplaceMode: Bool { replacingExerciseName != nil }
 
     private var filteredExercises: [Exercise] {
-        if searchText.isEmpty { return allExercises }
-        return allExercises.filter {
-            $0.name.localizedCaseInsensitiveContains(searchText) ||
-            $0.muscleGroup.localizedCaseInsensitiveContains(searchText)
+        allExercises.filter { exercise in
+            if let group = muscleFilter, exercise.muscleGroup != group { return false }
+            if let equipment = equipmentFilter, exercise.equipment != equipment { return false }
+            if !searchText.isEmpty {
+                return exercise.name.localizedCaseInsensitiveContains(searchText) ||
+                    exercise.muscleGroup.localizedCaseInsensitiveContains(searchText)
+            }
+            return true
         }
+    }
+
+    /// Muscle-group options for the filter, derived from the live
+    /// library so custom groups appear too.
+    private var muscleGroupOptions: [String] {
+        Array(Set(allExercises.map(\.muscleGroup)))
+            .filter { !$0.isEmpty }
+            .sorted()
+    }
+
+    /// Equipment options for the filter, in canonical order and limited
+    /// to values present in the library (empty/custom values are
+    /// excluded — they live only under "All equipment").
+    private var equipmentOptions: [String] {
+        let present = Set(allExercises.map(\.equipment))
+        return equipmentOrder.filter { present.contains($0) }
     }
 
     private var groupedExercises: [(String, [Exercise])] {
@@ -68,7 +98,13 @@ struct ExerciseLibraryView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 4))
                     .padding(.horizontal, 20)
                     .padding(.top, 8)
-                    .padding(.bottom, 20)
+                    .padding(.bottom, 12)
+
+                    // Filter row — muscle group + equipment. Each opens a
+                    // single-select menu; "All …" resets that axis.
+                    filterRow
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 20)
 
                     if filteredExercises.isEmpty {
                         emptyState
@@ -84,6 +120,9 @@ struct ExerciseLibraryView: View {
             .navigationTitle(navTitle)
             .navigationBarTitleDisplayMode(.inline)
             .marbleKeyboardDismiss()
+            .sheet(item: $guideExercise) { exercise in
+                ExerciseGuideView(exercise: exercise)
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button {
@@ -130,14 +169,76 @@ struct ExerciseLibraryView: View {
                         autocapitalization: .words
                     ),
                 ],
+                selector: MarbleDialogSelector(
+                    label: "Equipment",
+                    options: equipmentOrder,
+                    selection: $newEquipment
+                ),
                 confirmLabel: "Add",
                 onConfirm: { createExercise() },
                 onCancel: {
                     newName = ""
                     newMuscleGroup = ""
+                    newEquipment = ""
                 }
             )
         }
+    }
+
+    /// The two filter controls. Each is a `Menu` wrapping a `Picker`,
+    /// which renders a single-select checklist with the active choice
+    /// ticked. Selection type is `String?` so the "All …" row maps to
+    /// `nil` (unfiltered).
+    private var filterRow: some View {
+        HStack(spacing: 8) {
+            Menu {
+                Picker("Muscle group", selection: $muscleFilter) {
+                    Text("All muscle groups").tag(String?.none)
+                    ForEach(muscleGroupOptions, id: \.self) { group in
+                        Text(group).tag(String?.some(group))
+                    }
+                }
+            } label: {
+                filterChip(label: muscleFilter ?? "All muscle groups",
+                           isActive: muscleFilter != nil)
+            }
+
+            Menu {
+                Picker("Equipment", selection: $equipmentFilter) {
+                    Text("All equipment").tag(String?.none)
+                    ForEach(equipmentOptions, id: \.self) { equipment in
+                        Text(equipment).tag(String?.some(equipment))
+                    }
+                }
+            } label: {
+                filterChip(label: equipmentFilter ?? "All equipment",
+                           isActive: equipmentFilter != nil)
+            }
+        }
+    }
+
+    private func filterChip(label: String, isActive: Bool) -> some View {
+        HStack(spacing: 6) {
+            Text(label)
+                .font(.marbleMono(12, weight: .medium))
+                .foregroundStyle(Color("marblePrimary"))
+                .lineLimit(1)
+            Spacer(minLength: 0)
+            Image(systemName: "chevron.down")
+                .font(.system(size: 9, weight: .semibold))
+                .foregroundStyle(Color("marbleSecondary"))
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity)
+        .background(isActive
+            ? Color("marblePrimary").opacity(0.08)
+            : Color("marbleFieldBackground"))
+        .clipShape(RoundedRectangle(cornerRadius: 4))
+        .overlay(
+            RoundedRectangle(cornerRadius: 4)
+                .stroke(Color("marblePrimary").opacity(isActive ? 0.25 : 0), lineWidth: 1)
+        )
     }
 
     /// "Exercises" / "Replace [name]" — context-aware title.
@@ -192,33 +293,54 @@ struct ExerciseLibraryView: View {
         // intentionally unaware of workout state — you can add the same
         // exercise multiple times across separate pick sessions.
         let isPicked = selectedIDs.contains(exercise.persistentModelID)
-        return Button {
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            handleRowTap(exercise)
-        } label: {
-            HStack {
-                Text(exercise.name)
+        // The "?" is a sibling button (not nested in the row's tap
+        // target) so opening the guide never toggles selection.
+        return HStack(spacing: 0) {
+            Button {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                handleRowTap(exercise)
+            } label: {
+                HStack {
+                    Text(exercise.name)
+                        .font(.marbleBody(17))
+                        .foregroundStyle(Color("marblePrimary"))
+                    Spacer(minLength: 8)
+                    if isPicked && !isReplaceMode {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundStyle(Color("marblePrimary"))
+                    }
+                }
+                .padding(.leading, 20)
+                .padding(.vertical, 18)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                guideExercise = exercise
+            } label: {
+                // Use the app's own typeface (ABC Favorit), not an SF
+                // Symbol — a system-font "?" clashes with the custom font
+                // used for the exercise name right beside it.
+                Text("?")
                     .font(.marbleBody(17))
                     .foregroundStyle(Color("marblePrimary"))
-                Spacer()
-                if isPicked && !isReplaceMode {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundStyle(Color("marblePrimary"))
-                }
+                    .frame(width: 32, height: 32)
+                    .contentShape(Rectangle())
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 18)
-            .background(
-                // Warm-bone wash when picked. Matches the completed-set
-                // tint vocabulary so "selected" reads consistently.
-                isPicked && !isReplaceMode
-                    ? Color("marblePrimary").opacity(0.06)
-                    : Color.clear
-            )
-            .contentShape(Rectangle())
+            .buttonStyle(.plain)
+            .padding(.leading, 8)
+            .padding(.trailing, 16)
         }
-        .buttonStyle(.plain)
+        .background(
+            // Warm-bone wash when picked. Matches the completed-set
+            // tint vocabulary so "selected" reads consistently.
+            isPicked && !isReplaceMode
+                ? Color("marblePrimary").opacity(0.06)
+                : Color.clear
+        )
     }
 
     /// Tap behavior depends on mode:
@@ -272,7 +394,11 @@ struct ExerciseLibraryView: View {
         let trimmed = newName.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
         let group = newMuscleGroup.trimmingCharacters(in: .whitespaces)
-        let exercise = Exercise(name: trimmed, muscleGroup: group.isEmpty ? "General" : group)
+        let exercise = Exercise(
+            name: trimmed,
+            muscleGroup: group.isEmpty ? "General" : group,
+            equipment: newEquipment
+        )
         modelContext.insert(exercise)
         // Newly-created exercises auto-select in add mode so the user
         // doesn't have to find and tap them in the list afterward.
@@ -285,6 +411,7 @@ struct ExerciseLibraryView: View {
         }
         newName = ""
         newMuscleGroup = ""
+        newEquipment = ""
     }
 }
 

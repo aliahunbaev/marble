@@ -17,43 +17,102 @@ import SwiftData
 /// timing. Exercise seeding stays unconditional because the app can't
 /// function without the library.
 enum ExerciseSeed {
-    static let exercises: [(name: String, muscleGroup: String)] = [
-        ("Bench Press", "Chest"),
-        ("Incline Bench Press", "Chest"),
-        ("Dumbbell Fly", "Chest"),
-        ("Overhead Press", "Shoulders"),
-        ("Lateral Raise", "Shoulders"),
-        ("Face Pull", "Shoulders"),
-        ("Squat", "Legs"),
-        ("Leg Press", "Legs"),
-        ("Leg Extension", "Legs"),
-        ("Leg Curl", "Legs"),
-        ("Romanian Deadlift", "Legs"),
-        ("Calf Raise", "Legs"),
-        ("Deadlift", "Back"),
-        ("Pull Up", "Back"),
-        ("Barbell Row", "Back"),
-        ("Lat Pulldown", "Back"),
-        ("Cable Row", "Back"),
-        ("Bicep Curl", "Arms"),
-        ("Hammer Curl", "Arms"),
-        ("Tricep Pushdown", "Arms"),
-        ("Skull Crusher", "Arms"),
-        ("Cable Crunch", "Core"),
-        ("Hanging Leg Raise", "Core"),
-        ("Russian Twist", "Core"),
+    /// Bumped whenever `exercises` gains new entries. The top-up path
+    /// (existing installs) runs once per value of this key, so raising
+    /// the suffix re-runs the reconcile and delivers the new movements
+    /// to users who first launched on an older library.
+    private static let didTopUpKey = "Marble.exerciseLibraryToppedUp.v2"
+
+    static let exercises: [(name: String, muscleGroup: String, equipment: String)] = [
+        // Chest
+        ("Bench Press", "Chest", "Barbell"),
+        ("Incline Bench Press", "Chest", "Barbell"),
+        ("Dumbbell Fly", "Chest", "Dumbbell"),
+        ("Cable Fly", "Chest", "Cable"),
+        ("Chest Press", "Chest", "Machine"),
+        ("Dip", "Chest", "Bodyweight"),
+        ("Push Up", "Chest", "Bodyweight"),
+        // Shoulders
+        ("Overhead Press", "Shoulders", "Barbell"),
+        ("Dumbbell Shoulder Press", "Shoulders", "Dumbbell"),
+        ("Arnold Press", "Shoulders", "Dumbbell"),
+        ("Lateral Raise", "Shoulders", "Dumbbell"),
+        ("Rear Delt Fly", "Shoulders", "Machine"),
+        ("Face Pull", "Shoulders", "Cable"),
+        ("Shrug", "Shoulders", "Dumbbell"),
+        // Back
+        ("Deadlift", "Back", "Barbell"),
+        ("Pull Up", "Back", "Bodyweight"),
+        ("Chin Up", "Back", "Bodyweight"),
+        ("Barbell Row", "Back", "Barbell"),
+        ("Single-Arm Dumbbell Row", "Back", "Dumbbell"),
+        ("Lat Pulldown", "Back", "Cable"),
+        ("Cable Row", "Back", "Cable"),
+        ("Seated Machine Row", "Back", "Machine"),
+        // Legs
+        ("Squat", "Legs", "Barbell"),
+        ("Leg Press", "Legs", "Machine"),
+        ("Hack Squat", "Legs", "Machine"),
+        ("Leg Extension", "Legs", "Machine"),
+        ("Leg Curl", "Legs", "Machine"),
+        ("Romanian Deadlift", "Legs", "Barbell"),
+        ("Calf Raise", "Legs", "Machine"),
+        ("Hip Thrust", "Legs", "Barbell"),
+        ("Lunge", "Legs", "Dumbbell"),
+        ("Bulgarian Split Squat", "Legs", "Dumbbell"),
+        ("Hip Abduction", "Legs", "Machine"),
+        // Arms
+        ("Bicep Curl", "Arms", "Dumbbell"),
+        ("Hammer Curl", "Arms", "Dumbbell"),
+        ("Preacher Curl", "Arms", "Machine"),
+        ("Tricep Pushdown", "Arms", "Cable"),
+        ("Overhead Tricep Extension", "Arms", "Cable"),
+        ("Skull Crusher", "Arms", "Barbell"),
+        ("Close-Grip Bench Press", "Arms", "Barbell"),
+        // Core
+        ("Cable Crunch", "Core", "Cable"),
+        ("Hanging Leg Raise", "Core", "Bodyweight"),
+        ("Russian Twist", "Core", "Bodyweight"),
+        ("Plank", "Core", "Bodyweight"),
+        ("Decline Sit Up", "Core", "Bodyweight"),
+        ("Ab Wheel Rollout", "Core", "Bodyweight"),
     ]
 
     static func seedIfNeeded(context: ModelContext) {
-        let descriptor = FetchDescriptor<Exercise>()
-        let count = (try? context.fetchCount(descriptor)) ?? 0
-        guard count == 0 else { return }
+        let existing = (try? context.fetch(FetchDescriptor<Exercise>())) ?? []
 
-        for entry in exercises {
-            let exercise = Exercise(name: entry.name, muscleGroup: entry.muscleGroup)
-            context.insert(exercise)
+        // Fresh install: seed the whole library, then mark the top-up
+        // done so the reconcile path below never re-runs for this user.
+        if existing.isEmpty {
+            for entry in exercises {
+                context.insert(Exercise(name: entry.name,
+                                        muscleGroup: entry.muscleGroup,
+                                        equipment: entry.equipment))
+            }
+            try? context.save()
+            UserDefaults.standard.set(true, forKey: didTopUpKey)
+            return
         }
 
+        // Existing install: reconcile once. Insert library movements
+        // added after this user first launched, and backfill `equipment`
+        // on stock rows that predate the field. Gated by a version flag
+        // (mirrors TemplateSeed) so a user who deletes a stock exercise
+        // doesn't have it reappear on every launch.
+        guard !UserDefaults.standard.bool(forKey: didTopUpKey) else { return }
+
+        let byName = Dictionary(existing.map { ($0.name, $0) },
+                                uniquingKeysWith: { first, _ in first })
+        for entry in exercises {
+            if let match = byName[entry.name] {
+                if match.equipment.isEmpty { match.equipment = entry.equipment }
+            } else {
+                context.insert(Exercise(name: entry.name,
+                                        muscleGroup: entry.muscleGroup,
+                                        equipment: entry.equipment))
+            }
+        }
         try? context.save()
+        UserDefaults.standard.set(true, forKey: didTopUpKey)
     }
 }

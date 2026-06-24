@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "guide-bicep-curl.png",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

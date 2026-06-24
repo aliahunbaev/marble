@@ -11,6 +11,10 @@ struct SettingsView: View {
 
     @AppStorage("appTheme") private var appTheme: String = "system"
     @AppStorage("appIcon") private var appIcon: String = "light"
+    @AppStorage("restTimerAutoStart") private var restTimerAutoStart: Bool = true
+    @AppStorage("defaultRestTimer") private var defaultRestTimer: Int = 90
+
+    private let restDurations = [30, 60, 90, 120, 180]
 
     @State private var showingSignOutConfirmation = false
     @State private var showingDeleteConfirmation = false
@@ -45,6 +49,7 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 32) {
                     appIconSection
                     appearanceSection
+                    restTimerSection
                     if auth.isAuthenticated {
                         accountSection
                     }
@@ -214,6 +219,98 @@ struct SettingsView: View {
             )
         }
         .buttonStyle(.plain)
+    }
+
+    // MARK: - Rest Timer
+
+    private var restTimerSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionHeader(title: "REST TIMER")
+
+            // Auto-start: when on, completing a set kicks off the
+            // countdown automatically (with a boxing bell at zero).
+            HStack(spacing: 0) {
+                autoStartOption(label: "Off", value: false)
+                autoStartOption(label: "On", value: true)
+            }
+
+            // Default duration — also seeds the manual timer's default.
+            HStack(spacing: 8) {
+                ForEach(restDurations, id: \.self) { seconds in
+                    durationOption(seconds: seconds)
+                }
+            }
+            .opacity(restTimerAutoStart ? 1 : 0.4)
+            .allowsHitTesting(restTimerAutoStart)
+            .animation(.easeInOut(duration: 0.15), value: restTimerAutoStart)
+
+            Text(restTimerAutoStart
+                 ? "Starts a \(formatRestDuration(defaultRestTimer)) countdown each time you complete a set."
+                 : "Completing a set won't start the timer automatically.")
+                .font(.marbleMono(11))
+                .tracking(0.5)
+                .foregroundStyle(Color("marbleSecondary"))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func autoStartOption(label: String, value: Bool) -> some View {
+        let isSelected = restTimerAutoStart == value
+        return Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            withAnimation(.easeInOut(duration: 0.15)) {
+                restTimerAutoStart = value
+            }
+        } label: {
+            Text(label)
+                .font(.marbleMono(12))
+                .tracking(1)
+                .foregroundStyle(isSelected ? Color("marblePrimary") : Color("marbleSecondary"))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 4)
+                        .stroke(
+                            isSelected ? Color("marblePrimary") : Color("marblePrimary").opacity(0.12),
+                            lineWidth: isSelected ? 1 : 0.5
+                        )
+                )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func durationOption(seconds: Int) -> some View {
+        let isSelected = defaultRestTimer == seconds
+        return Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            withAnimation(.easeInOut(duration: 0.15)) {
+                defaultRestTimer = seconds
+            }
+        } label: {
+            Text(formatRestDuration(seconds))
+                .font(.marbleMono(12))
+                .tracking(0.5)
+                .foregroundStyle(isSelected ? Color("marblePrimary") : Color("marbleSecondary"))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 4)
+                        .stroke(
+                            isSelected ? Color("marblePrimary") : Color("marblePrimary").opacity(0.12),
+                            lineWidth: isSelected ? 1 : 0.5
+                        )
+                )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func formatRestDuration(_ seconds: Int) -> String {
+        if seconds >= 60 {
+            let m = seconds / 60
+            let s = seconds % 60
+            return s == 0 ? "\(m):00" : "\(m):\(String(format: "%02d", s))"
+        }
+        return "0:\(seconds)"
     }
 
     // MARK: - Account

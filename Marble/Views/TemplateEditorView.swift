@@ -302,6 +302,9 @@ struct SetRowView: View {
     var previousReps: String? = nil
     var showCheckmark: Bool = false
     var onComplete: (() -> Void)? = nil
+    /// Fires when a previously-completed set is unchecked — lets the
+    /// workout cancel a rest timer this set had auto-started.
+    var onUncomplete: (() -> Void)? = nil
 
     @State private var checkScale: CGFloat = 1.0
     @State private var weightInvalid = false
@@ -310,7 +313,7 @@ struct SetRowView: View {
     @FocusState private var weightFocused: Bool
     @FocusState private var repsFocused: Bool
 
-    private let fieldHeight: CGFloat = 52
+    private let fieldHeight: CGFloat = 48
     private let fieldWidth: CGFloat = 100
     private let checkSize: CGFloat = 44
 
@@ -369,6 +372,7 @@ struct SetRowView: View {
             withAnimation(.easeInOut(duration: 0.15)) {
                 isCompleted = false
             }
+            onUncomplete?()
             return
         }
 

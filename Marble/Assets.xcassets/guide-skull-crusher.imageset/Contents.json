@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "guide-skull-crusher.png",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

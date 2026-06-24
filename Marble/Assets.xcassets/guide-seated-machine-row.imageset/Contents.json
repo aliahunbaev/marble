@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "guide-seated-machine-row.png",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

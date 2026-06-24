@@ -8,13 +8,5 @@
 		<string>ABCFavoritMonoVariable-Trial.ttf</string>
 		<string>NothingYouCouldDo-Regular.ttf</string>
 	</array>
-	<key>NSCameraUsageDescription</key>
-	<string>Marble uses the camera to capture progress photos of your training.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Marble lets you attach photos from your library to your training record.</string>
-	<key>ITSAppUsesNonExemptEncryption</key>
-	<false/>
-	<key>UIRequiresFullScreen</key>
-	<true/>
 </dict>
 </plist>

@@ -11,6 +11,35 @@
 		86B5C9102FC7923600F756CA /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 86B5C90F2FC7923600F756CA /* FirebaseAuth */; };
 		86B5C9122FC7923600F756CA /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 86B5C9112FC7923600F756CA /* FirebaseFirestore */; };
 		86B5C9132FC7923600F756CA /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 86B5C9142FC7923600F756CA /* FirebaseStorage */; };
+		AA000001 /* MarbleApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000001 /* MarbleApp.swift */; };
+		AA000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000002 /* ContentView.swift */; };
+		AA000003 /* Exercise.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000003 /* Exercise.swift */; };
+		AA000004 /* WorkoutTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000004 /* WorkoutTemplate.swift */; };
+		AA000005 /* Workout.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000005 /* Workout.swift */; };
+		AA000006 /* ExerciseLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000006 /* ExerciseLog.swift */; };
+		AA000007 /* WorkoutSet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000007 /* WorkoutSet.swift */; };
+		AA000008 /* TrainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000008 /* TrainView.swift */; };
+		AA000009 /* TrackView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000009 /* TrackView.swift */; };
+		AA000010 /* YouView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000010 /* YouView.swift */; };
+		AA000011 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB000011 /* Assets.xcassets */; };
+		AA000012 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB000012 /* Preview Assets.xcassets */; };
+		AA000099 /* boxing-bell.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = AB000099 /* boxing-bell.mp3 */; };
+		AA000015 /* ActiveWorkoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000015 /* ActiveWorkoutView.swift */; };
+		AA000016 /* SectionHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000016 /* SectionHeader.swift */; };
+		AA000017 /* ExerciseSeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000017 /* ExerciseSeed.swift */; };
+		AA000018 /* ExerciseLibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000018 /* ExerciseLibraryView.swift */; };
+		AA000019 /* TemplateDetailSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000019 /* TemplateDetailSheet.swift */; };
+		AA000020 /* TemplateEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000020 /* TemplateEditorView.swift */; };
+		AA000021 /* PreviousPerformance.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000021 /* PreviousPerformance.swift */; };
+		AA000022 /* RestTimerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000022 /* RestTimerView.swift */; };
+		AA000023 /* WorkoutDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000023 /* WorkoutDetailView.swift */; };
+		AA000024 /* TrackedLift.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000024 /* TrackedLift.swift */; };
+		AA000025 /* ExerciseLiftDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000025 /* ExerciseLiftDetailView.swift */; };
+		AA000060 /* ExerciseGuide.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000060 /* ExerciseGuide.swift */; };
+		AA000061 /* ExerciseGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000061 /* ExerciseGuideView.swift */; };
+		AA000026 /* ABCFavoritVariable-Trial.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB000026 /* ABCFavoritVariable-Trial.ttf */; };
+		AA000027 /* ABCFavoritMonoVariable-Trial.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB000027 /* ABCFavoritMonoVariable-Trial.ttf */; };
+		AA000029 /* NothingYouCouldDo-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB000029 /* NothingYouCouldDo-Regular.ttf */; };
 		AA000030 /* UserProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000030 /* UserProfile.swift */; };
 		AA000031 /* AuthenticationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000031 /* AuthenticationService.swift */; };
 		AA000032 /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000032 /* SignInView.swift */; };
@@ -26,45 +55,49 @@
 		AA000042 /* MarbleButtonStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000042 /* MarbleButtonStyle.swift */; };
 		AA000043 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000043 /* SettingsView.swift */; };
 		AA000050 /* MarbleGlass.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000050 /* MarbleGlass.swift */; };
-		AA000058 /* MarbleDialog.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000058 /* MarbleDialog.swift */; };
+		AA000051 /* BodyweightEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000051 /* BodyweightEntry.swift */; };
 		AA000052 /* MarbleDate.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000052 /* MarbleDate.swift */; };
 		AA000053 /* WorkoutSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000053 /* WorkoutSession.swift */; };
 		AA000054 /* GalleryTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000054 /* GalleryTab.swift */; };
 		AA000055 /* ReorderableMetricsGrid.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000055 /* ReorderableMetricsGrid.swift */; };
 		AA000056 /* ReorderableList.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000056 /* ReorderableList.swift */; };
 		AA000057 /* BackedScrollView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000057 /* BackedScrollView.swift */; };
-		AA000051 /* BodyweightEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000051 /* BodyweightEntry.swift */; };
-		AA000001 /* MarbleApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000001 /* MarbleApp.swift */; };
-		AA000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000002 /* ContentView.swift */; };
-		AA000003 /* Exercise.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000003 /* Exercise.swift */; };
-		AA000004 /* WorkoutTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000004 /* WorkoutTemplate.swift */; };
-		AA000005 /* Workout.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000005 /* Workout.swift */; };
-		AA000006 /* ExerciseLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000006 /* ExerciseLog.swift */; };
-		AA000007 /* WorkoutSet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000007 /* WorkoutSet.swift */; };
-		AA000008 /* TrainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000008 /* TrainView.swift */; };
-		AA000009 /* TrackView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000009 /* TrackView.swift */; };
-		AA000010 /* YouView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000010 /* YouView.swift */; };
-		AA000011 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB000011 /* Assets.xcassets */; };
-		AA000012 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB000012 /* Preview Assets.xcassets */; };
-		AA000015 /* ActiveWorkoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000015 /* ActiveWorkoutView.swift */; };
-		AA000016 /* SectionHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000016 /* SectionHeader.swift */; };
-		AA000017 /* ExerciseSeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000017 /* ExerciseSeed.swift */; };
+		AA000058 /* MarbleDialog.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000058 /* MarbleDialog.swift */; };
 		AA000059 /* TemplateSeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000059 /* TemplateSeed.swift */; };
-		AA000018 /* ExerciseLibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000018 /* ExerciseLibraryView.swift */; };
-		AA000019 /* TemplateDetailSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000019 /* TemplateDetailSheet.swift */; };
-		AA000020 /* TemplateEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000020 /* TemplateEditorView.swift */; };
-		AA000021 /* PreviousPerformance.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000021 /* PreviousPerformance.swift */; };
-		AA000022 /* RestTimerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000022 /* RestTimerView.swift */; };
-		AA000023 /* WorkoutDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000023 /* WorkoutDetailView.swift */; };
-		AA000024 /* TrackedLift.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000024 /* TrackedLift.swift */; };
-		AA000025 /* ExerciseLiftDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000025 /* ExerciseLiftDetailView.swift */; };
-		AA000026 /* ABCFavoritVariable-Trial.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB000026 /* ABCFavoritVariable-Trial.ttf */; };
-		AA000027 /* ABCFavoritMonoVariable-Trial.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB000027 /* ABCFavoritMonoVariable-Trial.ttf */; };
-		AA000029 /* NothingYouCouldDo-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB000029 /* NothingYouCouldDo-Regular.ttf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		86B5C90C2FC7915200F756CA /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
+		AB000001 /* MarbleApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarbleApp.swift; sourceTree = "<group>"; };
+		AB000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		AB000003 /* Exercise.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Exercise.swift; sourceTree = "<group>"; };
+		AB000004 /* WorkoutTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutTemplate.swift; sourceTree = "<group>"; };
+		AB000005 /* Workout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Workout.swift; sourceTree = "<group>"; };
+		AB000006 /* ExerciseLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseLog.swift; sourceTree = "<group>"; };
+		AB000007 /* WorkoutSet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutSet.swift; sourceTree = "<group>"; };
+		AB000008 /* TrainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainView.swift; sourceTree = "<group>"; };
+		AB000009 /* TrackView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackView.swift; sourceTree = "<group>"; };
+		AB000010 /* YouView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YouView.swift; sourceTree = "<group>"; };
+		AB000011 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		AB000099 /* boxing-bell.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = "boxing-bell.mp3"; sourceTree = "<group>"; };
+		AB000012 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
+		AB000015 /* ActiveWorkoutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveWorkoutView.swift; sourceTree = "<group>"; };
+		AB000016 /* SectionHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionHeader.swift; sourceTree = "<group>"; };
+		AB000017 /* ExerciseSeed.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseSeed.swift; sourceTree = "<group>"; };
+		AB000018 /* ExerciseLibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseLibraryView.swift; sourceTree = "<group>"; };
+		AB000019 /* TemplateDetailSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplateDetailSheet.swift; sourceTree = "<group>"; };
+		AB000020 /* TemplateEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplateEditorView.swift; sourceTree = "<group>"; };
+		AB000021 /* PreviousPerformance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviousPerformance.swift; sourceTree = "<group>"; };
+		AB000022 /* RestTimerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestTimerView.swift; sourceTree = "<group>"; };
+		AB000023 /* WorkoutDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutDetailView.swift; sourceTree = "<group>"; };
+		AB000024 /* TrackedLift.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackedLift.swift; sourceTree = "<group>"; };
+		AB000025 /* ExerciseLiftDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseLiftDetailView.swift; sourceTree = "<group>"; };
+		AB000060 /* ExerciseGuide.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseGuide.swift; sourceTree = "<group>"; };
+		AB000061 /* ExerciseGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseGuideView.swift; sourceTree = "<group>"; };
+		AB000026 /* ABCFavoritVariable-Trial.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "ABCFavoritVariable-Trial.ttf"; sourceTree = "<group>"; };
+		AB000027 /* ABCFavoritMonoVariable-Trial.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "ABCFavoritMonoVariable-Trial.ttf"; sourceTree = "<group>"; };
+		AB000028 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		AB000029 /* NothingYouCouldDo-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "NothingYouCouldDo-Regular.ttf"; sourceTree = "<group>"; };
 		AB000030 /* UserProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserProfile.swift; sourceTree = "<group>"; };
 		AB000031 /* AuthenticationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthenticationService.swift; sourceTree = "<group>"; };
 		AB000032 /* SignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInView.swift; sourceTree = "<group>"; };
@@ -80,42 +113,15 @@
 		AB000042 /* MarbleButtonStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarbleButtonStyle.swift; sourceTree = "<group>"; };
 		AB000043 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		AB000050 /* MarbleGlass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarbleGlass.swift; sourceTree = "<group>"; };
-		AB000058 /* MarbleDialog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarbleDialog.swift; sourceTree = "<group>"; };
+		AB000051 /* BodyweightEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BodyweightEntry.swift; sourceTree = "<group>"; };
 		AB000052 /* MarbleDate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarbleDate.swift; sourceTree = "<group>"; };
 		AB000053 /* WorkoutSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutSession.swift; sourceTree = "<group>"; };
 		AB000054 /* GalleryTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryTab.swift; sourceTree = "<group>"; };
 		AB000055 /* ReorderableMetricsGrid.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReorderableMetricsGrid.swift; sourceTree = "<group>"; };
 		AB000056 /* ReorderableList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReorderableList.swift; sourceTree = "<group>"; };
 		AB000057 /* BackedScrollView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackedScrollView.swift; sourceTree = "<group>"; };
-		AB000051 /* BodyweightEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BodyweightEntry.swift; sourceTree = "<group>"; };
-		AB000001 /* MarbleApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarbleApp.swift; sourceTree = "<group>"; };
-		AB000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		AB000003 /* Exercise.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Exercise.swift; sourceTree = "<group>"; };
-		AB000004 /* WorkoutTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutTemplate.swift; sourceTree = "<group>"; };
-		AB000005 /* Workout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Workout.swift; sourceTree = "<group>"; };
-		AB000006 /* ExerciseLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseLog.swift; sourceTree = "<group>"; };
-		AB000007 /* WorkoutSet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutSet.swift; sourceTree = "<group>"; };
-		AB000008 /* TrainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainView.swift; sourceTree = "<group>"; };
-		AB000009 /* TrackView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackView.swift; sourceTree = "<group>"; };
-		AB000010 /* YouView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YouView.swift; sourceTree = "<group>"; };
-		AB000011 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		AB000012 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
-		AB000015 /* ActiveWorkoutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveWorkoutView.swift; sourceTree = "<group>"; };
-		AB000016 /* SectionHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionHeader.swift; sourceTree = "<group>"; };
-		AB000017 /* ExerciseSeed.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseSeed.swift; sourceTree = "<group>"; };
+		AB000058 /* MarbleDialog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarbleDialog.swift; sourceTree = "<group>"; };
 		AB000059 /* TemplateSeed.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplateSeed.swift; sourceTree = "<group>"; };
-		AB000018 /* ExerciseLibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseLibraryView.swift; sourceTree = "<group>"; };
-		AB000019 /* TemplateDetailSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplateDetailSheet.swift; sourceTree = "<group>"; };
-		AB000020 /* TemplateEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplateEditorView.swift; sourceTree = "<group>"; };
-		AB000021 /* PreviousPerformance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviousPerformance.swift; sourceTree = "<group>"; };
-		AB000022 /* RestTimerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestTimerView.swift; sourceTree = "<group>"; };
-		AB000023 /* WorkoutDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutDetailView.swift; sourceTree = "<group>"; };
-		AB000024 /* TrackedLift.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackedLift.swift; sourceTree = "<group>"; };
-		AB000025 /* ExerciseLiftDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseLiftDetailView.swift; sourceTree = "<group>"; };
-		AB000026 /* ABCFavoritVariable-Trial.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "ABCFavoritVariable-Trial.ttf"; sourceTree = "<group>"; };
-		AB000027 /* ABCFavoritMonoVariable-Trial.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "ABCFavoritMonoVariable-Trial.ttf"; sourceTree = "<group>"; };
-		AB000028 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		AB000029 /* NothingYouCouldDo-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "NothingYouCouldDo-Regular.ttf"; sourceTree = "<group>"; };
 		AC000001 /* Marble.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Marble.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -152,24 +158,12 @@
 				AE000009 /* Theme */,
 				AE000007 /* Fonts */,
 				AB000011 /* Assets.xcassets */,
+				AB000099 /* boxing-bell.mp3 */,
 				AB000028 /* Info.plist */,
 				AE000006 /* Preview Content */,
 				86B5C90C2FC7915200F756CA /* GoogleService-Info.plist */,
 			);
 			path = Marble;
-			sourceTree = "<group>";
-		};
-		AE000009 /* Theme */ = {
-			isa = PBXGroup;
-			children = (
-				AB000040 /* MarbleFont.swift */,
-				AB000041 /* MarbleColor.swift */,
-				AB000042 /* MarbleButtonStyle.swift */,
-				AB000050 /* MarbleGlass.swift */,
-				AB000058 /* MarbleDialog.swift */,
-				AB000052 /* MarbleDate.swift */,
-			);
-			path = Theme;
 			sourceTree = "<group>";
 		};
 		AE000003 /* Models */ = {
@@ -188,6 +182,7 @@
 				AB000034 /* ProgressPhoto.swift */,
 				AB000051 /* BodyweightEntry.swift */,
 				AB000053 /* WorkoutSession.swift */,
+				AB000060 /* ExerciseGuide.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -216,18 +211,9 @@
 				AB000038 /* OnboardingFlow.swift */,
 				AB000039 /* ClosingRitualView.swift */,
 				AB000043 /* SettingsView.swift */,
+				AB000061 /* ExerciseGuideView.swift */,
 			);
 			path = Views;
-			sourceTree = "<group>";
-		};
-		AE000008 /* Services */ = {
-			isa = PBXGroup;
-			children = (
-				AB000031 /* AuthenticationService.swift */,
-				AB000033 /* CloudSyncService.swift */,
-				AB000035 /* PhotoStorageService.swift */,
-			);
-			path = Services;
 			sourceTree = "<group>";
 		};
 		AE000005 /* Products */ = {
@@ -254,6 +240,29 @@
 				AB000029 /* NothingYouCouldDo-Regular.ttf */,
 			);
 			path = Fonts;
+			sourceTree = "<group>";
+		};
+		AE000008 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				AB000031 /* AuthenticationService.swift */,
+				AB000033 /* CloudSyncService.swift */,
+				AB000035 /* PhotoStorageService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		AE000009 /* Theme */ = {
+			isa = PBXGroup;
+			children = (
+				AB000040 /* MarbleFont.swift */,
+				AB000041 /* MarbleColor.swift */,
+				AB000042 /* MarbleButtonStyle.swift */,
+				AB000050 /* MarbleGlass.swift */,
+				AB000058 /* MarbleDialog.swift */,
+				AB000052 /* MarbleDate.swift */,
+			);
+			path = Theme;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -319,6 +328,7 @@
 			files = (
 				AA000011 /* Assets.xcassets in Resources */,
 				AA000012 /* Preview Assets.xcassets in Resources */,
+				AA000099 /* boxing-bell.mp3 in Resources */,
 				AA000026 /* ABCFavoritVariable-Trial.ttf in Resources */,
 				AA000027 /* ABCFavoritMonoVariable-Trial.ttf in Resources */,
 				AA000029 /* NothingYouCouldDo-Regular.ttf in Resources */,
@@ -378,6 +388,8 @@
 				AA000023 /* WorkoutDetailView.swift in Sources */,
 				AA000024 /* TrackedLift.swift in Sources */,
 				AA000025 /* ExerciseLiftDetailView.swift in Sources */,
+				AA000060 /* ExerciseGuide.swift in Sources */,
+				AA000061 /* ExerciseGuideView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -509,19 +521,23 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				CODE_SIGN_ENTITLEMENTS = Marble/Marble.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 5;
-				CODE_SIGN_ENTITLEMENTS = Marble/Marble.entitlements;
 				DEVELOPMENT_ASSET_PATHS = "\"Marble/Preview Content\"";
 				DEVELOPMENT_TEAM = DDXURN44D4;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Marble/Info.plist;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Marble uses the camera to capture progress photos of your training.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Marble lets you attach photos from your library to your training record.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait";
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -543,19 +559,23 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				CODE_SIGN_ENTITLEMENTS = Marble/Marble.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 5;
-				CODE_SIGN_ENTITLEMENTS = Marble/Marble.entitlements;
 				DEVELOPMENT_ASSET_PATHS = "\"Marble/Preview Content\"";
 				DEVELOPMENT_TEAM = DDXURN44D4;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Marble/Info.plist;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Marble uses the camera to capture progress photos of your training.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Marble lets you attach photos from your library to your training record.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait";
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
