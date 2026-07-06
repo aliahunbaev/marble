@@ -1,12 +1,25 @@
 import SwiftUI
 import SwiftData
 import FirebaseCore
+import UserNotifications
 
-class AppDelegate: NSObject, UIApplicationDelegate {
+class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         FirebaseApp.configure()
+        UNUserNotificationCenter.current().delegate = self
         return true
+    }
+
+    /// Foreground dedupe for the rest-timer bell: when the app is open,
+    /// the in-app tick already rings the bell with haptics — suppress
+    /// the local notification entirely so it never double-sounds.
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        completionHandler([])
     }
 }
 

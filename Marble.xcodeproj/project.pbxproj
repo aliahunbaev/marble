@@ -3,10 +3,13 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 70;
 	objects = {
 
 /* Begin PBXBuildFile section */
+		8659C0BD2FFC572E006F2DBC /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8659C0BC2FFC572E006F2DBC /* WidgetKit.framework */; };
+		8659C0BF2FFC572E006F2DBC /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8659C0BE2FFC572E006F2DBC /* SwiftUI.framework */; };
+		8659C0CE2FFC572F006F2DBC /* MarbleWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 8659C0BA2FFC572E006F2DBC /* MarbleWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		86B5C90D2FC7915200F756CA /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 86B5C90C2FC7915200F756CA /* GoogleService-Info.plist */; };
 		86B5C9102FC7923600F756CA /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 86B5C90F2FC7923600F756CA /* FirebaseAuth */; };
 		86B5C9122FC7923600F756CA /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 86B5C9112FC7923600F756CA /* FirebaseFirestore */; };
@@ -23,7 +26,6 @@
 		AA000010 /* YouView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000010 /* YouView.swift */; };
 		AA000011 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB000011 /* Assets.xcassets */; };
 		AA000012 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB000012 /* Preview Assets.xcassets */; };
-		AA000099 /* boxing-bell.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = AB000099 /* boxing-bell.mp3 */; };
 		AA000015 /* ActiveWorkoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000015 /* ActiveWorkoutView.swift */; };
 		AA000016 /* SectionHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000016 /* SectionHeader.swift */; };
 		AA000017 /* ExerciseSeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000017 /* ExerciseSeed.swift */; };
@@ -35,8 +37,6 @@
 		AA000023 /* WorkoutDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000023 /* WorkoutDetailView.swift */; };
 		AA000024 /* TrackedLift.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000024 /* TrackedLift.swift */; };
 		AA000025 /* ExerciseLiftDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000025 /* ExerciseLiftDetailView.swift */; };
-		AA000060 /* ExerciseGuide.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000060 /* ExerciseGuide.swift */; };
-		AA000061 /* ExerciseGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000061 /* ExerciseGuideView.swift */; };
 		AA000026 /* ABCFavoritVariable-Trial.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB000026 /* ABCFavoritVariable-Trial.ttf */; };
 		AA000027 /* ABCFavoritMonoVariable-Trial.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB000027 /* ABCFavoritMonoVariable-Trial.ttf */; };
 		AA000029 /* NothingYouCouldDo-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB000029 /* NothingYouCouldDo-Regular.ttf */; };
@@ -64,9 +64,42 @@
 		AA000057 /* BackedScrollView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000057 /* BackedScrollView.swift */; };
 		AA000058 /* MarbleDialog.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000058 /* MarbleDialog.swift */; };
 		AA000059 /* TemplateSeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000059 /* TemplateSeed.swift */; };
+		AA000060 /* ExerciseGuide.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000060 /* ExerciseGuide.swift */; };
+		AA000061 /* ExerciseGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000061 /* ExerciseGuideView.swift */; };
+		AA000062 /* RestTimerNotifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000062 /* RestTimerNotifier.swift */; };
+		AA000063 /* RestActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000063 /* RestActivityAttributes.swift */; };
+		AA000064 /* RestActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000063 /* RestActivityAttributes.swift */; };
+		AA000099 /* boxing-bell.caf in Resources */ = {isa = PBXBuildFile; fileRef = AB000099 /* boxing-bell.caf */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		8659C0CC2FFC572F006F2DBC /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B0000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 8659C0B92FFC572E006F2DBC;
+			remoteInfo = MarbleWidgetsExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		8659C0CF2FFC572F006F2DBC /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				8659C0CE2FFC572F006F2DBC /* MarbleWidgetsExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		8659C0BA2FFC572E006F2DBC /* MarbleWidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = MarbleWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		8659C0BC2FFC572E006F2DBC /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		8659C0BE2FFC572E006F2DBC /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		86B5C90C2FC7915200F756CA /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		AB000001 /* MarbleApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarbleApp.swift; sourceTree = "<group>"; };
 		AB000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -79,7 +112,6 @@
 		AB000009 /* TrackView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackView.swift; sourceTree = "<group>"; };
 		AB000010 /* YouView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YouView.swift; sourceTree = "<group>"; };
 		AB000011 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		AB000099 /* boxing-bell.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = "boxing-bell.mp3"; sourceTree = "<group>"; };
 		AB000012 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		AB000015 /* ActiveWorkoutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveWorkoutView.swift; sourceTree = "<group>"; };
 		AB000016 /* SectionHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionHeader.swift; sourceTree = "<group>"; };
@@ -92,8 +124,6 @@
 		AB000023 /* WorkoutDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutDetailView.swift; sourceTree = "<group>"; };
 		AB000024 /* TrackedLift.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackedLift.swift; sourceTree = "<group>"; };
 		AB000025 /* ExerciseLiftDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseLiftDetailView.swift; sourceTree = "<group>"; };
-		AB000060 /* ExerciseGuide.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseGuide.swift; sourceTree = "<group>"; };
-		AB000061 /* ExerciseGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseGuideView.swift; sourceTree = "<group>"; };
 		AB000026 /* ABCFavoritVariable-Trial.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "ABCFavoritVariable-Trial.ttf"; sourceTree = "<group>"; };
 		AB000027 /* ABCFavoritMonoVariable-Trial.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "ABCFavoritMonoVariable-Trial.ttf"; sourceTree = "<group>"; };
 		AB000028 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -122,10 +152,38 @@
 		AB000057 /* BackedScrollView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackedScrollView.swift; sourceTree = "<group>"; };
 		AB000058 /* MarbleDialog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarbleDialog.swift; sourceTree = "<group>"; };
 		AB000059 /* TemplateSeed.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplateSeed.swift; sourceTree = "<group>"; };
+		AB000060 /* ExerciseGuide.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseGuide.swift; sourceTree = "<group>"; };
+		AB000061 /* ExerciseGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseGuideView.swift; sourceTree = "<group>"; };
+		AB000062 /* RestTimerNotifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestTimerNotifier.swift; sourceTree = "<group>"; };
+		AB000063 /* RestActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestActivityAttributes.swift; sourceTree = "<group>"; };
+		AB000099 /* boxing-bell.caf */ = {isa = PBXFileReference; lastKnownFileType = audio.caf; path = "boxing-bell.caf"; sourceTree = "<group>"; };
 		AC000001 /* Marble.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Marble.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		8659C0D22FFC572F006F2DBC /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 8659C0B92FFC572E006F2DBC /* MarbleWidgetsExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		8659C0C02FFC572E006F2DBC /* MarbleWidgets */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (8659C0D22FFC572F006F2DBC /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = MarbleWidgets; sourceTree = "<group>"; };
+/* End PBXFileSystemSynchronizedRootGroup section */
+
 /* Begin PBXFrameworksBuildPhase section */
+		8659C0B72FFC572E006F2DBC /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8659C0BF2FFC572E006F2DBC /* SwiftUI.framework in Frameworks */,
+				8659C0BD2FFC572E006F2DBC /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		AD000001 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -139,10 +197,21 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		8659C0BB2FFC572E006F2DBC /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				8659C0BC2FFC572E006F2DBC /* WidgetKit.framework */,
+				8659C0BE2FFC572E006F2DBC /* SwiftUI.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		AE000001 = {
 			isa = PBXGroup;
 			children = (
 				AE000002 /* Marble */,
+				8659C0C02FFC572E006F2DBC /* MarbleWidgets */,
+				8659C0BB2FFC572E006F2DBC /* Frameworks */,
 				AE000005 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -158,7 +227,7 @@
 				AE000009 /* Theme */,
 				AE000007 /* Fonts */,
 				AB000011 /* Assets.xcassets */,
-				AB000099 /* boxing-bell.mp3 */,
+				AB000099 /* boxing-bell.caf */,
 				AB000028 /* Info.plist */,
 				AE000006 /* Preview Content */,
 				86B5C90C2FC7915200F756CA /* GoogleService-Info.plist */,
@@ -182,6 +251,7 @@
 				AB000034 /* ProgressPhoto.swift */,
 				AB000051 /* BodyweightEntry.swift */,
 				AB000053 /* WorkoutSession.swift */,
+				AB000063 /* RestActivityAttributes.swift */,
 				AB000060 /* ExerciseGuide.swift */,
 			);
 			path = Models;
@@ -220,6 +290,7 @@
 			isa = PBXGroup;
 			children = (
 				AC000001 /* Marble.app */,
+				8659C0BA2FFC572E006F2DBC /* MarbleWidgetsExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -248,6 +319,7 @@
 				AB000031 /* AuthenticationService.swift */,
 				AB000033 /* CloudSyncService.swift */,
 				AB000035 /* PhotoStorageService.swift */,
+				AB000062 /* RestTimerNotifier.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -268,6 +340,28 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		8659C0B92FFC572E006F2DBC /* MarbleWidgetsExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8659C0D32FFC572F006F2DBC /* Build configuration list for PBXNativeTarget "MarbleWidgetsExtension" */;
+			buildPhases = (
+				8659C0B62FFC572E006F2DBC /* Sources */,
+				8659C0B72FFC572E006F2DBC /* Frameworks */,
+				8659C0B82FFC572E006F2DBC /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				8659C0C02FFC572E006F2DBC /* MarbleWidgets */,
+			);
+			name = MarbleWidgetsExtension;
+			packageProductDependencies = (
+			);
+			productName = MarbleWidgetsExtension;
+			productReference = 8659C0BA2FFC572E006F2DBC /* MarbleWidgetsExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		AF000001 /* Marble */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = B1000001 /* Build configuration list for PBXNativeTarget "Marble" */;
@@ -275,10 +369,12 @@
 				B2000001 /* Sources */,
 				AD000001 /* Frameworks */,
 				B3000001 /* Resources */,
+				8659C0CF2FFC572F006F2DBC /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				8659C0CD2FFC572F006F2DBC /* PBXTargetDependency */,
 			);
 			name = Marble;
 			productName = Marble;
@@ -292,9 +388,12 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1540;
+				LastSwiftUpdateCheck = 2620;
 				LastUpgradeCheck = 1540;
 				TargetAttributes = {
+					8659C0B92FFC572E006F2DBC = {
+						CreatedOnToolsVersion = 26.2;
+					};
 					AF000001 = {
 						CreatedOnToolsVersion = 15.4;
 					};
@@ -317,18 +416,26 @@
 			projectRoot = "";
 			targets = (
 				AF000001 /* Marble */,
+				8659C0B92FFC572E006F2DBC /* MarbleWidgetsExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		8659C0B82FFC572E006F2DBC /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		B3000001 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				AA000011 /* Assets.xcassets in Resources */,
 				AA000012 /* Preview Assets.xcassets in Resources */,
-				AA000099 /* boxing-bell.mp3 in Resources */,
+				AA000099 /* boxing-bell.caf in Resources */,
 				AA000026 /* ABCFavoritVariable-Trial.ttf in Resources */,
 				AA000027 /* ABCFavoritMonoVariable-Trial.ttf in Resources */,
 				AA000029 /* NothingYouCouldDo-Regular.ttf in Resources */,
@@ -339,6 +446,14 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		8659C0B62FFC572E006F2DBC /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AA000064 /* RestActivityAttributes.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		B2000001 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -349,6 +464,7 @@
 				AA000033 /* CloudSyncService.swift in Sources */,
 				AA000034 /* ProgressPhoto.swift in Sources */,
 				AA000035 /* PhotoStorageService.swift in Sources */,
+				AA000062 /* RestTimerNotifier.swift in Sources */,
 				AA000036 /* PhotoCaptureSheet.swift in Sources */,
 				AA000037 /* GallerySection.swift in Sources */,
 				AA000038 /* OnboardingFlow.swift in Sources */,
@@ -361,6 +477,7 @@
 				AA000058 /* MarbleDialog.swift in Sources */,
 				AA000052 /* MarbleDate.swift in Sources */,
 				AA000053 /* WorkoutSession.swift in Sources */,
+				AA000063 /* RestActivityAttributes.swift in Sources */,
 				AA000054 /* GalleryTab.swift in Sources */,
 				AA000055 /* ReorderableMetricsGrid.swift in Sources */,
 				AA000056 /* ReorderableList.swift in Sources */,
@@ -395,7 +512,79 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		8659C0CD2FFC572F006F2DBC /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 8659C0B92FFC572E006F2DBC /* MarbleWidgetsExtension */;
+			targetProxy = 8659C0CC2FFC572F006F2DBC /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		8659C0D02FFC572F006F2DBC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = DDXURN44D4;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MarbleWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = MarbleWidgets;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.aliahunbaev.Marble.MarbleWidgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		8659C0D12FFC572F006F2DBC /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = DDXURN44D4;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MarbleWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = MarbleWidgets;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.aliahunbaev.Marble.MarbleWidgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		B4000001 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -594,6 +783,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		8659C0D32FFC572F006F2DBC /* Build configuration list for PBXNativeTarget "MarbleWidgetsExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8659C0D02FFC572F006F2DBC /* Debug */,
+				8659C0D12FFC572F006F2DBC /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		B1000001 /* Build configuration list for PBXNativeTarget "Marble" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

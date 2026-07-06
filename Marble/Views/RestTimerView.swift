@@ -1,5 +1,6 @@
 import SwiftUI
 import AVFoundation
+import ActivityKit
 
 // MARK: - Rest Timer State
 
@@ -18,6 +19,11 @@ class RestTimerState {
     var originSetID: UUID? = nil
     private(set) var endDate: Date = .distantPast
     private var timer: Timer?
+    /// The Dynamic Island / lock-screen countdown. Started with the
+    /// timer, endDate updated on ±10s, ended on skip/completion. The
+    /// widget renders the ticking itself (Text(timerInterval:)) so no
+    /// per-second updates flow through here.
+    private var liveActivity: Activity<RestActivityAttributes>?
 
     var progress: Double {
         guard selectedDuration > 0, isActive else { return 0 }
@@ -43,6 +49,12 @@ class RestTimerState {
         self.originSetID = originSetID
         isActive = true
         startTicking()
+        // Bell-when-backgrounded: the in-app tick can't fire once iOS
+        // suspends the app, so a local notification carries the bell.
+        // Contextual permission ask (no-op once determined).
+        RestTimerNotifier.requestAuthorizationIfNeeded()
+        RestTimerNotifier.schedule(endDate: endDate)
+        startLiveActivity()
     }
 
     func skip() {
@@ -61,6 +73,11 @@ class RestTimerState {
         }
         if remainingSeconds == 0 {
             stop()
+        } else {
+            // Keep the background bell + island countdown in sync with
+            // the moved endDate.
+            RestTimerNotifier.schedule(endDate: endDate)
+            updateLiveActivity()
         }
     }
 
@@ -71,6 +88,46 @@ class RestTimerState {
         remainingSeconds = 0
         originExerciseID = nil
         originSetID = nil
+        // Covers skip / uncheck / in-app completion (where the bell
+        // already rang) — no stray or duplicate notification after.
+        RestTimerNotifier.cancel()
+        endLiveActivity()
+    }
+
+    // MARK: - Live Activity (Dynamic Island / lock screen)
+
+    private func startLiveActivity() {
+        guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+        // End any orphan from a previous run (e.g. the app was killed
+        // mid-rest and relaunched) so islands never stack.
+        let stale = Activity<RestActivityAttributes>.activities
+        liveActivity = nil
+        for activity in stale {
+            Task { await activity.end(nil, dismissalPolicy: .immediate) }
+        }
+        let content = ActivityContent(
+            state: RestActivityAttributes.ContentState(endDate: endDate),
+            staleDate: endDate
+        )
+        liveActivity = try? Activity.request(
+            attributes: RestActivityAttributes(startDate: Date()),
+            content: content
+        )
+    }
+
+    private func updateLiveActivity() {
+        guard let activity = liveActivity else { return }
+        let content = ActivityContent(
+            state: RestActivityAttributes.ContentState(endDate: endDate),
+            staleDate: endDate
+        )
+        Task { await activity.update(content) }
+    }
+
+    private func endLiveActivity() {
+        guard let activity = liveActivity else { return }
+        liveActivity = nil
+        Task { await activity.end(nil, dismissalPolicy: .immediate) }
     }
 
     private func startTicking() {
