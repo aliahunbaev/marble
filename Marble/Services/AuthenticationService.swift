@@ -21,6 +21,13 @@ final class AuthenticationService: ObservableObject {
     private var didSyncForCurrentSession = false
 
     init() {
+        // Seed from Firebase's synchronously-cached session so the very
+        // first frame already knows the user is signed in. Without this,
+        // `user` is nil until the async auth-state listener fires, and
+        // ContentView flashes the sign-in wall for a beat on every cold
+        // launch. The listener below still runs and does the real work
+        // (profile fetch, initial sync) — this only fixes first paint.
+        user = Auth.auth().currentUser
         authStateListener = Auth.auth().addStateDidChangeListener { [weak self] _, user in
             Task { @MainActor in
                 self?.user = user

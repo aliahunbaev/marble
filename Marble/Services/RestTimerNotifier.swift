@@ -44,6 +44,11 @@ enum RestTimerNotifier {
         content.body = "Back to work."
         // The same two-strike bell the app plays in the foreground.
         content.sound = UNNotificationSound(named: UNNotificationSoundName("boxing-bell.caf"))
+        // Timers are Apple's canonical time-sensitive case: without this
+        // the sound gets muted when the phone is locked or media is
+        // playing (the exact moments a rest timer matters). Requires the
+        // matching entitlement in Marble.entitlements.
+        content.interruptionLevel = .timeSensitive
 
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: remaining, repeats: false)
         let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
