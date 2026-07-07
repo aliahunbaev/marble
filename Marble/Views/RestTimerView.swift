@@ -175,8 +175,8 @@ final class BoxingBell {
     /// Candidate filenames (without extension) and extensions to look for
     /// in the bundle. The first match wins. Drop your file in as any of
     /// these and it's picked up automatically — no code change needed.
-    private static let fileNames = ["boxing-bell", "boxingbell", "bell"]
-    private static let fileExtensions = ["wav", "caf", "m4a", "mp3", "aiff"]
+    private static let fileNames = ["marble-bell", "boxing-bell", "boxingbell", "bell"]
+    private static let fileExtensions = ["aiff", "wav", "caf", "m4a", "mp3"]
 
     private let engine = AVAudioEngine()
     private let player = AVAudioPlayerNode()

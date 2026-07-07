@@ -69,7 +69,7 @@
 		AA000062 /* RestTimerNotifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000062 /* RestTimerNotifier.swift */; };
 		AA000063 /* RestActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000063 /* RestActivityAttributes.swift */; };
 		AA000064 /* RestActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000063 /* RestActivityAttributes.swift */; };
-		AA000099 /* boxing-bell.caf in Resources */ = {isa = PBXBuildFile; fileRef = AB000099 /* boxing-bell.caf */; };
+		AA000099 /* marble-bell.aiff in Resources */ = {isa = PBXBuildFile; fileRef = AB000099 /* marble-bell.aiff */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -156,7 +156,7 @@
 		AB000061 /* ExerciseGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseGuideView.swift; sourceTree = "<group>"; };
 		AB000062 /* RestTimerNotifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestTimerNotifier.swift; sourceTree = "<group>"; };
 		AB000063 /* RestActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestActivityAttributes.swift; sourceTree = "<group>"; };
-		AB000099 /* boxing-bell.caf */ = {isa = PBXFileReference; lastKnownFileType = audio.caf; path = "boxing-bell.caf"; sourceTree = "<group>"; };
+		AB000099 /* marble-bell.aiff */ = {isa = PBXFileReference; lastKnownFileType = audio.aiff; path = "marble-bell.aiff"; sourceTree = "<group>"; };
 		AC000001 /* Marble.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Marble.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -227,7 +227,7 @@
 				AE000009 /* Theme */,
 				AE000007 /* Fonts */,
 				AB000011 /* Assets.xcassets */,
-				AB000099 /* boxing-bell.caf */,
+				AB000099 /* marble-bell.aiff */,
 				AB000028 /* Info.plist */,
 				AE000006 /* Preview Content */,
 				86B5C90C2FC7915200F756CA /* GoogleService-Info.plist */,
@@ -435,7 +435,7 @@
 			files = (
 				AA000011 /* Assets.xcassets in Resources */,
 				AA000012 /* Preview Assets.xcassets in Resources */,
-				AA000099 /* boxing-bell.caf in Resources */,
+				AA000099 /* marble-bell.aiff in Resources */,
 				AA000026 /* ABCFavoritVariable-Trial.ttf in Resources */,
 				AA000027 /* ABCFavoritMonoVariable-Trial.ttf in Resources */,
 				AA000029 /* NothingYouCouldDo-Regular.ttf in Resources */,
