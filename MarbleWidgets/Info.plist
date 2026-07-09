@@ -7,5 +7,10 @@
 		<key>NSExtensionPointIdentifier</key>
 		<string>com.apple.widgetkit-extension</string>
 	</dict>
+	<key>UIAppFonts</key>
+	<array>
+		<string>ABCFavoritVariable-Trial.ttf</string>
+		<string>ABCFavoritMonoVariable-Trial.ttf</string>
+	</array>
 </dict>
 </plist>

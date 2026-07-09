@@ -39,6 +39,8 @@
 		AA000025 /* ExerciseLiftDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000025 /* ExerciseLiftDetailView.swift */; };
 		AA000026 /* ABCFavoritVariable-Trial.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB000026 /* ABCFavoritVariable-Trial.ttf */; };
 		AA000027 /* ABCFavoritMonoVariable-Trial.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB000027 /* ABCFavoritMonoVariable-Trial.ttf */; };
+		AA000065 /* ABCFavoritVariable-Trial.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB000026 /* ABCFavoritVariable-Trial.ttf */; };
+		AA000066 /* ABCFavoritMonoVariable-Trial.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB000027 /* ABCFavoritMonoVariable-Trial.ttf */; };
 		AA000029 /* NothingYouCouldDo-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB000029 /* NothingYouCouldDo-Regular.ttf */; };
 		AA000030 /* UserProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000030 /* UserProfile.swift */; };
 		AA000031 /* AuthenticationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000031 /* AuthenticationService.swift */; };
@@ -426,6 +428,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AA000065 /* ABCFavoritVariable-Trial.ttf in Resources */,
+				AA000066 /* ABCFavoritMonoVariable-Trial.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

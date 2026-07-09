@@ -13,31 +13,50 @@ private enum Palette {
     static let taupe = Color(red: 0.420, green: 0.388, blue: 0.345)
 }
 
+// MARK: - Marble type (widget-local)
+//
+// The extension ships its own copies of the Favorit files (registered
+// in the widget target's Resources + its Info.plist UIAppFonts), so
+// the banner and island match the app's editorial register. Light
+// weight only, same as the app.
+private enum WidgetFont {
+    static func body(_ size: CGFloat) -> Font {
+        .custom("ABC Favorit Variable Unlicensed Trial", size: size).weight(.light)
+    }
+    static func mono(_ size: CGFloat) -> Font {
+        .custom("ABC Favorit Mono Variable Unlicensed Trial", size: size).weight(.light)
+    }
+}
+
 // MARK: - Rest timer Live Activity
 //
 // Renders the rest countdown in the Dynamic Island and as a lock-screen
-// banner. The countdown itself is drawn by the SYSTEM via
-// Text(timerInterval:) — the app never pushes per-second updates, only
-// starts the activity, moves endDate on ±10s, and ends it on skip /
-// completion (see RestTimerState).
+// banner. The countdown text AND the depleting ring are drawn by the
+// SYSTEM (Text(timerInterval:) / ProgressView(timerInterval:)) — the
+// app never pushes per-second updates, only starts the activity, moves
+// endDate on ±10s, and ends it on skip / completion (see RestTimerState).
+//
+// Deliberately display-only: no buttons. The controls live one tap away
+// in the app; the surface stays a quiet REST + countdown.
 struct MarbleWidgetsLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: RestActivityAttributes.self) { context in
-            // Lock screen / banner — bone card, editorial REST label,
-            // light countdown. Matches the app's register.
-            HStack(alignment: .firstTextBaseline) {
+            // Lock screen / banner — bone card. REST left in light
+            // Favorit, countdown right in Favorit Mono, both centered
+            // on the same axis.
+            HStack(alignment: .center) {
                 Text("REST")
-                    .font(.system(size: 12, weight: .medium))
-                    .tracking(2)
+                    .font(WidgetFont.body(17))
+                    .tracking(3)
                     .foregroundStyle(Palette.taupe)
 
                 Spacer()
 
-                countdown(context, size: 36)
+                countdown(context, size: 40)
                     .foregroundStyle(Palette.ink)
             }
             .padding(.horizontal, 24)
-            .padding(.vertical, 20)
+            .padding(.vertical, 18)
             .activityBackgroundTint(Palette.bone)
             .activitySystemActionForegroundColor(Palette.ink)
 
@@ -46,8 +65,8 @@ struct MarbleWidgetsLiveActivity: Widget {
                 // Expanded — long-press on the island.
                 DynamicIslandExpandedRegion(.leading) {
                     Text("REST")
-                        .font(.system(size: 12, weight: .medium))
-                        .tracking(2)
+                        .font(WidgetFont.body(15))
+                        .tracking(3)
                         .foregroundStyle(.white.opacity(0.55))
                         .frame(maxHeight: .infinity, alignment: .center)
                 }
@@ -57,33 +76,48 @@ struct MarbleWidgetsLiveActivity: Widget {
                         .frame(maxHeight: .infinity, alignment: .center)
                 }
             } compactLeading: {
-                Image(systemName: "timer")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(Palette.bone)
+                // Apple-Timer pairing: depleting ring left, digits right.
+                ring(context)
             } compactTrailing: {
-                countdown(context, size: 13)
+                countdown(context, size: 14)
                     .foregroundStyle(Palette.bone)
                     // timerInterval text is greedy — cap it so the
                     // island's compact trailing slot stays tight.
-                    .frame(maxWidth: 42)
+                    .frame(maxWidth: 44)
             } minimal: {
-                Image(systemName: "timer")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(Palette.bone)
+                // When another app (e.g. Spotify) owns the island,
+                // Marble collapses to this single tiny slot — digits
+                // can't fit, so show the system-animated depleting
+                // ring, Apple-Timer style, and time stays readable.
+                ring(context)
             }
             .keylineTint(Palette.bone)
         }
     }
 
-    /// System-rendered live countdown ("1:23"), light weight, digits
-    /// monospaced so the layout doesn't wobble each second.
+    /// System-rendered live countdown ("1:23"), Favorit Mono light,
+    /// digits monospaced so the layout doesn't wobble each second.
     private func countdown(
         _ context: ActivityViewContext<RestActivityAttributes>,
         size: CGFloat
     ) -> some View {
         Text(timerInterval: context.attributes.startDate...context.state.endDate, countsDown: true)
-            .font(.system(size: size, weight: .light))
+            .font(WidgetFont.mono(size))
             .monospacedDigit()
             .multilineTextAlignment(.trailing)
+    }
+
+    /// System-animated depleting ring for the island's smallest slots.
+    private func ring(
+        _ context: ActivityViewContext<RestActivityAttributes>
+    ) -> some View {
+        ProgressView(
+            timerInterval: context.attributes.startDate...context.state.endDate,
+            countsDown: true,
+            label: { EmptyView() },
+            currentValueLabel: { EmptyView() }
+        )
+        .progressViewStyle(.circular)
+        .tint(Palette.bone)
     }
 }
