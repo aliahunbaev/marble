@@ -46,9 +46,10 @@ struct MarbleWidgetsLiveActivity: Widget {
             // on the same axis.
             HStack(alignment: .center) {
                 // Title-case wordmark treatment — ink, Favorit (not
-                // mono), no tracking. Reads as a title, not a label.
+                // mono), no tracking, set at the same scale as the
+                // countdown so the two read as one line of type.
                 Text("Rest")
-                    .font(WidgetFont.body(19))
+                    .font(WidgetFont.body(38))
                     .foregroundStyle(Palette.ink)
 
                 Spacer()
@@ -66,7 +67,7 @@ struct MarbleWidgetsLiveActivity: Widget {
                 // Expanded — long-press on the island.
                 DynamicIslandExpandedRegion(.leading) {
                     Text("Rest")
-                        .font(WidgetFont.body(17))
+                        .font(WidgetFont.body(30))
                         .foregroundStyle(.white)
                         .frame(maxHeight: .infinity, alignment: .center)
                 }
