@@ -49,8 +49,11 @@ class RestTimerState {
         self.originSetID = originSetID
         isActive = true
         startTicking()
-        // Bell-when-backgrounded: the in-app tick can't fire once iOS
-        // suspends the app, so a local notification carries the bell.
+        // Keep the audio session alive for the countdown so the tick —
+        // and therefore the bell — keeps working when the app is
+        // backgrounded or the phone is locked (see BoxingBell's
+        // keep-alive docs). The notification below is visual-only.
+        BoxingBell.shared.beginKeepAlive()
         // Contextual permission ask (no-op once determined).
         RestTimerNotifier.requestAuthorizationIfNeeded()
         RestTimerNotifier.schedule(endDate: endDate)
@@ -81,7 +84,10 @@ class RestTimerState {
         }
     }
 
-    func stop() {
+    /// `afterBell: true` on the natural-completion path — the bell just
+    /// started ringing, so the audio session teardown is delayed long
+    /// enough for its die-off instead of cutting it mid-ring.
+    func stop(afterBell: Bool = false) {
         timer?.invalidate()
         timer = nil
         isActive = false
@@ -92,6 +98,7 @@ class RestTimerState {
         // already rang) — no stray or duplicate notification after.
         RestTimerNotifier.cancel()
         endLiveActivity()
+        BoxingBell.shared.endKeepAlive(afterBellTail: afterBell)
     }
 
     // MARK: - Live Activity (Dynamic Island / lock screen)
@@ -138,7 +145,7 @@ class RestTimerState {
             self.remainingSeconds = max(0, remaining)
             if self.remainingSeconds == 0 {
                 Self.fireRoundEnd()
-                self.stop()
+                self.stop(afterBell: true)
             }
         }
     }
@@ -187,18 +194,103 @@ final class BoxingBell {
     /// the synth fallback.
     private var filePlayer: AVAudioPlayer?
 
+    /// True while a rest timer is running and we're keeping the audio
+    /// session alive (see beginKeepAlive).
+    private var keepAliveActive = false
+    private var silenceBuffer: AVAudioPCMBuffer?
+
     private init() {
+        // Engine is configured unconditionally: even when the bell plays
+        // via AVAudioPlayer, the keep-alive silence loop renders through
+        // the engine's player node.
+        let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1)!
+        engine.attach(player)
+        engine.connect(player, to: engine.mainMixerNode, format: format)
+
         if let url = Self.bundledBellURL(),
-           let player = try? AVAudioPlayer(contentsOf: url) {
-            player.prepareToPlay()
-            filePlayer = player
+           let filePlayer = try? AVAudioPlayer(contentsOf: url) {
+            filePlayer.prepareToPlay()
+            self.filePlayer = filePlayer
         } else {
             // No file shipped — build the synthesized fallback buffer.
-            let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1)!
-            engine.attach(player)
-            engine.connect(player, to: engine.mainMixerNode, format: format)
             buffer = Self.makeBellBuffer(format: format, sampleRate: sampleRate)
         }
+
+        // If a call / Siri / another app interrupts the session while a
+        // rest timer is running, restart the silence loop when the
+        // interruption ends so the countdown stays alive in background.
+        NotificationCenter.default.addObserver(
+            forName: AVAudioSession.interruptionNotification,
+            object: nil, queue: .main
+        ) { [weak self] note in
+            guard let self,
+                  let raw = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
+                  AVAudioSession.InterruptionType(rawValue: raw) == .ended,
+                  self.keepAliveActive else { return }
+            self.startSilenceLoop()
+        }
+    }
+
+    // MARK: - Background keep-alive
+    //
+    // While a rest timer runs, Marble behaves like an audio app (Info.
+    // plist declares the `audio` background mode): the engine renders a
+    // looping silent buffer, which keeps the app un-suspended when it's
+    // backgrounded or the phone locks. RestTimerState's 1-second tick
+    // therefore keeps firing, and at zero the bell plays through this
+    // same active session — audible on the lock screen, with the silent
+    // switch on, under DND/Focus, and over other apps' music. This is
+    // how Strong-style timers sound everywhere; notification sounds
+    // can't (they obey the ringer switch and Focus by design, so the
+    // notification is now a visual-only banner).
+    //
+    // The session is strictly bounded to a user-started countdown —
+    // begin on start, end on skip/completion — which is the accepted
+    // App Review shape for fitness timers ("audible content": the bell).
+
+    /// Start keeping the audio session alive for a running rest timer.
+    func beginKeepAlive() {
+        keepAliveActive = true
+        startSilenceLoop()
+    }
+
+    /// Stop the keep-alive. `afterBellTail` delays the session teardown
+    /// long enough for a just-rung bell to finish its die-off instead of
+    /// being cut mid-ring (natural-completion path).
+    func endKeepAlive(afterBellTail: Bool = false) {
+        keepAliveActive = false
+        let delay: TimeInterval = afterBellTail ? 1.5 : 0
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            guard let self, !self.keepAliveActive else { return } // a new rest started meanwhile
+            self.player.stop()
+            self.engine.stop()
+            try? AVAudioSession.sharedInstance().setActive(
+                false, options: .notifyOthersOnDeactivation
+            )
+        }
+    }
+
+    private func startSilenceLoop() {
+        let session = AVAudioSession.sharedInstance()
+        try? session.setCategory(.playback, options: [.mixWithOthers])
+        try? session.setActive(true)
+
+        if silenceBuffer == nil {
+            let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1)!
+            if let buf = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(sampleRate)) {
+                buf.frameLength = AVAudioFrameCount(sampleRate) // 1s of zeros
+                silenceBuffer = buf
+            }
+        }
+        guard let silenceBuffer else { return }
+
+        if !engine.isRunning {
+            engine.prepare()
+            try? engine.start()
+        }
+        player.stop()
+        player.scheduleBuffer(silenceBuffer, at: nil, options: [.loops])
+        player.play()
     }
 
     private static func bundledBellURL() -> URL? {
@@ -224,13 +316,20 @@ final class BoxingBell {
             return
         }
 
-        // Synthesized fallback.
+        // Synthesized fallback. `.interrupts` bumps the keep-alive
+        // silence loop off the node, so restore it once the bell has
+        // rendered (only matters while a rest timer is still running).
         guard let buffer else { return }
         if !engine.isRunning {
             engine.prepare()
             try? engine.start()
         }
-        player.scheduleBuffer(buffer, at: nil, options: [.interrupts], completionHandler: nil)
+        player.scheduleBuffer(buffer, at: nil, options: [.interrupts]) { [weak self] in
+            DispatchQueue.main.async {
+                guard let self, self.keepAliveActive else { return }
+                self.startSilenceLoop()
+            }
+        }
         player.play()
     }
 

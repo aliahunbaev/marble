@@ -50,12 +50,16 @@ enum RestTimerNotifier {
             let content = UNMutableNotificationContent()
             content.title = "Rest complete"
             content.body = "Back to work."
-            // The same two-strike bell the app plays in the foreground.
-            content.sound = UNNotificationSound(named: UNNotificationSoundName("marble-bell.aiff"))
-            // Timers are Apple's canonical time-sensitive case: without
-            // this the sound gets muted when the phone is locked or media
-            // is playing (the exact moments a rest timer matters).
-            // Requires the matching entitlement in Marble.entitlements.
+            // VISUAL-ONLY: no sound. The app itself plays the bell — a
+            // background audio session (BoxingBell.beginKeepAlive) keeps
+            // the timer alive so the bell sounds everywhere: locked,
+            // silent switch on, DND, over music. Notification sounds
+            // can't do that (ringer switch / Focus mute them; Siri
+            // announce hijacks them), which made the bell inconsistent.
+            content.sound = nil
+            // Time-sensitive so the banner still surfaces promptly on
+            // the lock screen and under Focus. Requires the matching
+            // entitlement in Marble.entitlements.
             content.interruptionLevel = .timeSensitive
 
             let trigger = UNTimeIntervalNotificationTrigger(timeInterval: remaining, repeats: false)
