@@ -105,6 +105,9 @@ struct MarbleWidgetsLiveActivity: Widget {
         Text(timerInterval: context.attributes.startDate...context.state.endDate, countsDown: true)
             .font(WidgetFont.mono(size))
             .monospacedDigit()
+            // Favorit Mono runs airy at display sizes — tighten a touch
+            // so the colon doesn't float ("0 : 12" → "0:12").
+            .tracking(size >= 30 ? -1.5 : 0)
             .multilineTextAlignment(.trailing)
     }
 
