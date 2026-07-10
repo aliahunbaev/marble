@@ -197,12 +197,18 @@ final class BoxingBell {
     /// True while a rest timer is running and we're keeping the audio
     /// session alive (see beginKeepAlive).
     private var keepAliveActive = false
-    private var silenceBuffer: AVAudioPCMBuffer?
+
+    /// The keep-alive silence loop. An AVAudioPlayer (NOT AVAudioEngine):
+    /// the engine doesn't reliably honor `.mixWithOthers` and interrupts
+    /// other audio on its first cold start, which paused the user's music
+    /// when a rest timer began. AVAudioPlayer mixes correctly, same as
+    /// the bell player.
+    private var silencePlayer: AVAudioPlayer?
 
     private init() {
-        // Engine is configured unconditionally: even when the bell plays
-        // via AVAudioPlayer, the keep-alive silence loop renders through
-        // the engine's player node.
+        // The engine is retained ONLY for the synthesized-bell fallback
+        // (used when no bell file is bundled — never in production).
+        // Nothing routes through it during normal use.
         let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1)!
         engine.attach(player)
         engine.connect(player, to: engine.mainMixerNode, format: format)
@@ -262,8 +268,7 @@ final class BoxingBell {
         let delay: TimeInterval = afterBellTail ? 1.5 : 0
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
             guard let self, !self.keepAliveActive else { return } // a new rest started meanwhile
-            self.player.stop()
-            self.engine.stop()
+            self.silencePlayer?.stop()
             try? AVAudioSession.sharedInstance().setActive(
                 false, options: .notifyOthersOnDeactivation
             )
@@ -272,25 +277,37 @@ final class BoxingBell {
 
     private func startSilenceLoop() {
         let session = AVAudioSession.sharedInstance()
+        // .mixWithOthers = overlay the user's music, never interrupt it.
         try? session.setCategory(.playback, options: [.mixWithOthers])
         try? session.setActive(true)
 
-        if silenceBuffer == nil {
-            let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1)!
-            if let buf = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(sampleRate)) {
-                buf.frameLength = AVAudioFrameCount(sampleRate) // 1s of zeros
-                silenceBuffer = buf
-            }
+        if silencePlayer == nil {
+            silencePlayer = try? AVAudioPlayer(data: Self.silentLoopData)
+            silencePlayer?.numberOfLoops = -1   // loop forever
+            silencePlayer?.volume = 0
+            silencePlayer?.prepareToPlay()
         }
-        guard let silenceBuffer else { return }
+        silencePlayer?.play()
+    }
 
-        if !engine.isRunning {
-            engine.prepare()
-            try? engine.start()
-        }
-        player.stop()
-        player.scheduleBuffer(silenceBuffer, at: nil, options: [.loops])
-        player.play()
+    /// A short silent PCM WAV, generated once. Looped by the keep-alive
+    /// AVAudioPlayer to hold the app awake without emitting any sound.
+    private static let silentLoopData: Data = makeSilentWAV(seconds: 0.5)
+
+    private static func makeSilentWAV(seconds: Double, sampleRate: Int = 44_100) -> Data {
+        let bytesPerSample = 2
+        let sampleCount = Int(Double(sampleRate) * seconds)
+        let dataSize = sampleCount * bytesPerSample
+        var d = Data()
+        func le32(_ v: UInt32) { var x = v.littleEndian; withUnsafeBytes(of: &x) { d.append(contentsOf: $0) } }
+        func le16(_ v: UInt16) { var x = v.littleEndian; withUnsafeBytes(of: &x) { d.append(contentsOf: $0) } }
+        d.append(contentsOf: Array("RIFF".utf8)); le32(UInt32(36 + dataSize))
+        d.append(contentsOf: Array("WAVE".utf8))
+        d.append(contentsOf: Array("fmt ".utf8)); le32(16); le16(1); le16(1)
+        le32(UInt32(sampleRate)); le32(UInt32(sampleRate * bytesPerSample)); le16(UInt16(bytesPerSample)); le16(16)
+        d.append(contentsOf: Array("data".utf8)); le32(UInt32(dataSize))
+        d.append(Data(count: dataSize)) // zeros → silence
+        return d
     }
 
     private static func bundledBellURL() -> URL? {
