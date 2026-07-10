@@ -42,9 +42,28 @@ final class AuthenticationService: ObservableObject {
         }
     }
 
+    /// UserDefaults key recording which account's data lives in the
+    /// local store. The device belongs to exactly one account at a time.
+    private static let localDataOwnerKey = "Marble.localDataOwnerUID"
+
     private func performInitialSync() async {
-        guard !didSyncForCurrentSession, let context = modelContext else { return }
+        guard !didSyncForCurrentSession, let context = modelContext,
+              let uid = user?.uid else { return }
         didSyncForCurrentSession = true
+
+        // Account isolation: if the local store belongs to a DIFFERENT
+        // account, wipe it before restoring — an account switch behaves
+        // like a fresh device. Same-account re-sign-in keeps local data
+        // (instant + offline-friendly; restore heals it below). This is
+        // what prevents one account's data from ever being shown to —
+        // or pushed into the cloud of — another.
+        let defaults = UserDefaults.standard
+        let owner = defaults.string(forKey: Self.localDataOwnerKey)
+        if let owner, owner != uid {
+            LocalDataReset.wipe(context: context)
+        }
+        defaults.set(uid, forKey: Self.localDataOwnerKey)
+
         // Pull cloud data into local
         await CloudSyncService.shared.restoreFromCloud(into: context)
         // Restore photos
@@ -52,11 +71,14 @@ final class AuthenticationService: ObservableObject {
         // Seed Push/Pull/Legs starter templates for a brand-new account.
         // Safe here because restore has finished — if this account had
         // its own templates in the cloud they're already present, so
-        // seedIfFreshStart sees a non-empty table and skips. Runs before
-        // the push so a genuinely-new account's starters sync up too.
+        // seedIfFreshStart sees a non-empty table and skips.
         TemplateSeed.seedIfFreshStart(context: context)
-        // Push any local-only data that existed before sign-in
-        CloudSyncService.shared.pushAllLocalToCloud(from: context)
+        // NOTE: there is deliberately no "push all local to cloud" step
+        // anymore. It existed to migrate pre-account local data, but
+        // accounts are required now, every mutation uploads at action
+        // time (Firestore writes queue offline automatically) — and on
+        // an account switch it was the leak that copied the previous
+        // account's data into the new account's cloud.
         // Retry any photo uploads that were pending
         await PhotoStorageService.shared.retryPendingUploads(context: context)
     }

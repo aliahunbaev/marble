@@ -29,6 +29,18 @@ final class PhotoStorageService {
         return photosDirectory.appendingPathComponent(name)
     }
 
+    /// Delete every cached image file (progress photos + avatar). Used
+    /// by LocalDataReset when a different account signs in on this
+    /// device — the previous account's pixels must not linger.
+    func clearAllLocalPhotoFiles() {
+        let dir = photosDirectory
+        if let files = try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil) {
+            for file in files {
+                try? FileManager.default.removeItem(at: file)
+            }
+        }
+    }
+
     func image(for photo: ProgressPhoto) -> UIImage? {
         if let url = localURL(for: photo), let data = try? Data(contentsOf: url) {
             return UIImage(data: data)
@@ -269,8 +281,17 @@ final class PhotoStorageService {
             let data = try await ref.data(maxSize: 4 * 1024 * 1024)
             try data.write(to: avatarLocalURL, options: .atomic)
         } catch {
-            // "object-not-found" is normal when no avatar is set yet.
-            if (error as NSError).domain != StorageErrorDomain {
+            let ns = error as NSError
+            // "object-not-found" is normal when no avatar is set — but a
+            // cached file from a previous state (or account) must not
+            // survive it: this account's cloud says "no avatar", so the
+            // local cache should agree. Only the definitive not-found
+            // clears; transient storage/network errors leave the cache
+            // (deleting on those would blank a valid avatar offline).
+            if ns.domain == StorageErrorDomain,
+               ns.code == StorageErrorCode.objectNotFound.rawValue {
+                clearLocalAvatar()
+            } else if ns.domain != StorageErrorDomain {
                 NSLog("[Avatar] restore failed: \(error)")
             }
         }

@@ -338,28 +338,12 @@ final class CloudSyncService {
         }
     }
 
-    // MARK: - Full Push (after sign-in, for existing local data)
-
-    func pushAllLocalToCloud(from context: ModelContext) {
-        guard isSignedIn else { return }
-        let workouts = (try? context.fetch(FetchDescriptor<Workout>())) ?? []
-        let templates = (try? context.fetch(FetchDescriptor<WorkoutTemplate>())) ?? []
-        let lifts = (try? context.fetch(FetchDescriptor<TrackedLift>())) ?? []
-        let bodyweights = (try? context.fetch(FetchDescriptor<BodyweightEntry>())) ?? []
-        // SAFEGUARD: never push an empty workout shell (no sets) over a
-        // cloud copy. A bulk-delete bug once left set-less shells local,
-        // and this push propagated them to the cloud, overwriting good
-        // data. A real workout always has sets; skip anything that
-        // doesn't so a corrupted/empty local row can't clobber the
-        // cloud. uploadWorkout (single, user-initiated saves) is
-        // unaffected.
-        workouts
-            .filter { w in w.exerciseLogs.contains { !$0.sets.isEmpty } }
-            .forEach { uploadWorkout($0) }
-        templates.forEach { uploadTemplate($0) }
-        lifts.forEach { uploadTrackedLift($0) }
-        bodyweights.forEach { uploadBodyweightEntry($0) }
-    }
+    // NOTE: pushAllLocalToCloud (bulk "upload everything local after
+    // sign-in") was removed. It existed to migrate pre-required-account
+    // local data, but with accounts mandatory every mutation uploads at
+    // action time (Firestore writes queue offline automatically) — and
+    // on an account switch the bulk push was the leak that copied the
+    // previous account's data into the new account's cloud.
 }
 
 // MARK: - DTOs
