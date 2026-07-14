@@ -47,25 +47,26 @@ struct MarbleWidgetsLiveActivity: Widget {
             HStack(alignment: .center) {
                 // Title-case wordmark treatment — Favorit (not mono),
                 // no tracking, set at the same scale as the countdown
-                // so the two read as one line of type. `.primary` (not
-                // fixed ink) so the text adapts to the system material.
+                // so the two read as one line of type.
                 Text("Rest")
                     .font(WidgetFont.body(38))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(Palette.ink)
 
                 Spacer()
 
                 countdown(context, size: 40)
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(Palette.ink)
             }
             .padding(.horizontal, 24)
             .padding(.vertical, 18)
-            // No explicit background tint: the banner rides the system's
-            // translucent material (adapts light/dark), and — the reason
-            // this changed — the one-time "Allow Live Activities?" system
-            // prompt reuses the activity tint for its buttons, which made
-            // them bone chips on a white card. Default material keeps
-            // that prompt looking native.
+            // Deliberately ONE appearance: lock-screen activities render
+            // in the lock screen's fixed context (they never follow the
+            // system light/dark setting — with no tint you just get the
+            // dark material full-time), so the banner is the bone card
+            // always. Keyline stays default so the one-time "Allow Live
+            // Activities?" prompt keeps native button styling.
+            .activityBackgroundTint(Palette.bone)
+            .activitySystemActionForegroundColor(Palette.ink)
 
         } dynamicIsland: { context in
             DynamicIsland {
