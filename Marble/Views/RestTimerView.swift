@@ -206,6 +206,13 @@ final class BoxingBell {
     private var silencePlayer: AVAudioPlayer?
 
     private init() {
+        // Set the session category BEFORE any player exists. The process
+        // default is .soloAmbient — NON-mixable — and preparing the first
+        // AVAudioPlayer can spin up the audio hardware under it, which
+        // pauses the user's music once per launch (the "first rest timer
+        // pauses Spotify" bug). Category only; activation stays lazy.
+        try? AVAudioSession.sharedInstance().setCategory(.playback, options: [.mixWithOthers])
+
         // The engine is retained ONLY for the synthesized-bell fallback
         // (used when no bell file is bundled — never in production).
         // Nothing routes through it during normal use.
