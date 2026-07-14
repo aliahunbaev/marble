@@ -45,22 +45,27 @@ struct MarbleWidgetsLiveActivity: Widget {
             // Favorit, countdown right in Favorit Mono, both centered
             // on the same axis.
             HStack(alignment: .center) {
-                // Title-case wordmark treatment — ink, Favorit (not
-                // mono), no tracking, set at the same scale as the
-                // countdown so the two read as one line of type.
+                // Title-case wordmark treatment — Favorit (not mono),
+                // no tracking, set at the same scale as the countdown
+                // so the two read as one line of type. `.primary` (not
+                // fixed ink) so the text adapts to the system material.
                 Text("Rest")
                     .font(WidgetFont.body(38))
-                    .foregroundStyle(Palette.ink)
+                    .foregroundStyle(.primary)
 
                 Spacer()
 
                 countdown(context, size: 40)
-                    .foregroundStyle(Palette.ink)
+                    .foregroundStyle(.primary)
             }
             .padding(.horizontal, 24)
             .padding(.vertical, 18)
-            .activityBackgroundTint(Palette.bone)
-            .activitySystemActionForegroundColor(Palette.ink)
+            // No explicit background tint: the banner rides the system's
+            // translucent material (adapts light/dark), and — the reason
+            // this changed — the one-time "Allow Live Activities?" system
+            // prompt reuses the activity tint for its buttons, which made
+            // them bone chips on a white card. Default material keeps
+            // that prompt looking native.
 
         } dynamicIsland: { context in
             DynamicIsland {
@@ -92,7 +97,6 @@ struct MarbleWidgetsLiveActivity: Widget {
                 // ring, Apple-Timer style, and time stays readable.
                 ring(context)
             }
-            .keylineTint(Palette.bone)
         }
     }
 
